@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="maintaincartrigger">
+<!-- ============================================================================ -->
+<!-- THIS XML CONTAINS SQL QUERIES FOR MAINTAIN CAR TRIGGER I.E SHP AND AWB TABLE -->
+<!-- ============================================================================ -->
+	<update id="updateAwbCarrierCode" parameterClass="java.util.HashMap">
+ 		UPDATE AWB SET CARR_CODE = #CARR_CODE#
+	 	WHERE CARR_CODE IS NULL
+	 	AND AWB_NO = #AWB_NO# AND AWB_DATE = #AWB_DATE# AND AWB_TYPE = 'I'
+	</update>	
+	<insert id="insertFlightMov" parameterClass="java.util.HashMap">
+		INSERT INTO FLT_MOV (ULD_TYPE, ULD_NO, ULD_CARR, ULD_KEY, FLT_TYPE,CARR_CODE, FLT_NO, FLT_DATE, FLT_KEY, 
+		   					LOC_CODE, STRG_D, STRG_MM, SURP_IND, COND_C,EIC_I, EMPTY_I, CONTR_C, RMK, TR_NO, DOC_LINE_NO,TR_TYPE, CR_USER_ID, CR_DATE,
+		   					LM_USER_ID, LM_DATE, SEQ_NO, TR_STATUS, EVENT_ID)
+		VALUES(NULL,NULL,NULL,NULL,'I',#CARR_CODE#, #FLT_NO#, #FLT_DATE#, #FLT_KEY#, NULL, SYSDATE,  NULL,'N',NULL,
+		   		'N','N',NULL, 'IMP_CAR_SHP'||#AWB_NO#||'/'||#AWB_DATE#,NULL,NULL,'IC', #CR_USER_ID#, SYSDATE,#LM_USER_ID#, 
+		   		SYSDATE,FLT_MOV_SEQ.NEXTVAL,'A','IC')
+	</insert>
+	<insert id="insertAwbEvents" parameterClass="java.util.HashMap">
+		INSERT INTO AWB_EVENTS (AWB_NO,AWB_DATE,EVENT_ID,EVENT_DESC,FLT_KEY,FLT_DATE,FLT_TYPE,TR_NO,ULD_KEY, PCS, WT,
+								CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE)
+		VALUES(#AWB_NO#, #AWB_DATE#, #EVENT#,(SELECT EVENT_DESC FROM MAST_AWB_EVENTS WHERE EVENT_ID = #EVENT#),
+				#FLT_KEY#, #FLT_DATE#, 'I', #AWB_NO#,NULL, #PCS#, #WT#,#CR_USER_ID#,SYSDATE,#LM_USER_ID#, SYSDATE);
+	</insert>		 
+	<update id="updateAwbReuse" parameterClass="java.util.HashMap">
+		UPDATE AWB_REUSE inv
+		SET inv.AWB_DATE = #AWB_DATE# 
+		WHERE inv.AWB_NO = #AWB_NO# 
+		AND inv.AWB_DATE IS NULL
+		AND  exists (select null
+				       from   awb
+				       where  awb_no = inv.awb_no
+				       and    awb_date = inv.awb_date
+					   and    awb_type = #AWB_TYPE#)  
+	</update>
+	<select id="fetchNewAwbDate" parameterClass="java.util.HashMap" resultClass="java.lang.String">
+		SELECT NVL(#AWB_DATE#, NVL(PKG_EXP_ACPT.GET_AWB_DATE(#AWB_NO#), TRUNC(SYSDATE))) FROM DUAL
+	</select>
+	<update id="updateEdiFHL" parameterClass="java.util.HashMap">
+	  UPDATE EDI_FHL SET AWB_DATE = #AWB_DATE# WHERE AWB_NO = #AWB_NO# AND AWB_DATE != #AWB_DATE# AND (AWB_ORG = 'HKG' OR AWB_DEST != 'HKG' OR IMP_EXP_IND = 'E')
+	</update>
+	<update id="updateCstLicense" parameterClass="java.util.HashMap">
+		UPDATE CST_LICENSE SET AWB_DATE = #AWB_DATE# WHERE AWB_NO = #AWB_NO# AND AWB_DATE != #AWB_DATE# AND FLT_TYPE = 'E'
+	</update>
+	<update id="updateExpDocRecd" parameterClass="java.util.HashMap">
+		update EXP_DOC_RECD 
+                    set agent_id = #AGENT_ID#, 
+                        agent_name= #AGENT_NAME#,   
+                        LM_USER_ID = #LM_USER_ID#,
+                        LM_DATE = sysdate,
+                        TR_TYPE = 'DUMMY'
+            where  AWB_NO = #AWB_NO#                   
+              and  AWB_DATE = TO_DATE(#AWB_DATE#, 'DDMONYY')
+	</update>
+	<insert id="insertExpDocRecd" parameterClass="java.util.HashMap">
+		INSERT INTO EXP_DOC_RECD(AWB_NO, AWB_DATE, CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE,AGENT_ID,AGENT_NAME)
+        VALUES (#AWB_NO#, TO_DATE(#AWB_DATE#, 'DDMONYY'), #CR_USER_ID#, SYSDATE, #LM_USER_ID#, SYSDATE, #AGENT_ID#,#AGENT_NAME#)
+	</insert>
+	<select id="fetchImportCarAwb" parameterClass="java.util.HashMap" resultClass="cargo.cms.triggers.imprt.bo.CarShpBO">
+		SELECT A.AWB_NO AS awbNo, A.AWB_DATE AS awbDate, FLT_KEY AS fltKey, FLT_DATE AS fltDate, CAR_CREATED AS carCreatedYn,
+               A.CATALOG AS catalog, S.MANIFEST_PCS AS manifestPcs, S.MANIFEST_WT AS manifestWt, S.LM_USER_ID AS lmUserId, S.LM_DATE AS lmDate
+        FROM   IMP_CAR_AWB A  JOIN IMP_CAR_SHP S ON S.AWB_NO = A.AWB_NO AND S.AWB_DATE = A.AWB_DATE
+        WHERE  A.AWB_NO = #AWB_NO# AND A.AWB_DATE = #AWB_DATE# AND S.FLT_KEY = #FLT_KEY# AND S.FLT_DATE = #FLT_DATE#         	
+	</select>
+	<select id="countImportCarShp" parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+		SELECT COUNT(1) FROM IMP_CAR_SHP WHERE  AWB_NO = #AWB_NO# AND AWB_DATE = #AWB_DATE# AND ROWNUM = 1
+	</select>	
+	<delete id="deleteImportCarAwb" parameterClass="java.util.HashMap">
+		DELETE FROM IMP_CAR_AWB WHERE AWB_NO = #AWB_NO# AND AWB_DATE = #AWB_DATE#
+	</delete>
+	<delete id="deleteImportCarChargeItem" parameterClass="java.util.HashMap">
+			DELETE FROM IMP_CAR_CHRG_ITM WHERE AWB_NO = #AWB_NO# AND AWB_DATE = #AWB_DATE#
+	</delete>
+	<select id="countImportXpsObcMail" parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+		SELECT COUNT(1) FROM IMP_XPS_OBC_MAIL WHERE AWB_NO = #AWB_NO# AND AWB_DATE  = #AWB_DATE# AND FLT_KEY = #FLT_KEY#  AND FLT_DATE = #FLT_DATE# AND FLT_TYPE  = 'I';
+	</select>
+	<update id="updateImportXpsObcMail" parameterClass="java.util.HashMap">
+		UPDATE IMP_XPS_OBC_MAIL SET AWB_NO = NULL, AWB_DATE = NULL WHERE AWB_NO = #AWB_NO# AND AWB_DATE = #AWB_DATE# AND FLT_KEY = #FLT_KEY# AND FLT_DATE = #FLT_DATE# AND
+		FLT_TYPE  = 'I'
+	</update>				
+	<delete id="deleteAWBInventory" parameterClass="java.util.HashMap">			
+		DELETE FROM AWB_INVENTORY WHERE AWB_NO = #AWB_NO# AND AWB_DATE = #AWB_DATE# 
+	</delete>	
+	<select id="fetchEdiFFMShp" parameterClass="java.util.HashMap" resultClass="cargo.cms.triggers.imprt.bo.CarShpBO">
+		SELECT * FROM (SELECT S.SHMPT_CODE AS shipmentCode,S.TR_NO AS trNo,S.BRD_POINT AS brdPoint,S.CNTG_FLT_CARR1 AS cntgFltCarr1,S.CNTG_FLT_NO1 AS cntgFltNo1,
+		S.CNTG_FLT_DATE1 AS cntgFltDate1,S.AWB_NO AS awbNo,S.ORG AS origin,S.DEST AS dest,S.CONTENT AS content,
+		S.SPL_CODE1 AS splCode1,S.SPL_CODE2 AS splCode2,S.SPL_CODE3 AS splCode3,S.SPL_CODE4 AS splCode4,S.SPL_CODE5 AS splCode5,S.SPL_CODE6  AS splCode6,
+		S.SPL_CODE7  AS splCode7,S.SPL_CODE8 AS splCode8,S.CR_USER_ID AS crUserId,S.CR_DATE AS crDate,S.LM_USER_ID AS lmUserId,S.LM_DATE AS lmDate,
+		S.AWB_DATE AS awbDate, S.RMK AS remarks
+		FROM EDI_FFM_SHP S JOIN EDI_FFM_MSG M ON M.TR_NO = S.TR_NO WHERE S.AWB_NO = #OLD_AWB_NO# AND S.AWB_DATE = #OLD_AWB_DATE# AND
+        M.FLT_KEY = #OLD_FLT_KEY# AND M.FLT_DATE = #OLD_FLT_DATE# AND M.FFM_STATUS = 'P' ORDER BY S.CR_DATE DESC) a
+		WHERE ROWNUM = 1     			
+	</select>
+	<select id="fetchEdiFFMShpPcsAndWt1" parameterClass="java.lang.String" resultClass="cargo.cms.triggers.imprt.bo.CarShpBO">
+		SELECT SUM(MAN_PCS) AS manifestPcs, SUM(MAN_WT) AS manifestWt, SUM(MAN_PCS) AS shpPcs, SUM(MAN_WT) AS shpWt
+		FROM EDI_FFM_SHP S JOIN EDI_FFM_MSG M ON M.TR_NO = S.TR_NO WHERE M.TR_NO = C1.TR_NO AND AWB_NO = #PARAM#
+	</select>
+	<select id="fetchEdiFFMShpPcsAndWt2" parameterClass="java.lang.String" resultClass="cargo.cms.triggers.imprt.bo.CarShpBO">
+		SELECT SUM(MAN_PCS) AS manifestPcs, SUM(MAN_WT) AS manifestWt, NVL(SUM(MAN_PCS),0) AS shpPcs, 0 AS shpWt
+		FROM EDI_FFM_SHP S JOIN EDI_FFM_MSG M ON M.TR_NO = S.TR_NO WHERE M.TR_NO = C1.TR_NO AND AWB_NO = #PARAM#
+	</select>
+	<select id="fetchConsigneeDetails" parameterClass="java.util.HashMap" resultClass="cargo.cms.triggers.imprt.bo.CarShpBO">	
+		SELECT A.CSGNE_NAME AS csgneName, C.CODE AS cnsCustNo
+		FROM CST_AWB A LEFT JOIN CUST_COMPANY C ON A.CSGNE_NAME = C.CODE_DESC AND C.CONS_YN = 'Y'
+		WHERE A.FLT_DATE = #FLT_DATE# AND A.FLT_KEY = #FLT_KEY# AND FLT_TYPE = 'I' AND A.AWB_NO = #AWB_NO# AND ROWNUM = 1;
+	</select>
+	<update id="updateImpCarShp1" parameterClass="cargo.cms.triggers.imprt.bo.CarShpBO">
+		UPDATE IMP_CAR_SHP shp
+		SET shp.PPK_TYPE = 'B',shp.MANIFEST_PCS = #manifestPcs#,shp.MANIFEST_WT = #manifestWt#,shp.LDG_POINT = #brdPoint#,shp.BULK_PCS = 0,shp.BULK_WT = 0,shp.BUP_PCS = 0,	shp.BUP_WT  = 0,shp.DOC_DISC= NULL,
+			shp.DIR_RMK = NULL,shp.DIR_ACTION     = NULL,shp.DIR_ACTION_RMK = NULL,shp.DIR_PROC_USER  = NULL,shp.DIR_PROC_DATE  = NULL,shp.CNTG_FLT_CARR  = #cntgFltCarr1#,shp.CNTG_FLT_NO    = #cntgFltNo1#,
+			shp.CNTG_FLT_DATE  = #cntgFltDate1#,shp.CNTG_FLT_TIME  = 0,shp.CNTG_FLT_DEST  = NULL,shp.DAM_PCS = 0,shp.DAM_WT  = 0,shp.DAM_RMK = NULL,shp.DAM_PROC_USER  = NULL,shp.DAM_PROC_DATE  = NULL,
+			shp.DAM_REF_NO     = NULL,shp.DAM_DECL_PCS   = 0,shp.DAM_DECL_WT = 0,shp.CIR_PCS = 0,shp.CIR_PCS_TYPE= NULL,shp.CIR_WT  = 0,shp.CIR_WT_TYPE = NULL,shp.CIR_BULK_WT = 0,
+			shp.CIR_BUP_WT  = 0,shp.CIR_RMK = NULL,shp.CIR_PROC_USER  = NULL,shp.CIR_PROC_DATE  = NULL
+		WHERE shp.AWB_NO = #awbNo# AND shp.AWB_DATE =#awbDate# AND shp.FLT_KEY = #fltKey# AND shp.FLT_DATE = #fltDate#
+		and    exists (select null
+				       from   awb
+				       where  awb_no = shp.awb_no
+				       and    awb_date = shp.awb_date
+					   and    awb_type = #awbType#)  		
+	</update>
+	<update id="updateImpCarAwb1" parameterClass="cargo.cms.triggers.imprt.bo.CarShpBO">
+		UPDATE IMP_CAR_AWB 
+		SET AWB_PRFX = SUBSTR(#awbNo#,1,3),AWB_ORIGIN= #origin#,AWB_DEST = #dest# ,	PPK_TYPE = 'B' ,TARMAC_YN = 'N' ,
+			INTERFACE_YN  = 'N' ,APPNTD_AGENT  = #csgneName#,AGENT_CUST_NO = #cnsCustNo#,ECT_HANDLER   = NULL,ACCS_HANDLER  = NULL,
+			FWB_CNS_AS_ALIAS = 'N' ,REL_IND = 'N',BANK_ENDOS= 'N',BANK_TYPE = NULL,CC_CODE = NULL,AWB_PCS = #shpPcs#,
+			AWB_WT = #shpWt#,CONTENT = #content#,CATALOG = 'IG',AWB_RMK = #remarks#,SPL_CODE1 = #splCode1#,SPL_CODE2 = #splCode2#,
+			SPL_CODE3 = #splCode3#,SPL_CODE4 = #splCode4#,SPL_CODE5 = #splCode5#,	SPL_CODE6 = #splCode6#,SPL_CODE7 = #splCode7#,
+			SPL_CODE8 = #splCode8#,CURR_CODE = NULL,CHRG_MODE = NULL,EXCH_RATE = 0,FORGN_UNIT= 0,CC_FEE = 0,DISB_FEE = 0,
+			DOC_CHRG = 0,TML_CHRG = 0,TTL_CC = 0,CC_PP_TOTAL_CHRG = 0,CC_CC_TOTAL_CHRG = 0,AWB_CLOSED= 'N',AWB_CLOSE_DATE   = NULL,
+			AWB_CLOSE_RMK= NULL,AWB_CLOSE_USER   = NULL,TR_STATUS = 'A',CR_USER_ID= #crUserId#,CR_DATE = #crDate#,LM_USER_ID= #lmUserId#,
+			LM_DATE = #lmDate#,CNS_CUST_NO= #cnsCustNo#,CONSOLE_IND= NULL,CSGNE_NAME= #csgneName#,FREIGHT = 0,FREIGHT_LOCL   = 0
+		WHERE AWB_NO = #awbNo# AND AWB_DATE = #awbDate#
+	</update>
+	<update id="updateImpCarShp2" parameterClass="cargo.cms.triggers.imprt.bo.CarShpBO">
+		UPDATE IMP_CAR_SHP shp
+		SET shp.PPK_TYPE = 'B',shp.LDG_POINT= NULL,shp.BULK_PCS = 0,shp.BULK_WT  = 0,shp.BUP_PCS  = 0,shp.BUP_WT   = 0,shp.DOC_DISC = NULL,shp.DIR_RMK  = NULL,shp.DIR_ACTION = NULL,shp.DIR_ACTION_RMK = NULL,
+			shp.DIR_PROC_USER  = NULL,shp.DIR_PROC_DATE  = NULL,shp.CNTG_FLT_CARR  = NULL,shp.CNTG_FLT_NO= NULL,shp.CNTG_FLT_DATE  = NULL,shp.CNTG_FLT_TIME  = NULL,shp.CNTG_FLT_DEST  = NULL,
+			shp.DAM_PCS  = 0,shp.DAM_WT   = 0,shp.DAM_RMK  = NULL,shp.DAM_PROC_USER  = NULL,shp.DAM_PROC_DATE  = NULL,shp.DAM_REF_NO = NULL,shp.DAM_DECL_PCS   = 0,shp.DAM_DECL_WT= 0,
+			shp.CIR_PCS  = 0,shp.CIR_PCS_TYPE   = NULL,shp.CIR_WT   = 0,shp.CIR_WT_TYPE= NULL,shp.CIR_BULK_WT= 0,shp.CIR_BUP_WT = 0,shp.CIR_RMK  = NULL,shp.CIR_PROC_USER  = NULL,shp.CIR_PROC_DATE  = NULL
+		WHERE shp.AWB_NO = #awbNo# AND shp.AWB_DATE =#awbDate# AND shp.FLT_KEY = #fltKey# AND shp.FLT_DATE = #fltDate#
+		and    exists (select null
+				       from   awb
+				       where  awb_no = shp.awb_no
+				       and    awb_date = shp.awb_date
+					   and    awb_type = #awbType#)  
+	</update>
+	<update id="updateImpCarAwb2" parameterClass="cargo.cms.triggers.imprt.bo.CarShpBO">
+	  	UPDATE IMP_CAR_AWB
+	  	SET AWB_ORIGIN   = NULL,AWB_DEST = NULL,PPK_TYPE = 'B',TARMAC_YN= 'N',INTERFACE_YN = 'N',APPNTD_AGENT = NULL,ECT_HANDLER  = NULL,ACCS_HANDLER = NULL,
+			FWB_CNS_AS_ALIAS = 'N',REL_IND  = 'N',BANK_ENDOS   = 'N',BANK_TYPE= NULL,CC_CODE  = NULL,AWB_PCS  = 0,AWB_WT   = 0,CONTENT  = NULL,CATALOG  = 'IG',
+			AWB_RMK  = NULL,SPL_CODE1= NULL,SPL_CODE2= NULL,SPL_CODE3= NULL,SPL_CODE4= NULL,SPL_CODE5= NULL,SPL_CODE6= NULL,SPL_CODE7= NULL,SPL_CODE8= NULL,
+			CURR_CODE= NULL,CHRG_MODE= NULL,CC_FEE   = 0,DISB_FEE = 0,DOC_CHRG = 0,TML_CHRG = 0,TTL_CC   = 0,CC_PP_TOTAL_CHRG  = 0,CC_CC_TOTAL_CHRG  = 0,
+			CNS_CUST_NO   = #cnsCustNo#,CONSOLE_IND   = 'N',CSGNE_NAME= #csgneName#,FREIGHT   = 0,FREIGHT_LOCL  = 0
+		WHERE AWB_NO = #awbNo# AND AWB_DATE = #awbDate#
+	</update>
+	<select id="fetchCstHawb" parameterClass="cargo.cms.triggers.imprt.bo.CarAwbBO" resultClass="java.lang.Integer">
+		 SELECT COUNT(1) FROM CST_HAWB WHERE AWB_NO = #awbNo# AND AWB_DATE = #awbDate# AND ROWNUM = 1
+	</select>
+	<update id="updateCarAwbConsolInd" parameterClass="cargo.cms.triggers.imprt.bo.CarAwbBO">
+		UPDATE IMP_CAR_AWB SET CONSOLE_IND = #consolInd# WHERE AWB_NO = #awbNo# AND AWB_DATE = #awbDate#
+	</update>			  
+	<update id="fetchBeforeUpdateCarAwb" parameterClass="cargo.cms.triggers.imprt.bo.CarAwbBO">
+		SELECT AWB_NO AS awbNo, AWB_DATE AS awbDate, CONTENT AS oldContent, CONSOLE_IND AS oldConsolInd FROM IMP_CAR_AWB WHERE AWB_NO = #awbNo# AND AWB_DATE = #awbDate# AND ROWNUM = 1
+	</update>
+</sqlMap>

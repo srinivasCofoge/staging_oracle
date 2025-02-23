@@ -1,0 +1,1334 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<!-- The SQL in these maps files has purposely been typed with more verbosity than is actually required.
+ For example, many of the selects could have just used SELECT * FROM... instead of listing all of the columns.
+ This is to demonstrate that even complex SQL can be handled and coded and formatted the way SQL was meant
+ to be (i.e. not a bunch of concatenated strings in a Java class). -->
+<sqlMap namespace="TestModule">
+
+	<select id="cms_rule"  parameterClass="map"  resultClass="java.lang.String">
+	SELECT NVL(RULE_VALUE,0) FROM CMSRULES WHERE upper(rule_CODE) = upper( #PARAM#)
+	</select>
+		<!--
+	#######################################################################
+						CORE FRAMEWORK QUERIES START
+	#######################################################################-->
+
+	<!-- <select id="userauthenticate"  parameterClass="map" resultClass="cargo.cms.afw.util.subject.UserInfo">
+		SELECT CODE as userID, CODE_DESC as userName, USER_PASSWORD as userPassword, USER_TYPE as userType,USER_ACCESS as userAccess, TO_CHAR(LLOGIN_DATE,'DD/MM/YYYY HH24:MI:SS') as lastLoginDate FROM SEC_USER WHERE CODE = #code# and USER_TYPE=#userType#
+   	</select>	 -->
+	<select id="userauthenticate_Internal"  parameterClass="map" resultClass="cargo.cms.afw.util.subject.UserInfo">
+	SELECT a.CODE as userID, a.CODE_DESC as userName,
+		a.USER_TYPE as userType,a.APP_ACCESS_INT as appAccessInternal, a.APP_ACCESS_EXT as appAccessExternal, a.APP_ACCESS_HHT as appAccessHHT,
+		a.LLOGIN_DATE as lastLoginDate,
+		a.STATUS as status, to_number(login_attempts) as loginCount, password_ind as passwordIndicator,
+		b.CODE_DESC as companyName,m.code as carrierCode,
+		a.div_code as division, m.SELF_CARR selfHandled,
+		b.CODE custCode, a.PREF_LOCALE userLocaleStr, a.LLOGOUT_DATE AS lastLogoutDate, MACHINE_ID AS machineId
+		FROM SEC_USER a
+		left join CUST_COMPANY b on a.CUST_NO = b.CODE
+    	left join mast_carrier m on m.code = b.carr_code
+		WHERE upper(a.CODE) = upper(#code#) and a.USER_TYPE=#userType#
+</select>
+<select id="userauthenticate_External"  parameterClass="map" resultClass="cargo.cms.afw.util.subject.UserInfo">
+	SELECT a.CODE as userID, a.CODE_DESC as userName, a.USER_PASSWORD as userPassword,
+		a.USER_TYPE as userType, a.APP_ACCESS_INT as appAccessInternal, a.APP_ACCESS_EXT as appAccessExternal, a.APP_ACCESS_HHT as appAccessHHT,
+		a.LLOGIN_DATE as lastLoginDate,
+		a.STATUS as status, to_number(login_attempts) as loginCount, password_ind as passwordIndicator,
+		b.CODE_DESC as companyName , m.code as carrierCode, m.owned_carr aatHandled,
+		b.AIRLINE_YN airlineYN, b.AGENT_YN agentYN, b.CONS_YN consigneeYN,
+		b.RHO_YN rhoYN, b.RHO_YN rhoYN, b.TRUCKER_YN truckerYN , b.SHPR_YN  shipperYN,
+		b.CODE custCode, m.SELF_CARR selfHandled, a.LLOGOUT_DATE AS lastLogoutDate
+		FROM SEC_USER a
+		left join CUST_COMPANY b on a.CUST_NO = b.CODE
+		left join mast_carrier m on m.code = b.carr_code
+		WHERE upper(a.CODE) = upper(#code#) and a.USER_TYPE=#userType#
+</select>
+
+	<!-- Ambarish Password policy starts-->
+
+	<select id="sqlCheckPasswordExpiry" parameterClass="cargo.cms.afw.util.subject.UserInfo" resultClass="cargo.cms.afw.util.subject.UserInfo">
+		select LM_DATE  from sec_usr_password_log
+		where (lm_date + 90) > SYSDATE  and
+		user_Id=#userID#  and  lm_date= (select max(lm_date) from sec_usr_password_log where upper(user_Id)=upper(#userID#) )
+	</select>
+
+	<select id="sqlCheckPasswordHistory" parameterClass="cargo.cms.afw.util.subject.UserInfo" resultClass="cargo.cms.afw.util.subject.UserInfo">
+		select LM_DATE  from sec_usr_password_log
+		where upper(user_Id)=upper(#userID#)
+	</select>
+
+
+	<select id="sqlUserCreationDate" parameterClass="cargo.cms.afw.util.subject.UserInfo" resultClass="cargo.cms.afw.util.subject.UserInfo">
+		select cr_date from sec_user where upper(code)=upper(#userID#) and (cr_date + 90) > SYSDATE
+	</select>
+
+
+	<update id="changePasswordStatus" parameterClass="cargo.cms.afw.util.subject.UserInfo">
+		<![CDATA[
+		UPDATE SEC_USER SET STATUS = #status#,  STATUS_REASON=#statusReason# where upper(CODE) = upper(#userID#) and USER_TYPE=#userType#
+		]]>
+   	</update>
+
+	<select id="passwordPolicy"  parameterClass="cargo.cms.afw.util.subject.UserInfo" resultClass="cargo.cms.afw.util.subject.UserInfo">
+		SELECT code as userID, user_type as userType, STATUS as status, nvl(LOGIN_ATTEMPTS,0) as loginCount, TO_CHAR(LLOGIN_DATE,'DD/MM/YYYY') as lastLoginDate FROM SEC_USER WHERE upper(CODE) = upper(#userID#) and USER_TYPE=#userType#
+   	</select>
+
+<!-- 	<update id="disablePasswordStatus" parameterClass="cargo.cms.afw.util.subject.UserInfo">
+		<![CDATA[
+		UPDATE SEC_USER SET STATUS = 'L', LOGIN_ATTEMPTS = (select login_attempts+1 from sec_user where CODE = #userID# and USER_TYPE=#userType#), STATUS_REASON=#statusReason# where CODE = #userID# and USER_TYPE=#userType#
+		]]>
+   	</update> -->
+
+	<update id="incrPasswordCountAndDisableUserID" parameterClass="cargo.cms.afw.util.subject.UserInfo">
+		<![CDATA[
+		UPDATE SEC_USER SET STATUS = 'L', LOGIN_ATTEMPTS = (select nvl(login_attempts, 0) + 1 from sec_user where upper(CODE) = upper(#userID#) and USER_TYPE=#userType#), STATUS_REASON=#statusReason#, LM_USER_ID = NVL(#userID#,'SYSTEM') where CODE = #userID# and USER_TYPE=#userType#
+		]]>
+   	</update>
+
+	<update id="incrPasswordCount" parameterClass="cargo.cms.afw.util.subject.UserInfo">
+		<![CDATA[
+		UPDATE SEC_USER SET LOGIN_ATTEMPTS = (select nvl(login_attempts,0) + 1 from sec_user where upper(CODE) = upper(#userID#) and USER_TYPE=#userType#) where CODE = #userID# and USER_TYPE=#userType#
+		]]>
+   	</update>
+
+	<update id="resetpasswordStatus" parameterClass="cargo.cms.afw.util.subject.UserInfo">
+		<![CDATA[
+		UPDATE SEC_USER SET STATUS = 'A', LOGIN_ATTEMPTS = 0, STATUS_REASON=#statusReason# where upper(CODE) = upper(#userID#) and USER_TYPE=#userType#
+		]]>
+   	</update>
+
+	<update id="updatePasswordExpiry" parameterClass="java.util.HashMap">
+		<![CDATA[
+		UPDATE SEC_USER SET PASSWORD_IND = null where upper(CODE) = upper(#userID#) and USER_TYPE=#userType#
+		]]>
+   	</update>
+<!-- Password policy ends-->
+
+
+	<select id="userroles"  parameterClass="java.util.HashMap" resultClass="java.lang.String">
+		<![CDATA[
+		SELECT a.ROLE_NAME as ROLE_NAME FROM SEC_USER_ROLE a , SEC_ROLE b
+			WHERE
+				a.ROLE_NAME = b.CODE AND
+				upper(a.USER_ID) = upper(#USER_ID#) and
+				b.ROLE_CATEGORY = #TYPE# and
+				a.START_DATE < SYSDATE AND
+				(a.END_DATE IS NULL OR a.END_DATE > SYSDATE)
+
+		]]>
+   	</select>
+
+	<select id="SYS_DATE"  resultClass="java.lang.String">
+		<![CDATA[
+			SELECT TO_CHAR(SYSDATE, 'DDMONYY') FROM DUAL
+		]]>
+   	</select>
+
+	<select id="SYS_DATE_FORMAT" parameterClass="map" resultClass="java.lang.String">
+		<![CDATA[
+			SELECT TO_CHAR(SYSDATE, #FORMAT#) FROM DUAL
+		]]>
+   	</select>
+
+	<select id="rolefunctions"  parameterClass="java.lang.String" >
+	<![CDATA[
+		SELECT FUNCTION_CODE FROM SEC_ROLE_FUCNTION WHERE ROLE_CODE = #roleCode# AND (READ_YN = 'Y' OR FULL_YN = 'Y')
+		]]>
+   	</select>
+
+	<update id="userloginstatus" parameterClass="java.util.HashMap">
+
+		<![CDATA[
+		UPDATE SEC_USER SET LLOGIN_DATE = SYSDATE, LOGIN_ATTEMPTS = 0, MACHINE_ID=#machineId# where upper(CODE) = upper(#userId#)
+		]]>
+   	</update>
+
+	<update id="userlogoutstatus" parameterClass="java.lang.String">
+
+		<![CDATA[
+		UPDATE SEC_USER SET LLOGOUT_DATE = SYSDATE, MACHINE_ID=NULL where upper(CODE) = upper(#userId#)
+		]]>
+   	</update>
+
+	<select id="userlogoutdetails"  parameterClass="java.lang.String" resultClass="java.util.HashMap">
+		<![CDATA[
+		SELECT TO_CHAR(LLOGIN_DATE,'DD/MM/YYYY HH24:MI:SS') AS LLOGIN_DATE, TO_CHAR(LLOGOUT_DATE,'DD/MM/YYYY HH24:MI:SS') as LLOGOUT_DATE FROM SEC_USER WHERE upper(CODE) = upper(#userId#)
+		]]>
+   	</select>
+
+	<select id="functionmappings" resultClass="cargo.cms.afw.bo.FunctionMappingsBO">
+	<![CDATA[
+		select a.url_path as urlPath, a.FUNCTION_CODE as functionCode, a.FUNCTION_TYPE as functionType, c.PERM_ID as accessRequired, S.code_Desc AS functionDesc
+			   from SEC_URL_CTRL A, SEC_SCR_FUNCTION S,	SEC_MENU_CTRL c
+			   where 
+			   a.function_code = S.code(+) and
+			   a.URL_ID = c.URL_ID (+)
+			   ORDER BY c.PERM_ID ASC
+		]]>
+   	</select>
+
+	<select id="errormessages"  resultClass="cargo.cms.afw.bo.ErrorBO">
+		<![CDATA[
+			SELECT ERR_CODE as code,
+					ERR_DESC as appErrMsgDescription,
+					ERR_EI_DESC as interfaceErrMsgdescription FROM ERR_MSG WHERE ERR_LCODE LIKE #locale# ||'%' AND (ERR_TYPE = 'APP' OR ERR_TYPE = 'DB')
+		]]>
+   	</select>
+	
+	<select id="getI18NLabelsForLocale"  resultClass="cargo.cms.afw.bo.I18NLabelBO">
+		SELECT LANG_CODE as locale, LABEL_KEY as labelKey, UNICODE_DESC as labelText FROM I18N_LABELS where LANG_CODE LIKE #locale# ||'%'
+   	</select>
+
+	<!--
+	#######################################################################
+						CORE FRAMEWORK QUERIES START
+	#######################################################################-->
+
+	<!--
+	#######################################################################
+						DROP DOWNS /HELP LIST QUERIES STARTS
+	#######################################################################-->
+	<select id="sqlMasterGroupCodes"  resultClass="cargo.cms.afw.bo.MasterBO" parameterClass="java.util.HashMap" >
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_CODE_DTL WHERE CODE_TYPE = #code_type#
+		<isEqual prepend="ORDER BY " property="sort_order" compareValue="CODE" >
+			CODE
+		</isEqual>
+		<isNotEqual prepend="ORDER BY " property="sort_order"  compareValue="CODE" >
+			$sort_order$
+		</isNotEqual>
+   	</select>
+
+	<select id="sqlLOVSortId" resultClass="java.lang.String" parameterClass="java.lang.String" >
+		select SORT_ORDER from MAST_CODE_HD where CODE = #PARAM#
+	</select>
+
+	<select id="sqllovroles"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM SEC_ROLE ORDER BY CODE_DESC
+   	</select>
+   	<select id="sqlwhtype"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT WH_TYPE AS codeId, WH_TYPE_DESC AS codeDesc FROM MAST_WH_TYPE ORDER BY WH_TYPE_DESC
+   	</select>
+   	<select id="sqlweighingScale"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT SCALE_ID AS codeId, SCALE_NAME AS codeDesc FROM weighing_scale_det ORDER BY SCALE_NAME
+   	</select>   	
+   	<select id="sqlwhgrouptype"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT WH_GROUP AS codeId, WH_GROUP_DESC AS codeDesc FROM MAST_WH_GROUP ORDER BY WH_GROUP_DESC
+   	</select>
+	<select id="sqllovroles_hypenSeperated"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc, ROLE_CATEGORY param1,
+			decode(ROLE_CATEGORY,'I','1','E','2','H','3') orderVal
+		FROM SEC_ROLE where active='Y'
+		ORDER BY orderVal, codeDesc
+   	</select>   	
+
+	<select id="sqllovdivs"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM SEC_DIVISION ORDER BY CODE_DESC
+   	</select>
+
+
+	<select id="sqllovprinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT distinct CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL ORDER BY CODE_DESC
+   	</select>
+   	
+   	<select id="sqllovdftprinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT DISTINCT CODE AS codeId, CODE as codeDesc FROM MAST_PRT_DTL WHERE PRT_CATEGORY = 'L' ORDER BY CODE
+   	</select>
+
+   	<select id="sqlsitaprinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'SEND_FREE_TEXT_PRTR' ORDER BY CODE_DESC
+   	</select>
+   	
+   	<select id="SCDC_PRINTER"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'SCDC_PRINTER' ORDER BY CODE_DESC
+   	</select>
+   	
+   	<select id="sqlLovPouchPrinters"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'POUCH_PRINTER' ORDER BY CODE_DESC
+   	</select>
+   	
+   	<select id="sqlLovRclPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'RCL_PRINTER' ORDER BY CODE_DESC
+   	</select>
+
+   	<select id="sqlLovSrfPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'SRF_PRINTER' ORDER BY CODE_DESC
+   	</select>
+   	
+   	<select id="sqlLovAWBPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+   		<![CDATA[
+			SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'AWB_PRINTER' ORDER BY CODE_DESC
+		]]>
+   	</select>
+   	<select id="sqlCollectedUserList"  resultClass="cargo.cms.afw.bo.MasterBO">
+   		<![CDATA[
+			SELECT DISTINCT USER_NAME AS codeId,USER_NAME AS codeDesc from MAST_SHIFT_USER_DTL ORDER BY USER_NAME
+		]]>
+   	</select>
+   	
+   	
+   	<select id="sqlLovExamHall"  resultClass="cargo.cms.afw.bo.MasterBO">
+   		<![CDATA[
+			select regexp_substr((select rule_value from cmsrules where rule_code='EXAMINATION_HALL'),'[^,]+', 1, level) codeId, regexp_substr('PCC,CT3,CT5','[^,]+', 1, level) codeDesc
+			   from dual 
+			   connect BY regexp_substr((select rule_value from cmsrules where rule_code='EXAMINATION_HALL'), '[^,]+', 1, level) 
+			   is not null
+		]]>
+   	</select>
+   	
+   	<select id="sqlLovVCLPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+   		<![CDATA[
+			SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'VCL_PRINTER' ORDER BY CODE_DESC
+		]]>
+   	</select>   	
+
+	<select id="sqllovmastergroup"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_GROUP ORDER BY CODE_DESC
+   	</select>
+
+	<select id="sqlMastCountryList"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_COUNTRY ORDER BY CODE_DESC
+	</select>
+	<select id="sqllovmasterhdgroup"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_CODE_HD ORDER BY CODE_DESC
+   	</select>
+
+	<select id="sqlInvPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'INV_PRINTER' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlMuldPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'MULD_PRINTER' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlReirPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'REIR_PRINTER' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlEmpUldPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'EMP_ULD_PRINTER' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlGenScmPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'GEN_SCM_PRINTER' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlRclBulkPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'RCL_BULK_PRINTER' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlRclPrePrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'RCL_PRE_PRINTER' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlRclMixPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'RCL_MIX_PRINTER' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlEnqRclPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'ENQ_RCL_PRINTER' ORDER BY CODE_DESC
+   	</select>
+   	<select id="sqlHCLPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'HCL_PRINTER' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlCreRetCarPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'CRE_RET_CAR_PRINTER' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlEnqRetCarPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'ENQ_RET_CAR_PRINTER' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlMainOutObcPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'MAIN_OUT_OBC_PRINTER' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlExTallyShtPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'EX_TALLY_SHT_PRINTER' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlUldChkOutPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'ULD_CHK_OUT_PRINTER' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlExpHndRampPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'EXP_HND_RAMP_PRINTER' ORDER BY CODE_DESC
+   	</select>
+   	
+   	<select id="sqlUldTagPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'ULD_TAG' ORDER BY CODE_DESC
+   	</select>
+   	<select id="sqlUldTagPrinters"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'ULD_TAG' OR PRT_TYPE = 'ULD_TAG_6' ORDER BY CODE_DESC
+   	</select>
+   	<select id="sqlHoFormPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'HO_FORM_PRINTER' ORDER BY CODE_DESC
+   	</select>
+   	
+	<select id="sqlFwbEnqPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'FWB_ENQ_PRINTER' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlCdifPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'CDIF_PRINTER' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlAatRevenuePrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'AAT_REVENUE_PRINTER' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlCashCollecPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'CASH_COLLEC_PRINTER' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlCreditCollecPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'CREDIT_COLL_PRINTER' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlEnqAdjPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'ENQ_ADJ_PRINTER' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlEnqInvPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'ENQ_INV_PRINTER' ORDER BY CODE_DESC
+   	</select>
+        <select id="sqlAdjPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'ENQ_ADJ_PRINTER' ORDER BY CODE_DESC
+   	</select>
+        <select id="sqlRmbFrmPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'REIMBURSE_FRM_PRT' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlUtlPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'UTL_PRINTER' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlLucPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'LUC_PRINTER' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlFadPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'FAD_PRINTER' ORDER BY CODE_DESC
+   	</select>
+	<select id="sqlLovRHOList"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM CUST_COMPANY WHERE RHO_YN = 'Y' ORDER BY CODE_DESC
+   	</select>
+   	
+   	<select id="sqlTowRHOList"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT distinct b.code AS codeId,b.CODE_DESC AS codeDesc FROM CUST_COMPANY b,TOW_ORDER_OUT a WHERE b.code=a.rho_id
+   	</select>
+
+	<select id="sqlUldAllotType"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT ULD_ALLOT AS codeId, ULD_ALLOT_DESC AS codeDesc FROM MAST_ULD_ALLOT  order by ULD_ALLOT_DESC
+   	</select>
+
+	<select id="AATHdlCarrWithOwned"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId,CODE AS codeDesc FROM MAST_CARRIER WHERE OWNED_CARR = 'Y'	ORDER BY CODE
+	</select>
+
+	<select id="sqlLovDlsPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'DLS_PRINTER' ORDER BY CODE_DESC
+   	</select>
+
+	<select id="sqlLovFltCustomOutPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'FLT_CST_OUT_PRINTER' ORDER BY CODE_DESC
+   	</select>
+
+	<select id="sqlLovImpBdWorkSheetPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'IMP_BREAKDWN_PRINTER' ORDER BY CODE_DESC
+   	</select>
+   	
+   	<select id="sqlLocPickOrderPrinter"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'PICK_ORDER_PRINTER' ORDER BY CODE_DESC
+   	</select>
+   	
+   	
+   	
+   	<!--  Starting of mark up by Mithun KK -->
+	
+	<!--  sqllovmasterexpctlgs - Added By Mithun KK for the list of export catalogs -->
+   	<select id="sqllovmasterexpctlgs"  resultClass="cargo.cms.afw.bo.MasterBO">
+		<![CDATA[
+			SELECT CODE AS codeId, CODE_DESC as codeDesc 
+			FROM MAST_CODE_DTL 
+			WHERE CODE_TYPE='CATALOG'  AND ((CODE LIKE 'E%' OR CODE LIKE 'T%') AND CODE <> 'TU') 
+			ORDER BY CODE
+		]]>  
+   	</select>
+   	
+   	<select id="sqlMastTimeStamp"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_FLT_TIME_STAMP WHERE CODE_TYPE = 'TIME' ORDER BY CODE_DESC 
+	</select>
+   	
+	<!--  End of mark up by Mithun KK -->
+
+	<!--
+	#######################################################################
+						DROP DOWNS /HELP LIST QUERIES ENDS
+	#######################################################################-->
+
+ 	<!-- 
+ 		logEmailMessage was updated on 01-Feb by Sriram.
+ 		Email body will now be stored as blob value in CONTENT_BLOB field. So that the entire email content will be logged.
+ 	 -->
+ 	<insert id="logEmailMessage" parameterClass="cargo.cms.services.email.EMailBO" >
+		<![CDATA[
+			INSERT INTO EMAIL_LOG (SOURCE_ID, SENDER_ID, SENDER_ADD, TO_ADD, CC_ADD,
+					SEND_DATE, SUBJECT, CONTENT_BLOB, STATUS,TR_NO, REMARKS)
+			VALUES(
+				#sourceId#, #userId#, #from#, #strTo#, #strCC#, SYSDATE, #subject#,#contentBytes#, #status#, EMAIL_LOG_SEQ.NEXTVAL,#failedReason#
+		)
+		]]>
+	</insert>
+	<select id="fetchTemplate" parameterClass="java.lang.String" resultClass="cargo.cms.services.email.EMailTemplateBO" >
+		SELECT CODE code,TEMPLATE_BLOB templateBytes,CODE_DESC codeDesc FROM EMAIL_TEMPLATE where code=#PARAM#
+	</select>
+	
+	<update id="sqlUpdateTemplate" parameterClass="cargo.cms.services.email.EMailTemplateBO" >
+		UPDATE EMAIL_TEMPLATE SET CODE_DESC = #codeDesc#, TEMPLATE_BLOB = #templateBytes# WHERE CODE = #code#		
+	</update>
+
+	<select id="fetchAllTemplates" parameterClass="java.lang.String" resultClass="cargo.cms.services.email.EMailTemplateBO" >
+		SELECT CODE code,TEMPLATE_BLOB templateBytes,CODE_DESC codeDesc FROM EMAIL_TEMPLATE WHERE CODE != 'TOSHIBA_TEMPLATE'
+	</select>
+	
+	<select id="EmailFaxSMSSeqnumber" parameterClass="java.lang.String" resultClass="java.lang.String">
+		select EMAIL_FAX_SMS_SEQ.NEXTVAL from dual
+	</select>
+	
+	<select id="checkValidAWSFile" parameterClass="map" resultClass="java.lang.Integer">
+	<![CDATA[
+		SELECT COUNT(1) FROM fw_image_store 
+			where img_path||img_name = replace(#fileName#,
+			(select rule_value from cmsrules where rule_code = 'AWS_THUBNAILFILE_APPENDER'),'') 
+			and cr_date - (sysdate - #deleteNDays# ) > 0
+		]]>
+	</select>
+	
+	<!--  and img_path in ('2020/2/9/','2020/2/7/','2020/3/17/') -->
+<select id="getAWSSyncAWSFileList" parameterClass="java.lang.String" resultClass="cargo.cms.afw.bo.ImageFileBO">
+			<![CDATA[
+			select img_path || img_name as imageCompletePath, img_path || (select rule_value from cmsrules where rule_code = 'AWS_THUBNAILFILE_APPENDER') || img_name as imageThumbnailPath, img_session_id as imageSessionId, 
+			img_path as imagePath, img_name as imageName, img_size as imageSize 
+			from  fw_image_store 
+			where upload_stat = 'C' and nvl(AWS_SYNC_CHECK_FLAG,'N') = 'N' and img_upload_date > sysdate - nvl((select rule_value from cmsrules where rule_code = 'WOS_AWS_SYNC_DAYS') ,10)
+			
+			AND rownum < nvl((select rule_value from cmsrules where rule_code = 'WOS_AWS_THRESHOLD_COUNT'),10)			
+			order by img_upload_date			
+			]]>		
+	 </select> 
+	
+	 <update id="updateAwsSyncCheck" parameterClass="cargo.cms.afw.bo.ImageFileBO">
+	 	<![CDATA[
+	 	update fw_image_store set AWS_SYNC_CHECK_FLAG =  #checkFlag#, AWS_SYNC_CHECK_DATE = sysdate 
+	 	where img_session_id =  #imageSessionId# and img_path = #imagePath# and img_name = #imageName# and upload_stat = 'C' and nvl(AWS_SYNC_CHECK_FLAG,'N') = 'N'
+		]]>
+	  </update>
+         <update id="updateWOSFileSize" parameterClass="cargo.cms.afw.bo.ImageFileBO">
+	 	<![CDATA[
+	 	update fw_image_store set img_size = #imageSize#
+	 	where img_session_id =  #imageSessionId# and img_name = #imageName# 
+		]]>
+	  </update> 
+	  <update id="updateWOSAfterDownloadFile" parameterClass="java.util.Map">
+	 	<![CDATA[
+	 	update fw_image_store set WOS_DELETE_CHECK_FLAG = 'N'
+	 	where img_session_id =  #imgTransID# and img_name = #imageName# 
+		]]>
+	  </update> 
+	  
+	   <!--  and img_path in ('2020/2/9/','2020/2/7/','2020/3/17/')	 -->
+	   <select id="getWOSFileListForDelete" parameterClass="java.lang.String" resultClass="cargo.cms.afw.bo.ImageFileBO">
+			<![CDATA[
+			select img_path || img_name as imageCompletePath, img_path || (select rule_value from cmsrules where rule_code = 'AWS_THUBNAILFILE_APPENDER') || img_name as imageThumbnailPath, img_session_id as imageSessionId, 
+			img_path as imagePath, img_name as imageName, img_size as imageSize 
+			from  fw_image_store 
+			where upload_stat = 'C' and nvl(AWS_SYNC_CHECK_FLAG,'N') = 'Y' and img_upload_date < sysdate - nvl((select rule_value from cmsrules where rule_code = 'AWS_SYNC_DELETE_WOS_DAYS') ,10)
+			and nvl(WOS_DELETE_CHECK_FLAG,'N') = 'N'								
+			AND rownum < nvl((select rule_value from cmsrules where rule_code = 'WOS_AWS_THRESHOLD_COUNT'),10)			
+			order by img_upload_date 			
+			]]>	
+	 </select> 
+	
+	 <update id="updateWosDeleteCheck" parameterClass="cargo.cms.afw.bo.ImageFileBO">
+	 	<![CDATA[
+		 	update fw_image_store set WOS_DELETE_CHECK_FLAG = 'Y', WOS_DELETE_CHECK_DATE = sysdate 
+		 	where img_session_id =  #imageSessionId# and img_path = #imagePath# and img_name = #imageName# and upload_stat = 'C' and nvl(AWS_SYNC_CHECK_FLAG,'N') = 'Y'
+		 	and nvl(WOS_DELETE_CHECK_FLAG,'N') = 'N'
+		]]>
+   </update> 
+   
+   <select id="getDatesOlderThan75" parameterClass="java.lang.String" resultClass="cargo.cms.afw.bo.ImageFileBO">
+		<![CDATA[
+			select to_char(sysdate,'YYYY') currYear, to_char(sysdate - nvl(#days#,75),'YYYY/MM/DD') delStartDate, 
+			to_char(sysdate - nvl(#days#,75),'YYYY/MM') delStartYearMonth,  
+			to_char(sysdate - nvl(#days#,75),'YYYY') delStartYear, to_char(sysdate - nvl(#days#,75),'MM') delStartMonth, to_char(sysdate - nvl(#days#,75),'DD')  delStartDay
+			from dual
+		]]>
+	 </select> 
+	
+	<insert id="logEmailBufferMessage" parameterClass="cargo.cms.services.email.EMailBO" >
+		<![CDATA[
+			INSERT INTO EMAIL_FAX_SMS_BFR_COM (LOG_ID, MSG_TYPE, EMAIL_SOURCE_ID, EMAIL_SENDER_ID, EMAIL_SENDER_ADD, EMAIL_TO_ADD, EMAIL_CC_ADD,
+					SEND_DATE, EMAIL_SUBJECT, CONTENT_BLOB, CONTENT_TYPE,REMARKS,FILE_PATH,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE)
+			VALUES(
+				#logId#,'EMAIL',#sourceId#, #userId#, #from#, #strTo#, #strCC#, SYSDATE, #subject#,#contentBytes#, #cntentType#,'Service InActive',#filePath#,NVL(#userId#,'SYSUSER'),SYSDATE,NVL(#userId#,'SYSUSER'),SYSDATE
+		)
+		]]>
+	</insert>
+	<insert id="logFaxBufferMessage" parameterClass="cargo.cms.services.fax.FaxBO" >
+		<![CDATA[
+			INSERT INTO EMAIL_FAX_SMS_BFR_COM (LOG_ID,MSG_TYPE,SEND_DATE, CONTENT_BLOB, CONTENT_TYPE, FAX_RECIPIENTS, FAX_FROM_ADDR, REMARKS,SENDING_FUNCTION,FILE_PATH,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE)
+			VALUES(
+				#logId#,'FAX',sysdate, #contentBytes#, #contentType#, #recipientsToLog#,#fromAddress#,#remarks#,#templateId#,#filePath#,NVL(#userID#,'SYSUSER'),SYSDATE,NVL(#userID#,'SYSUSER'),SYSDATE
+			)
+		]]>
+	</insert>
+	<insert id="logSMSBufferMessage" parameterClass="cargo.cms.services.sms.SMSBO">
+		INSERT INTO EMAIL_FAX_SMS_BFR_COM (LOG_ID,MSG_TYPE,SEND_DATE,SMS_MESSAGE_TEXT,SMS_RECIPIENT_MOB_NO,SENDING_FUNCTION,REMARKS,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE)
+		VALUES
+		(#logId#,'SMS',SYSDATE,#content#,#recipientsToLog#,#function#,#remarks#,NVL(#userID#,'SYSUSER'),SYSDATE,NVL(#userID#,'SYSUSER'),SYSDATE) 
+	</insert>
+	
+	<select id="fetchEmailBufferList" parameterClass="java.lang.String" resultClass="cargo.cms.services.email.EMailBO">
+	SELECT LOG_ID AS logId,EMAIL_SOURCE_ID AS sourceId,EMAIL_SENDER_ID AS userId,EMAIL_SENDER_ADD AS emailFrom,EMAIL_TO_ADD AS strTo,EMAIL_CC_ADD AS strCC,EMAIL_SUBJECT AS subject,CONTENT_TYPE AS cntentType,CONTENT_BLOB AS contentBytes FROM EMAIL_FAX_SMS_BFR_COM WHERE MSG_TYPE = #PARAM#
+	</select>
+	
+	<select id="fetchFaxBufferList" parameterClass="java.lang.String" resultClass="cargo.cms.services.fax.FaxBO">
+	SELECT LOG_ID AS logId,CR_USER_ID AS userID,FAX_RECIPIENTS AS  faxNo,SENDING_FUNCTION AS sendingFunction FROM EMAIL_FAX_SMS_BFR_COM WHERE MSG_TYPE=#PARAM#
+	</select>
+	
+	<select id="fetchSmsBufferList" parameterClass="java.lang.String" resultClass="cargo.cms.services.sms.SMSBO">
+	SELECT LOG_ID AS logId,CR_USER_ID AS userID,SMS_RECIPIENT_MOB_NO AS  mobNo,SENDING_FUNCTION AS sendingFunction,SMS_MESSAGE_TEXT as content FROM EMAIL_FAX_SMS_BFR_COM WHERE MSG_TYPE=#PARAM#
+	</select>
+	
+	
+	
+	<delete id="deleteEmailBufferRecord" parameterClass="java.lang.String">
+		DELETE FROM EMAIL_FAX_SMS_BFR_COM WHERE LOG_ID = #PARAM# 
+	</delete>
+
+	<insert id="logFaxMessage" parameterClass="cargo.cms.services.fax.FaxBO" >
+		<![CDATA[
+			INSERT INTO FAX_LOG (LOG_ID, STATUS, STATUS_DT, FAX_CONTENT, CONTENT_TYPE, RECIPIENTS, USERID, FROM_ADDR, REMARKS)
+			VALUES(
+				FAX_LOG_SEQ.NEXTVAL, #status#, sysdate, #contentBytes#, #contentType#, #recipientsToLog#, #userID#,#fromAddress#,#remarks#
+			)
+		]]>
+	</insert>
+	<select id="fetchBoardMessages" resultClass="cargo.cms.afw.bo.BoardMsgBO" parameterClass="cargo.cms.afw.bo.SearchBoardMsgBO" >
+		select TO_CHAR(SENT_DATE,'DD MON YY HH24:MI') aa,to_char(SENT_DATE,'DD MON YY HH24:MI') sentDate, TO_CHAR(EXPIRY_DATE,'DD MON YY HH24:MI') expiryDate, MSG message, SENDER_NAME senderName,
+		SENDER_ID senderId, RECIPIENT recipient, 'N' colorInd from BOARD_MESSAGE
+		where RECIPIENT_GROUP = 'A' and EXPIRY_DATE > sysdate
+		union
+		select TO_CHAR(SENT_DATE,'DD MON YY HH24:MI') aa,to_char(SENT_DATE,'DD MON YY HH24:MI') sentDate, TO_CHAR(EXPIRY_DATE,'DD MON YY HH24:MI') expiryDate, MSG message,
+		SENDER_NAME senderName,SENDER_ID senderId, RECIPIENT recipient, 'N' colorInd from BOARD_MESSAGE
+		where RECIPIENT_GROUP = 'I'  and EXPIRY_DATE > sysdate
+		and ';' || replace(replace(RECIPIENT,' ;',';'),'; ',';') || ';' like '%;$userId$;%'
+		and EXPIRY_DATE > sysdate
+		<isNotEmpty property="arlRole">
+			union
+			select TO_CHAR(SENT_DATE,'DD MON YY HH24:MI') aa,to_char(SENT_DATE,'DD MON YY HH24:MI') sentDate, TO_CHAR(EXPIRY_DATE,'DD MON YY HH24:MI') expiryDate, MSG message,
+			SENDER_NAME senderName,SENDER_ID senderId, RECIPIENT recipient, 'N' colorInd from BOARD_MESSAGE
+			where RECIPIENT_GROUP = 'R'
+			<iterate prepend="AND" property="arlRole"
+			open="(" close=")" conjunction="OR" >
+				';' || replace(replace(RECIPIENT,' ;',';'),'; ',';') || ';' like '%;$arlRole[]$;%'
+			</iterate>
+			and EXPIRY_DATE > sysdate
+			
+			union
+			select TO_CHAR(SENT_DATE,'DD MON YY HH24:MI') aa,to_char(SENT_DATE,'DD MON YY HH24:MI') sentDate, TO_CHAR(EXPIRY_DATE,'DD MON YY HH24:MI') expiryDate, MSG message,
+			SENDER_NAME senderName,SENDER_ID senderId, RECIPIENT recipient, 'N' colorInd from BOARD_MESSAGE
+			where RECIPIENT_GROUP = 'R'
+			<iterate prepend="AND" property="arlRole"
+			open="(" close=")" conjunction="OR" >
+				';' || replace(replace(RECIPIENT,' ;',';'),'; ',';') || ';' like (SELECT '%'||CODE_DESC||'%' FROM SEC_ROLE WHERE CODE = '$arlRole[]$') 
+			</iterate>
+			and EXPIRY_DATE > sysdate
+		</isNotEmpty>
+		UNION	
+		SELECT DISTINCT 
+			  TO_CHAR(EXPIRY_DATE,'DD MON YY HH24:MI') aa,
+			  TO_CHAR(CR_DATE,'DD MON YY HH24:MI') sentDate,
+			  TO_CHAR(EXPIRY_DATE,'DD MON YY HH24:MI') expiryDate,
+			  ('AWB NO: '
+				  || awbNO
+				  || ', HAWB Processed: '
+				  || hawbProc
+				  || ', HAWB Rejected: '
+				  || hawbRej
+				  || ', Result : ' ||
+				  (case when hawbRej > 0 then 'FAIL' || ', Err Message : ' || (select err_msg from CUSEXP_PROCS_INFO where TRANSACTION_NO = CUSEXP.transNO and err_msg is not null and rownum =1)  else 'PASS' end)
+				  ) MESSAGE,
+			  EXT_USER_ID senderName,
+			  EXT_USER_ID senderId,
+			  EXT_USER_ID recipient,
+			  (case when hawbRej > 0 then 'Y' else 'N' end)  colorInd 
+			FROM CUSEXP_PROCS_INFO CUSINFO
+			JOIN 
+			(
+			SELECT AWB_NO awbNO,  SUM(HAWB_PROCESSED) hawbProc, SUM(HAWB_REJECTED) hawbRej , TRANSACTION_NO transNO
+			FROM CUSEXP_PROCS_INFO
+			WHERE EXPIRY_DATE > sysdate
+			AND EXT_USER_ID   = #userId#
+			GROUP BY TRANSACTION_NO,AWB_NO) CUSEXP ON CUSINFO.TRANSACTION_NO = CUSEXP.transNO
+		UNION		
+		select TO_CHAR(SENT_DATE,'DD MON YY HH24:MI') aa,to_char(SENT_DATE,'DD MON YY HH24:MI') sentDate, TO_CHAR(EXPIRY_DATE,'DD MON YY HH24:MI') expiryDate, MSG message, SENDER_NAME senderName,
+		SENDER_ID senderId, RECIPIENT recipient, 'N' colorInd from BOARD_MESSAGE
+		where RECIPIENT_GROUP = 'C' and EXPIRY_DATE > sysdate AND #userId# in (SELECT CODE FROM SEC_USER WHERE CUST_NO = RECIPIENT AND USER_TYPE = 'E')		
+		order by aa desc		
+	</select>
+	
+	<select id="fetchtToDoListValues" resultClass="cargo.cms.afw.bo.BoardMsgBO" parameterClass="cargo.cms.afw.bo.SearchBoardMsgBO" >
+  SELECT DISTINCT CUST_LIST.AWB_NO awbNo, 
+  CUST_LIST.FLT_KEY fltKey, 
+  (select awb_type from awb where awb_no=CUST_LIST.awb_no and awb_date=CUST_LIST.AWB_DATE) AS awbType,
+  to_char(CUST_LIST.FLT_DATE,'DDMONYY') fltDate,CUST_LIST.FLT_DATE,
+  'PACC0' purpose,
+   HAWB_NO as hawbNo,
+  to_char(CUST_LIST.AWB_DATE,'DDMONYY') awbDate,
+ 'Upload' upload,'Msg' msg, CUST_LIST.CCCL_MSG ccMsg,AGENT_RMK todoMsg,CUST_LIST.DOC_REQ docReq,
+ (SELECT AWB_IMAGE_NAME FROM AWB_IMAGE WHERE AWB_NO=CUST_LIST.AWB_NO AND AWB_DATE=CUST_LIST.AWB_DATE AND HAWB_NO=CUST_LIST.HAWB_NO AND ROWNUM=1) transactionId, null emanTrNo  FROM
+ IMP_CUST_CLR_LIST CUST_LIST,
+ (select awb_no, awb_date from imp_car_awb where AGENT_CUST_NO IN (SELECT CUST_NO FROM SEC_USER WHERE UPPER(CODE)=UPPER(#userId#))) AWB
+        WHERE 
+            CUST_LIST.awb_no = AWB.AWB_NO AND
+            CUST_LIST.AWB_DATE = AWB.AWB_DATE AND
+             (CUST_LIST.DOC_RCV='N' OR CUST_LIST.DOC_RCV IS NULL) AND 
+            CUST_LIST.DOC_REQ='Y'
+            UNION
+SELECT DISTINCT CUST_LIST.AWB_NO awbNo,
+  CUST_LIST.FLT_KEY fltKey,
+  (SELECT awb_type
+  FROM awb
+  WHERE awb_no=CUST_LIST.awb_no
+  AND awb_date=CUST_LIST.AWB_DATE
+  ) AS awbType,
+  TO_CHAR(CUST_LIST.FLT_DATE,'DDMONYY') fltDate,
+  CUST_LIST.FLT_DATE,
+  'EMAN' purpose,
+  HAWB_NO AS hawbNo,
+  TO_CHAR(CUST_LIST.AWB_DATE,'DDMONYY') awbDate,
+  'Upload' upload,
+  'Msg' msg,
+  CUST_LIST.CCCL_MSG ccMsg,
+  AGENT_RMK todoMsg,
+  CUST_LIST.DOC_REQ docReq,
+  (SELECT AWB_IMAGE_NAME
+  FROM AWB_IMAGE
+  WHERE AWB_NO=CUST_LIST.AWB_NO
+  AND AWB_DATE=CUST_LIST.AWB_DATE
+  AND HAWB_NO =CUST_LIST.HAWB_NO
+  AND ROWNUM  =1
+  ) transactionId, eman.tr_no emanTrNo 
+FROM IMP_CUST_CLR_LIST CUST_LIST , EMAN_QRY EMAN, AWB AWB 
+WHERE CUST_LIST.awb_no =substr( EMAN.AWB_NO,1,3) || substr( EMAN.AWB_NO,5)
+AND (CUST_LIST.DOC_RCV ='N'
+OR CUST_LIST.DOC_RCV  IS NULL)
+AND CUST_LIST.DOC_REQ  ='Y' AND EMAN.FRWRD_TO_AGT='Y' AND CUST_LIST.AWB_NO=AWB.AWB_NO AND CUST_LIST.AWB_DATE = AWB.AWB_DATE 
+AND CUST_LIST.AWB_NO=substr( EMAN.AWB_NO,1,3) || substr( EMAN.AWB_NO,5) 
+AND EMAN.agent_code in (SELECT CUST_NO FROM SEC_USER WHERE UPPER(CODE)=UPPER(#userId#)) 
+            order by fltKey,fltDate, awbNo,hawbNo,purpose
+	</select>
+	
+	 <select id="fetchWelcomeTCStatus" parameterClass="map" resultClass="cargo.cms.afw.bo.BoardMsgBO">
+	 select TC_IND AS tcInd,TC_ID AS tcId from MAINTAIN_TC WHERE FUNCTION_CODE = #functionName#
+	 </select>
+	
+	<select id="fetchtDocListValues" resultClass="cargo.cms.afw.bo.BoardMsgBO" parameterClass="cargo.cms.afw.bo.BoardMsgBO" >
+	SELECT B.DOC_NAME AS doc
+    FROM 
+    IMP_CUST_CLR_LIST A,
+    IMP_CCCL_DOC_LIST B
+  WHERE 
+   A.TR_NO = B.TR_NO AND
+   A.AWB_NO = #awbNo# AND 
+   A.HAWB_NO = #hawbNo# AND 
+   A.AWB_DATE=#awbDate# AND
+   A.FLT_KEY=#fltKey# AND
+   A.FLT_DATE=#fltDate# AND 
+   B.NOT_AVAILABLE = 'Y'
+   </select>
+   
+   <select id="getAWbWithHawb" resultClass="cargo.cms.afw.bo.BoardMsgBO" parameterClass="cargo.cms.afw.bo.BoardMsgBO">
+	   select IC.AWB_NO AS awbNo,
+          to_char(IC.AWB_DATE,'DDMONYY') AS awbDate,
+          IC.HAWB_NO AS hawbNo, AI.AWB_IMAGE_NAME transactionId
+     from 
+      imp_cust_clr_list IC,
+      AWB_IMAGE AI
+      where 
+      AI.AWB_NO(+) = IC.AWB_NO AND
+      AI.HAWB_NO(+) = IC.HAWB_NO AND
+      IC.AWB_NO = #awbNo# AND
+      IC.AWB_DATE = #awbDate# AND
+      IC.FLT_KEY = #fltKey# AND
+      IC.FLT_DATE = #fltDate# AND
+      IC.HAWB_NO = #hawbNo#
+   </select>
+   
+   <update id="saveMsgInCust" parameterClass="cargo.cms.afw.bo.BoardMsgBO">	
+		UPDATE IMP_CUST_CLR_LIST 
+		       SET 
+		       AGENT_RMK = #todoMsg# 
+		       where
+		       AWB_NO = #awbNo# AND
+		       AWB_DATE = #awbDate# AND
+               FLT_KEY = #fltKey# AND
+               FLT_DATE = #fltDate#
+	</update>
+	
+	<update id="updateDocRecv" parameterClass="cargo.cms.afw.bo.BoardMsgBO">	
+		UPDATE IMP_CUST_CLR_LIST 
+		       SET 
+		       DOC_RCV = 'Y' 
+		       where
+		       AWB_NO = #awbNo# AND
+		       AWB_DATE = #awbDate# AND
+               FLT_KEY = #fltKey# AND
+               FLT_DATE = #fltDate#
+	</update>
+	
+	<select id="getimpcustclrtrno" parameterClass="cargo.cms.afw.bo.BoardMsgBO" resultClass="java.lang.String">
+		SELECT TR_NO FROM IMP_CUST_CLR_LIST WHERE AWB_NO = #awbNo# AND
+		       AWB_DATE = #awbDate# AND
+               FLT_KEY = #fltKey# AND
+               FLT_DATE = #fltDate# AND
+               HAWB_NO = #hawbNo# AND DOC_RCV='N' 
+	</select>
+	<select id="getDocListValues" resultClass="cargo.cms.afw.bo.BoardMsgBO" parameterClass="java.lang.String" >
+		SELECT IMG_NAME AS doc FROM FW_IMAGE_STORE WHERE IMG_SESSION_ID=#PARAM#
+	</select>
+	
+	<insert id="saveImageInAWBImage" parameterClass="cargo.cms.afw.bo.BoardMsgBO">
+	  INSERT INTO AWB_IMAGE(
+			   SEQ_NO,
+			   AWB_IMAGE_NAME,
+			   AWB_NO,
+			   AWB_DATE,
+			   HAWB_NO)              
+			   VALUES(
+			   #seqNo#,
+			   #transactionId#,
+			   #awbNo#,
+			   #awbDate#,
+			   #hawbNo#)
+		</insert>	
+		<insert id="saveDataInimpccl" parameterClass="java.util.HashMap">
+	  INSERT INTO IMP_CCCL_DOC_LIST(
+	         TR_NO,
+	         DOC_NAME,
+	         NOT_AVAILABLE,
+	         CR_USER_ID,
+	         CR_DATE,
+	         LM_USER_ID,
+	         LM_DATE
+			   )              
+			   VALUES(
+			   #trNo#,
+			   #doc#,
+			   'N',
+			   #userId#,
+			   sysdate,
+			   #userId#,
+			   sysdate			   
+			   )
+		</insert>	
+		
+		<delete id="deleteDataInimpccl" parameterClass="java.util.HashMap">
+	  		delete from IMP_CCCL_DOC_LIST  where  TR_NO = #trNo#
+		</delete>
+		
+		
+   <parameterMap id="hmvalidatePassword" class="map" >
+		<parameter property="retval" jdbcType="VARCHAR"	javaType="java.lang.String" mode="OUT"/>
+		<parameter property="userid" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+		<parameter property="password" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+	</parameterMap>
+	<procedure id="validatePassword" parameterMap="hmvalidatePassword" >
+		{? = call PKG_SECURITY.FUN_CHECK_PASSWD(?,?)}
+	</procedure>
+
+
+	<parameterMap id="hmDecryptPassword" class="map" >
+		<parameter property="OUTPUT_PWD" jdbcType="VARCHAR"	javaType="java.lang.String" mode="OUT"/>
+		<parameter property="INPUT_PWD" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+		<parameter property="ENCPT_TYPE" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+	</parameterMap>
+	<procedure id="sqlDecryptPassword" parameterMap="hmDecryptPassword" >
+		{? = call PKG_SECURITY.fun_get_epasswd(?,?)}
+	</procedure>
+
+
+
+	<select id="selectFddsMaxUpdate" parameterClass="java.util.HashMap" resultClass="java.lang.String"  >
+		select to_char(lm_date, 'DD/MM/YYYY:hh:mm') from flt_opr where lm_user_id='SYSTEM_FDDS'
+		and (lm_date) > sysdate -#period#/24 and rownum =1
+
+	</select>
+
+
+
+	<select id="sqlUserLastChangedPasswordPeriod" parameterClass="java.lang.String" resultClass="cargo.cms.afw.util.subject.UserInfo" >
+		select  a.code userID ,  to_char(DECODE(max(b.lm_date),
+		NULL,a.CR_DATE, max(b.lm_date)),'DD/MM/YYYY HH24:MI:SS') lastModifiedDate  from sec_user a
+		left join sec_usr_password_log b on  user_Id= code
+		and USER_TYPE = 'E'
+		group by a.code, a.CR_DATE
+		order by a.code
+	</select>
+	<update id="sqlUserDeactivate" parameterClass="cargo.cms.afw.util.subject.UserInfo" >
+		update sec_user
+		set PASSWORD_IND = null,
+		STATUS = #status#,
+		STATUS_REASON = #statusReason#,
+		LM_USER_ID = 'ADMIN',
+		LM_DATE = sysdate
+		where code = #userID#
+		and USER_TYPE = 'E'
+	</update>
+	<select id="sqlLastLoggedInUserInfo" resultClass="cargo.cms.afw.util.subject.UserInfo" parameterClass="java.lang.String" >
+		select code userID, to_char(LLOGIN_DATE,'DD/MM/YYYY HH24:MI:SS') lastLoginDate from sec_user
+		where LLOGIN_DATE is not null and USER_TYPE = 'E'
+	</select>
+	<select id="sqlFetchFailedEmailMessages" parameterClass="java.lang.String" resultClass="cargo.cms.services.email.EMailBO" >
+		SELECT SENDER_ID senderName,SENDER_ADD AS userId,
+			TO_ADD strTo,CC_ADD strCC,SUBJECT subject,CONTENT_BLOB contentBytes ,TR_NO trNo
+		FROM email_log WHERE status = 'F'
+	</select>
+	<!--
+	<select id="sqlFetchFailedFaxMessages" parameterClass="java.lang.String" resultClass="cargo.cms.ifw.bo.FaxBO" >
+		select FAX_FROM faxFrom,FAX_TO faxTo,SENDER_ID senderName,CONTENT content , TR_NO trNo
+		from fax_log where status ='F' AND CONTENT IS NOT NULL
+	</select>
+	-->
+	<update id="updateUserLocale" parameterClass="cargo.cms.afw.util.subject.UserInfo">
+		UPDATE SEC_USER
+		SET PREF_LOCALE=#userLocaleStr#,
+		LM_USER_ID = 'ADMIN',
+		LM_DATE = sysdate
+		where code = #userID#
+	</update>
+	<update id="sqlUpdateFailedFaxMessages" parameterClass="java.util.HashMap">
+		update FAX_LOG
+		set STATUS = #STATUS#
+		where TR_NO = #TR_NO#
+	</update>
+	<update id="sqlUpdateFailedEMailMessages" parameterClass="java.util.HashMap">
+		update EMAIL_LOG
+		set STATUS = #STATUS#
+		where TR_NO = #TR_NO#
+	</update>
+	<select id="sqlAwbEnqPrinterList"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'AWB_ENQ_PRINTER' ORDER BY CODE_DESC
+   	</select>
+
+	<select id="sqlAwbEventList"  resultClass="cargo.cms.afw.bo.MasterBO">
+		<!-- SELECT DISTINCT EVENT_ID AS codeId,EVENT_DESC as codeDesc FROM AWB_EVENTS WHERE EVENT_ID != 'null' ORDER BY EVENT_ID-->
+		SELECT COD_HIS_SEQ_NUM AS codeId, DES_TAG as codeDesc FROM HIS_MST_ITM WHERE COD_HIS_TYP='E' ORDER BY COD_HIS_SEQ_NUM
+   	</select>
+   	<select id="sqlMastAuditList"  resultClass="cargo.cms.afw.bo.MasterBO">
+		 SELECT DISTINCT MASTER_NAME AS codeId,MASTER_NAME as codeDesc FROM HIS_MASTER_FUNC WHERE MASTER_NAME != 'null' ORDER BY MASTER_NAME
+   	</select>
+   	<select id="sqlMastDefSCChrgToList"  resultClass="cargo.cms.afw.bo.MasterBO">
+		 SELECT CODE AS codeId,CODE_DESC as codeDesc FROM mast_code_dtl WHERE GROUP_CODE='38' AND CODE_TYPE='DEF_SC_CHRG_TO' ORDER BY SNO ASC
+   	</select>
+   	
+   	<select id="sqlAwbTypeList"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT DISTINCT TAG_NAME AS codeId,TAG_NAME AS codeDesc FROM RMK_HIST ORDER BY TAG_NAME
+   	</select> 
+   	
+   	<select id="sqlAwbDateList"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT DISTINCT awb_date AS codeId,awb_date AS codeDesc FROM AWB ORDER BY awb_date
+   	</select> 
+   	
+    <select id="sqlNatureOfBusinessList"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE_DESC AS codeId FROM MAST_CODE_DTL WHERE GROUP_CODE = '44' AND CODE_TYPE='PRF_USERID' ORDER BY codeId
+   	</select>
+   	
+	<select id="sqlSecurityCheckItemList"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT ITM_CODE  AS codeId, ITM_DESC  AS codeDesc FROM BILL_ITM_MASTER where upper(itm_category) like upper('RA%') ORDER BY ITM_DESC
+	</select>
+	<!-- TP to fetch Customer code added on 15 June 2009-->
+	 <select id="fetchCustCodeOfCompany" parameterClass="java.util.HashMap" resultClass="java.util.HashMap">
+	select CODE_DESC,CODE from CUST_COMPANY where CODE_DESC like ('%'|| #KeySearchStr# ||'%') and ROWNUM &lt; #maxRecFetch# and ACTIVE = 'Y'  ORDER BY CODE_DESC    
+	</select> 
+<!-- Vishnu D to fetch Warehouse Area Code for FlightModule on 4 June 2010 -->
+    <select id="FLT_MODULE"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT WH_AREA AS codeId,WH_AREA_DESC AS codeDesc FROM MAST_WH_AREA WHERE MODULE_YN = 'Y' ORDER BY WH_AREA_DESC
+	</select>
+	<select id="CC_CATEGORY_LST"  resultClass="cargo.cms.afw.bo.MasterBO">
+	SELECT CODE AS codeId,CODE_DESC AS codeDesc FROM MAST_CODE_DTL where CODE_TYPE='CC_CATEGORY_LST' ORDER BY codeId
+	</select>
+	
+    <select id="CIR_TYPE"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId,CODE_DESC AS codeDesc FROM MAST_CODE_DTL WHERE CODE_TYPE = 'CIR_TYPE' ORDER BY CODE_DESC
+	</select>
+
+	<!--  Added the following SQL for TwoFA component. - Sriram Ananthasivan 10-Jul-10-->
+	<select id="sqlgettwofamobileno" parameterClass="java.lang.String" resultClass="java.lang.String">
+		SELECT TWOFA_MOBILE_NO MobileNo FROM CUST_AGENT_AUTH_REP REP, SEC_USER USR WHERE  REP.CUST_NO=USR.CUST_NO AND REP.AUTH_REP_ID = USR.HKID AND UPPER(USR.CODE)=UPPER(#PARAM#)
+	</select>
+	<select id="sqlgettwofacmsrulesdetails" resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT RULE_CODE as codeId, RULE_VALUE as codeDesc FROM CMSRULES WHERE RULE_CODE IN ('SMTP_HOST_NAME','EMAIL_FROM_ADDRESS','OTP_EXPIRY_TIME_IN_MINS','PASSWORD_ATTEMPTS','REGENERATION_ATTEMPTS','EMAIL_TO_ADDRESS','TWOFA_ALLOW_MAGIC_PASSWORD','TWOFA_MAGIC_PASSWORD') ORDER BY RULE_CODE DESC
+	</select>
+	<select id="sqlgetfunctionnameforcode" parameterClass="java.lang.String" resultClass="java.lang.String">
+		select code_desc fnName from sec_scr_function where code = #rcvdFnCode# 
+	</select>
+	
+	 <select id="fetchLocationForAjax" parameterClass="java.util.HashMap" resultClass="java.util.HashMap">
+	 	select code as locCode from MAST_WH_LOC where UPPER(code) like UPPER(#keySearchStr# ||'%') and ROWNUM &lt;= #maxRecFetch# ORDER BY code
+	</select>
+	<select id="fetchLocationForAjaxlist" parameterClass="java.util.HashMap" resultClass="java.util.HashMap">
+	 	select CODE as locCode from MAST_WH_LOC where to_char(UPPER(CODE)) like UPPER(#keySearchStr# ||'%')  ORDER BY code
+	</select>
+	<select id="fetchRemarkslist" parameterClass="java.util.HashMap" resultClass="java.util.HashMap">
+	select rmk as remarks from uld_rel_hd where to_char(UPPER(rmk)) like UPPER(#keySearchStr#||'%') ORDER BY rmk
+	
+	</select>
+	 <select id="checkSubfunctionAccess" parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+	 			SELECT COUNT(1)
+				FROM SEC_ROLE_SUB_FUNCTION
+				WHERE ROLE_CODE=#userRole# AND
+				FUNCTION_CODE = #functionCode# AND
+				SUB_FUNCTION_CODE = #subFunctionCode# AND
+				ENABLE_YN='Y'
+	</select>
+	<select id="checkfunctionAccess" parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+	 			SELECT COUNT(1)
+				FROM SEC_ROLE_FUNCTION
+				WHERE ROLE_CODE=#userRole# AND
+				FUNCTION_CODE = #functionCode#
+				and (read_yn ='Y' or full_yn='Y')
+	</select>
+	
+	<!-- Added for inserting remark history into RMK_HIST table -->
+	<insert id="insertrmkhistdetails" parameterClass="cargo.cms.afw.bo.RemarkHistoryBO">
+		INSERT INTO RMK_HIST (ENTITY_KEY, TAG_NAME, FIELD_NAME, RMK, LM_USER_ID, LM_DATE) VALUES (#entityKey#,#tagName#,#fieldName#,#remark#,#lastModifiedBy#,SYSDATE)
+	</insert>
+
+	<!-- Added for fetching history of the remark based in entity key, functionName and fieldName -->
+	<select id="getrmkhistforkey" parameterClass="cargo.cms.afw.bo.RemarkHistoryBO" resultClass="cargo.cms.afw.bo.RemarkHistoryBO">
+		SELECT * FROM (SELECT ROWID idRow, ENTITY_KEY entityKey, TAG_NAME tagName, FIELD_NAME fieldName, RMK remark, LM_USER_ID lastModifiedBy, TO_CHAR(LM_DATE,'DDMONYY HH24:MI') lastModifiedDate FROM RMK_HIST rmkHist WHERE ENTITY_KEY=#entityKey# AND TAG_NAME=#tagName# AND FIELD_NAME=#fieldName# ORDER BY rmkHist.LM_DATE DESC)  
+	</select>
+	
+	<update id="updrmkhistforkey" parameterClass="cargo.cms.afw.bo.RemarkHistoryBO">
+        update RMK_HIST set LM_USER_ID = #userID# where ENTITY_KEY = #entityKey# and TAG_NAME = #tagName# and FIELD_NAME = #fieldName# and RMK = #remark# and ROWID = #idRow#
+    </update>
+	
+	<!-- Added for deleting history of the remark based on entity key, functionName, fieldName and rmk -->
+	<delete id="delrmkhistforkey" parameterClass="cargo.cms.afw.bo.RemarkHistoryBO">
+		delete from RMK_HIST where ENTITY_KEY = #entityKey# and TAG_NAME = #tagName# and FIELD_NAME = #fieldName# and RMK = #remark# and ROWID = #idRow#
+	</delete>
+	
+	<!-- Added query for Fetching Service Names for the Drop Down  :: Ranjith -->
+	<select id="sqlSrvcNameList"  resultClass="cargo.cms.afw.bo.MasterBO">
+			SELECT distinct SVC_NAME AS codeId,SVC_NAME AS codeDesc FROM  BILL_SVC_MASTER
+	</select>
+	
+	<select id="sqlCPCTOwnedCarrList"  resultClass="cargo.cms.afw.bo.MasterBO">
+			SELECT distinct CODE AS codeId,CODE_DESC AS codeDesc FROM  MAST_CARRIER where nvl(OWNED_CARR,'N') = 'Y'  order by CODE
+	</select>
+	
+	<select id="getTimeDifferance"   parameterClass="map" resultClass="java.lang.String">
+SELECT floor(((to_date(#TO_DATE#,'DDMONYY HH24MI')-to_date(#FROM_DATE#,'DDMONYY HH24MI'))*24*60*60)/3600)
+        ||
+       floor((((to_date(#TO_DATE#,'DDMONYY HH24MI')-to_date(#FROM_DATE#,'DDMONYY HH24MI'))*24*60*60) -
+          floor(((to_date(#TO_DATE#,'DDMONYY HH24MI')-to_date(#FROM_DATE#,'DDMONYY HH24MI'))*24*60*60)/3600)*3600)/60)
+             time_difference
+    FROM dual
+    </select>
+
+	<select id="authenticateKioskUser" parameterClass="java.lang.String"
+		resultClass="cargo.cms.afw.util.subject.UserInfo">
+		<![CDATA[
+			SELECT TRUCK_NO userID, TRUCK_NO userName, PASSWORD userPassword, 'K' userType, 'Y' appAccessKiosk,
+			'A' passwordIndicator, 'Y' truckerYN, CUST_NO custCode, CUST.CODE_DESC companyName
+			FROM TCS_IPASS_MASTER IPASS
+			LEFT OUTER JOIN CUST_COMPANY CUST
+			ON IPASS.CUST_NO = CUST.CODE AND CUST.ACTIVE = 'Y'
+			WHERE
+			TRUCK_NO = #PARAM# AND IPASS_TYPE = 'P' AND STATUS = 'ACTIVE'
+		]]>
+	</select>
+	<select id="authenticateKioskUserCredential" parameterClass="map"
+		resultClass="java.lang.String">
+		<![CDATA[
+			SELECT DECODE(COUNT(IPASS.IPASS_NO), 0, 'N', 'Y')
+			FROM TCS_IPASS_MASTER IPASS
+			JOIN CUST_COMPANY CUST
+			ON IPASS.CUST_NO = CUST.CODE AND CUST.ACTIVE = 'Y'
+			WHERE
+			TRUCK_NO = #USER_ID# AND IPASS_TYPE = 'P' AND STATUS = 'ACTIVE' AND PASSWORD = #PASSWORD#
+		]]>
+	</select>
+	
+	<select id="strongRoomFunctionMappings" resultClass="cargo.cms.afw.bo.FunctionMappingsBO">
+		<![CDATA[
+			SELECT 
+			SSA.FUNCTION_CODE functionCode,  STRAGG(STRINGDELIM(SSI.IP_ADDRESS,',')) ipAddress FROM SEC_STRGRM_ACCESS SSA
+			JOIN
+			MAST_STRGRM_IP SSI
+			ON
+			SSA.IP_ID = SSI.IP_ID
+			GROUP BY FUNCTION_CODE
+		]]>
+   	</select>
+   	
+   	<insert id="strongRoomAccessAudit" parameterClass="java.util.HashMap">
+   		INSERT INTO STRGRM_ACCESS_AUD(AUD_ID,AUD_DT,USER_ID,FUNCTION_CODE,URI_ID,IP_ADDRESS,ACCESS_GRANTED_YN,CR_USER_ID,CR_DATE)
+   		VALUES(STRGRM_ACCESS_AUD_SEQ.NEXTVAL,SYSDATE,#USER_ID#,#FUNCTION_CODE#,(SELECT URL_ID FROM SEC_URL_CTRL WHERE URL_PATH = #URL_PATH# AND ROWNUM=1),#IP_ADDRESS#,#ACCESS_GRANTED_YN#,#USER_ID#,SYSDATE)
+   	</insert>
+   	
+   	<select id="getImage_Path"  parameterClass="java.lang.String" resultClass="java.lang.String">
+		SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE=#PARAM#
+   	</select>
+   	
+   	<select id="sqlFetchUserPasswordDetails" parameterClass="java.lang.String" resultClass="java.util.HashMap">
+   		SELECT USER_PASSWORD, TO_CHAR(PASSWORD_CHG_DATE,'DDMONYYHH24MISS') AS PASSWORD_CHG_DATE FROM SEC_USER WHERE UPPER(CODE) = UPPER(#userId#)
+   	</select>
+   	<select id="sqlFetchAllCmsRulesData" resultClass="java.util.HashMap">
+   		SELECT UPPER(RULE_CODE) AS RULE_CODE, RULE_VALUE FROM CMSRULES ORDER BY RULE_CODE ASC
+   	</select>	
+   	<select id="getSLAReportsConfig" resultClass="cargo.cms.slareports.config.SLAReportsConfigBO">
+		<![CDATA[
+			SELECT SLARPT_CNFG_ID configId, SLARPT_ID reportId, SLARPT_NAME reportName, COG_SEARCH_PATH searchPath, PARAM_PAGE_FWD_NAME paramPage, RPT_OUTPUT_FORMAT outputFormat 
+			FROM MAST_SLARPT_CNFG		
+		]]>
+   	</select>
+   		
+	<resultMap id="CognosConnDetails" class="java.util.HashMap">
+	    <result property="ruleCode" column="ruleCode" />
+	    <result property="ruleValue" column="ruleValue" />
+	</resultMap>
+	<select id="getCognosConnDetails" resultMap="CognosConnDetails">
+		<![CDATA[
+	  		SELECT RULE_CODE AS ruleCode, DECODE(RULE_VALUE,'[BLANK]',NULL,
+	      DECODE(RULE_CODE, 'COGNOS_SERVER_PASSWORD', PKG_SECURITY.FUN_GET_EPASSWD(RULE_VALUE,'D'), RULE_VALUE)) as ruleValue 
+				FROM CMSRULES WHERE rule_code IN 
+	      ('COGNOS_HOST_SERVER','COGNOS_SERVER_PORT','COGNOS_SERVER_USER','COGNOS_SERVER_PASSWORD','COGNOS_NAMESPACE','COGNOS_STATIC_RES_PORT')
+		]]>
+   	</select>   
+   	
+   	<select id="sqlEiServiceList"  resultClass="cargo.cms.afw.bo.MasterBO">
+		select DISTINCT prop.property_value as codeId ,prop.property_value as codeDesc  from ei_srv_property_map prop where prop.property_name in ('serviceGroup')
+	</select>
+	
+	<!-- ImageHouseKeeping :: Ranjith -->
+	<select	id ="getRedundantImageList" resultClass = "cargo.cms.afw.bo.ImageFileBO">
+		<![CDATA[
+		select (select rule_value from cmsrules where rule_code = 'ImageUploadRootPath')||IMG_PATH||IMG_NAME imagePath,
+				IMG_ID id from fw_image_store where img_upload_date is null 
+				and  to_date((decode(substr(IMG_PATH,length(IMG_PATH)),'/',substr(IMG_PATH,0,length(IMG_PATH)-1), IMG_PATH)),'YYYY/MM/DD') <= (sysdate-2)
+				]]> 
+	</select>
+	
+	<delete	id ="deleteRedundantImageList" parameterClass = "cargo.cms.afw.bo.ImageFileBO">
+		delete from fw_image_store where  IMG_ID = #id# and img_upload_date is null
+	</delete>
+	
+	
+	<!-- ImageHouseKeeping :: Ranjith -->
+	
+	
+   	<select id="sqlFetchErrorMessageById" parameterClass="java.lang.String" resultClass="java.lang.String">
+   		select err_desc from err_msg where err_code = #param# and err_lcode = 'en_US' and rownum = 1
+   	</select>
+   	
+   	<!-- Queries for GLS External Application Access Ends -->
+   	<select id="sqlFetchFunctionCodesForURL" parameterClass="java.lang.String" resultClass="java.lang.String">
+   		SELECT CODE FROM SEC_SCR_FUNCTION, SEC_URL_CTRL WHERE 
+		SEC_SCR_FUNCTION.CODE = SEC_URL_CTRL.FUNCTION_CODE 
+		AND URL_PATH = #requestURL#
+   	</select> 
+   	<select id="sqlExpTowOrdrEnqPrinterList"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE PRT_TYPE = 'EXP_TO_ENQ_PRINTER' ORDER BY CODE_DESC
+   	</select>
+   		<insert id="sqlInsertSysExceptionDtls" parameterClass="cargo.cms.afw.bo.SysExceptionDtlsBO">
+   		INSERT INTO SYS_EXCEPTION_DTLS(FUNC_CODE,FUNC_TYPE,ACCESS_USER_ID,URL_PATH,EXCEP_MSG,EXCEP_STACK_TRACE,EXCEP_OCC_DATE,EXCEP_LEVEL)
+   		VALUES(#functionCode#, #functionType#, #accessUserId#, #urlPath#, #exceptionMessage#, #exceptionStackTrace#, 
+   		TO_DATE(#exceptionOccurredDate#,'DDMONYY HH24:MI'),nvl(#excepLevel#,'FRAMEWORK'))
+   	</insert>
+   	<select id="sqlGetSysExceptionDtls" parameterClass="cargo.cms.afw.bo.base.BaseBO" resultClass="cargo.cms.afw.bo.SysExceptionDtlsBO">
+	   	select rowid exceptionId, func_code functionCode, func_type functionType, 
+		access_user_id accessUserId, url_path urlPath, excep_msg exceptionMessage, 
+		excep_occ_date exceptionOccurredDate, EXCEP_STACK_TRACE exceptionStackTrace from SYS_EXCEPTION_DTLS 
+		<dynamic prepend="ORDER BY ">
+                         <isNotEmpty property="sortOrder.sortField">
+                        $sortOrder.sortField$
+                  </isNotEmpty>
+                    <isEmpty property="sortOrder.sortField">
+						excep_occ_date desc
+					</isEmpty>
+            </dynamic>
+     </select>
+     
+     <select id="sqlGetSysExceptionDtlsCOUNT" parameterClass="cargo.cms.afw.bo.base.BaseBO" resultClass="java.lang.Integer">
+	   SELECT COUNT(1) AS totalRowCount FROM 
+	  (select rowid exceptionId, func_code functionCode, func_type functionType, 
+		access_user_id accessUserId, url_path urlPath, excep_msg exceptionMessage, 
+		excep_occ_date exceptionOccurredDate, EXCEP_STACK_TRACE exceptionStackTrace from SYS_EXCEPTION_DTLS )
+			
+	</select>
+	<select id="sqlISAWBTMTallySheet" parameterClass="map" resultClass="java.lang.Integer">
+		select count(*) from AWB where CATALOG = 'TM' and AWB_NO = #AWB_NO#
+	</select>
+	<select id="sqlTransitMailPrinterTallySheet" parameterClass="map" resultClass="java.lang.String">
+		select code_desc from mast_code_dtl where code='TM_PRINTER' and code_type ='TALLY_SHEET_PRINTER'
+	</select>
+	<select id="sqlISCourierSHCTallySheet" parameterClass="map" resultClass="java.lang.Integer">
+		 SELECT count(*) FROM AWB
+          WHERE awb_no    = #AWB_NO#
+          and awb_date = NVL(#AWB_DATE#, PKG_COMMON.GET_AWB_DATE(#AWB_NO#, 'E'))
+          AND EXISTS
+            (SELECT NULL
+            FROM CUST_AIRL_SPL_CODE CD
+            WHERE CD.CARR_CODE = AWB.CARR_CODE
+            AND SPL_TYPE       = 'SPL_COURIER_SHC'
+            AND SPL_CODE       in (spl_code1,spl_code2,spl_code3,spl_code4,spl_code5,spl_code6,spl_code7,spl_code8,spl_code9)
+            )
+	</select>
+	<select id="sqlISVALSHCTallySheet" parameterClass="map" resultClass="java.lang.Integer">
+		 SELECT count(*) FROM AWB
+          WHERE awb_no    = #AWB_NO#
+          and awb_date = NVL(#AWB_DATE#, PKG_COMMON.GET_AWB_DATE(#AWB_NO#, 'E'))
+          AND EXISTS
+            (SELECT NULL
+            FROM CUST_AIRL_SPL_CODE CD
+            WHERE CD.CARR_CODE = (select carr_code from flt_opr where flt_key = #FLT_KEY# and sch_date=#FLT_DATE# AND flt_type  = 'D')
+            AND SPL_TYPE       = 'SPL_VAL'
+            AND SPL_CODE       in (spl_code1,spl_code2,spl_code3,spl_code4,spl_code5,spl_code6,spl_code7,spl_code8,spl_code9)
+            )
+	</select>
+	
+	<select id="getCheckAWBSHCUltraTrack" parameterClass="cargo.cms.common.utils.bo.MileStoneBO" resultClass="java.lang.Integer">
+		SELECT COUNT(1) FROM AWB AWB, CUST_AIRL_SPL_CODE SPLCODE WHERE SPLCODE.SPL_TYPE= 'ULTRA TRACK'
+			AND SPLCODE.CARR_CODE = AWB.CARR_CODE AND AWB.AWB_NO = #awbNo# AND AWB.AWB_DATE = #awbDate#
+			AND (SPLCODE.SPL_CODE = AWB.SPL_CODE1 OR SPLCODE.SPL_CODE   = AWB.SPL_CODE2
+			OR SPLCODE.SPL_CODE   = AWB.SPL_CODE3 OR SPLCODE.SPL_CODE   = AWB.SPL_CODE4
+			OR SPLCODE.SPL_CODE   = AWB.SPL_CODE5 OR SPLCODE.SPL_CODE   = AWB.SPL_CODE6
+			OR SPLCODE.SPL_CODE   = AWB.SPL_CODE7 OR SPLCODE.SPL_CODE   = AWB.SPL_CODE8
+			OR SPLCODE.SPL_CODE   = AWB.SPL_CODE9)
+	</select>
+	
+	<select id="getCoolRoomINOUT" parameterClass="java.util.HashMap" resultClass="java.util.HashMap">
+		SELECT  (
+			SELECT decode(count(1),0,'N','Y')  FROM MAST_SPL_STRG_LOC 
+			where LOC_GROUP = ( SELECT G.WH_GROUP FROM MAST_WH_LOC L,   
+					MAST_WH_GROUP G WHERE L.WH_GROUP = G.WH_GROUP AND L.CODE = #fromlocn#) )  as COOLROOMIN, 
+			(SELECT decode(count(1),0,'N','Y')  FROM MAST_SPL_STRG_LOC 
+			where LOC_GROUP = ( SELECT G.WH_GROUP FROM MAST_WH_LOC L,   
+					MAST_WH_GROUP G WHERE L.WH_GROUP = G.WH_GROUP AND L.CODE = #toLocn#) ) as COOLROOMOUT  
+		FROM DUAL
+	</select>
+	
+	<select id="getUltraTrackAWBInvListOnULD" parameterClass="cargo.cms.common.utils.bo.MileStoneBO" resultClass="cargo.cms.common.utils.bo.MileStoneBO">
+		SELECT INV.AWB_NO as awbNo, to_char(INV.AWB_DATE,'DDMONYY') as awbDate, INV.LOCN_PCS as invPcs,INV.LOCN_WT as invWt, 
+			#fromlocn# as fromlocn, #toLocn#  as toLocn,
+			(SELECT decode(count(1),0,'N','Y')  FROM MAST_SPL_STRG_LOC where LOC_GROUP = (SELECT G.WH_GROUP FROM MAST_WH_LOC L,MAST_WH_GROUP G WHERE L.WH_GROUP = G.WH_GROUP AND L.CODE = #fromlocn#) )  as coolRoomIn, 
+			(SELECT decode(count(1),0,'N','Y')  FROM MAST_SPL_STRG_LOC where LOC_GROUP = ( SELECT G.WH_GROUP FROM MAST_WH_LOC L, MAST_WH_GROUP G WHERE L.WH_GROUP = G.WH_GROUP AND L.CODE = #toLocn#) ) as coolRoomOut  
+			FROM AWB_INVENTORY INV where (ULD_KEY = #uldkey# OR LSP_NO = #lspNo#)  
+			AND EXISTS (SELECT null FROM AWB AWB, CUST_AIRL_SPL_CODE SPLCODE WHERE SPLCODE.SPL_TYPE= 'ULTRA TRACK'
+						AND SPLCODE.CARR_CODE = AWB.CARR_CODE AND AWB.AWB_NO = INV.AWB_NO AND AWB.AWB_DATE = INV.AWB_DATE
+						AND (SPLCODE.SPL_CODE = AWB.SPL_CODE1 OR SPLCODE.SPL_CODE   = AWB.SPL_CODE2
+						OR SPLCODE.SPL_CODE   = AWB.SPL_CODE3 OR SPLCODE.SPL_CODE   = AWB.SPL_CODE4
+						OR SPLCODE.SPL_CODE   = AWB.SPL_CODE5 OR SPLCODE.SPL_CODE   = AWB.SPL_CODE6
+						OR SPLCODE.SPL_CODE   = AWB.SPL_CODE7 OR SPLCODE.SPL_CODE   = AWB.SPL_CODE8
+						OR SPLCODE.SPL_CODE   = AWB.SPL_CODE9) )
+		UNION
+		SELECT INV.AWB_NO as awbNo, to_char(INV.AWB_DATE,'DDMONYY')  as awbDate, INV.LOCN_PCS as invPcs,INV.LOCN_WT as invWt, 
+					 #fromlocn# as fromlocn,  #toLocn#  as toLocn,
+					(SELECT decode(count(1),0,'N','Y')  FROM MAST_SPL_STRG_LOC where LOC_GROUP = (SELECT G.WH_GROUP FROM MAST_WH_LOC L,MAST_WH_GROUP G WHERE L.WH_GROUP = G.WH_GROUP AND L.CODE =  #fromlocn#) )  as coolRoomIn, 
+					(SELECT decode(count(1),0,'N','Y')  FROM MAST_SPL_STRG_LOC where LOC_GROUP = ( SELECT G.WH_GROUP FROM MAST_WH_LOC L, MAST_WH_GROUP G WHERE L.WH_GROUP = G.WH_GROUP AND L.CODE =  #toLocn#) ) as coolRoomOut  
+					FROM (
+							SELECT SHP.AWB_NO AS AWB_NO, SHP.AWB_DATE AS AWB_DATE,
+				              SUM(SHP.MAN_PCS)                       AS LOCN_PCS,
+				              SUM(SHP.MAN_WT)                        AS LOCN_WT
+				            FROM EDI_FFM_MSG FFM
+				              JOIN EDI_FFM_SHP SHP ON FFM.TR_NO        = SHP.TR_NO
+				              JOIN AWB AWB ON AWB.AWB_NO = SHP.AWB_NO AND AWB.AWB_DATE = SHP.AWB_DATE
+				              JOIN EDI_FFM_ULD ULD ON SHP.udoc_line_no = ULD.doc_line_no
+				              JOIN ULD_INVENTORY UI ON UI.uld_key = #uldkey# AND UI.LOC_CODE IS NOT NULL
+				            WHERE FFM.ffm_status = 'P'
+				            AND ULD.ULD_KEY = #uldkey# AND FFM.FLT_KEY = UI.flt_key AND FFM.FLT_DATE = UI.FLT_DATE
+				            AND NOT EXISTS (select null from AWB_inventory ai where ai.AWB_NO = SHP.AWB_NO AND ai.AWB_DATE = SHP.AWB_DATE)
+				            AND EXISTS (SELECT null FROM AWB AWB, CUST_AIRL_SPL_CODE SPLCODE WHERE SPLCODE.SPL_TYPE= 'ULTRA TRACK'
+										AND SPLCODE.CARR_CODE = AWB.CARR_CODE AND AWB.AWB_NO = SHP.AWB_NO AND AWB.AWB_DATE = SHP.AWB_DATE
+										AND (SPLCODE.SPL_CODE = AWB.SPL_CODE1 OR SPLCODE.SPL_CODE   = AWB.SPL_CODE2
+										OR SPLCODE.SPL_CODE   = AWB.SPL_CODE3 OR SPLCODE.SPL_CODE   = AWB.SPL_CODE4
+										OR SPLCODE.SPL_CODE   = AWB.SPL_CODE5 OR SPLCODE.SPL_CODE   = AWB.SPL_CODE6
+										OR SPLCODE.SPL_CODE   = AWB.SPL_CODE7 OR SPLCODE.SPL_CODE   = AWB.SPL_CODE8
+										OR SPLCODE.SPL_CODE   = AWB.SPL_CODE9) ) GROUP BY SHP.AWB_NO, SHP.AWB_DATE, SHP.DEST, SHP.BRD_POINT, SHP.ORG           
+		              ) INV
+	</select>
+
+
+		<insert id="saveInterfaceRequestLog" parameterClass="java.util.HashMap">
+        	Insert into INTERFACE_REQ_RESP_LOG (TR_NO,AWB_NO,AWB_DATE,FLT_KEY,FLT_DATE,ULD_KEY,LSP_NO,SOURCE,DESTINATION,
+				FLOW_TYPE,INTERFACE_TYPE,SERVICE_NAME,MSG_TYPE,REQUEST_MSG,RESPONSE_MSG,SENT_DT,RCVD_DT) 
+				values (INTERFACE_REQ_RESP_SEQ.NEXTVAL,#AWB_NO#,#AWB_DATE#,#FLT_KEY#,#FLT_DATE#,#ULD_KEY#,#LSP_NO#,#SOURCE#,#DEST#,
+				#FLOW_TYPE#,#INTERFACE_TYPE#,#SERVICE_NAME#,#MSG_TYPE#,#REQUEST_MSG#,#RESPONSE_MSG#,SYSDATE,#RCVD_DT#)
+        </insert>
+        
+	<select id="sqlSHCPrinterTallySheet" parameterClass="map" resultClass="java.lang.String">
+		select code_desc from mast_code_dtl where code='VAL_SHC_PRINTER' and code_type ='TALLY_SHEET_PRINTER'
+	</select>	
+	<select id="sqlCourierPrinterTallySheet" parameterClass="map" resultClass="java.lang.String">
+		select code_desc from mast_code_dtl where code='COURIER_PRINTER' and code_type ='TALLY_SHEET_PRINTER'
+	</select>	
+	<select id="sqlFlightModulePrinterTallySheet" parameterClass="map" resultClass="java.lang.String">
+	  SELECT MFP.CODE_DESC 
+		FROM MAST_FLT_PRINTER MFP ,FLT_OPR FO 
+		WHERE FO.FLT_KEY=#FLT_KEY#
+		AND FO.SCH_DATE=#FLT_DATE#
+		AND FO.FLT_TYPE='D'
+		AND FO.FLT_MODULE1 = MFP.CODE	
+		AND ROWNUM=1			
+	</select>
+	
+	<select id="sqlFetchSuggestedFunctionList" parameterClass="java.util.HashMap" resultClass="java.util.HashMap">
+		SELECT MENUSHORTCUTCODE FROM (SELECT DISTINCT MENU_SHORT_CODE AS menuShortCutCode FROM SEC_USER, SEC_USER_ROLE USER_ROLE, SEC_ROLE_FUNCTION ROLE_FUNCTION,
+		SEC_SCR_FUNCTION SCR_FUNCTION WHERE SEC_USER.CODE = USER_ROLE.USER_ID AND ROLE_FUNCTION.FUNCTION_CODE = SCR_FUNCTION.CODE AND 
+		SCR_FUNCTION.MENU_SHORT_CODE LIKE (#keySearchStr# ||'%') AND
+		SEC_USER.CODE = #loggedInUser#) WHERE ROWNUM &lt;= #maxRecFetch#  
+	</select>
+	
+	<select  id="sqlFetchAllMenuShortCodeWithURL" parameterClass="java.util.HashMap" resultClass="cargo.cms.afw.bo.FunctionMappingsBO">
+		SELECT A.url_path as urlPath,F.CODE AS functionCode, F.MENU_SHORT_CODE AS menuShortCutCode
+        FROM SEC_SCR_FUNCTION F, SEC_URL_CTRL A, SEC_MENU_CTRL C
+        WHERE F.CODE = A.FUNCTION_CODE 
+        AND F.CODE = C.CODE
+        AND A.URL_ID = C.URL_ID      
+        <isEmpty prepend="AND" property="keySearchStr">
+        	AND F.MENU_SHORT_CODE IS NOT NULL
+        </isEmpty>
+        <isNotEmpty prepend="AND" property="keySearchStr">
+        	F.MENU_SHORT_CODE = #keySearchStr#
+        </isNotEmpty>
+	</select>
+	
+		<insert id="insertUserProfile" parameterClass="java.util.HashMap">
+        	insert into sec_user_profile (property_key,property_value) values (#propertyKey#,#propertyValue#)
+        </insert>
+        
+        <update id="updateUserProfile" parameterClass="java.util.HashMap">
+        	update sec_user_profile set property_value = #propertyValue# where property_key = #propertyKey#
+        </update>
+
+		<select id="getUserProfile" parameterClass="java.lang.String" resultClass="java.lang.String">
+			select property_value propertyValue from sec_user_profile where property_key = #propertyKey#
+		</select>
+		
+		<insert id="insertUserDTProfile" parameterClass="cargo.cms.afw.bo.UserDTProfileBO">
+        	insert into SEC_USER_DT_PROFILE (SEQ_NO,USER_ID,FUNCTION_CODE,DATATABLE_ID,ROWS_PER_PAGE,COLUMNS,FILTERS,SORTED_BY)
+        	values (#seqNo#,#userID#,#functionCode#,#datatableId#,#rowsPerPage#,#columnsInBytes#,#filtersInBytes#,#sortedByInBytes#)
+        </insert>
+        
+        <update id="updateUserDTProfile" parameterClass="cargo.cms.afw.bo.UserDTProfileBO">
+        	update SEC_USER_DT_PROFILE set ROWS_PER_PAGE = #rowsPerPage#,COLUMNS = #columnsInBytes#,FILTERS = #filtersInBytes#, SORTED_BY = #sortedByInBytes# where USER_ID = #userID# AND FUNCTION_CODE = #functionCode# AND DATATABLE_ID = #datatableId#
+        </update>
+
+		<select id="getUserDTProfile" parameterClass="cargo.cms.afw.bo.UserDTProfileBO" resultClass="cargo.cms.afw.bo.UserDTProfileBO">
+			select USER_ID userId,FUNCTION_CODE functionCode,DATATABLE_ID datatableId,ROWS_PER_PAGE rowsPerPage,COLUMNS columnsInBytes,FILTERS filtersInBytes, SORTED_BY sortedByInBytes from (
+			  select USER_ID, FUNCTION_CODE,DATATABLE_ID,ROWS_PER_PAGE,COLUMNS,FILTERS, SORTED_BY from SEC_USER_DT_PROFILE 
+			  where USER_ID = #userID# AND FUNCTION_CODE = #functionCode# AND DATATABLE_ID = #datatableId#
+			  order by seq_no desc
+			) where rownum = 1
+		</select>
+		
+		<update id="deleteUserDTProfile" parameterClass="cargo.cms.afw.bo.UserDTProfileBO">
+        	DELETE FROM SEC_USER_DT_PROFILE where USER_ID = #userID# AND FUNCTION_CODE = #functionCode# AND DATATABLE_ID = #datatableId#
+        </update>
+	
+		<insert id="insertPendingFiles" parameterClass="cargo.cms.afw.bo.ImageFileBO">
+        	insert into AWS_PENDING_FILE(TR_NO,FILE_NAME,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE) values (AWS_PENDING_FILE_SEQ.NEXTVAL,#imageName#,'SYSTEM',SYSDATE,'SYSTEM',SYSDATE)
+        </insert>
+        
+        <select id="getPendingFiles" parameterClass="java.lang.String" resultClass="cargo.cms.afw.bo.ImageFileBO">
+			select FILE_NAME as imageName from AWS_PENDING_FILE WHERE trunc(cr_date)=trunc(sysdate)
+		</select>
+		
+		<select id="getUltraTrackMasterDesc" parameterClass="java.lang.String" resultClass="java.lang.String">
+			SELECT LOC_GROUP_DESC FROM MAST_SPL_STRG_LOC WHERE LOC_GROUP = (SELECT G.WH_GROUP FROM MAST_WH_LOC L, MAST_WH_GROUP G WHERE L.WH_GROUP = G.WH_GROUP AND L.CODE = #fromLocation# and ROWNUM = 1)
+		</select>
+</sqlMap>

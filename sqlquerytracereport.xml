@@ -1,0 +1,543 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<!-- The SQL in these maps files has purposely been typed with more verbosity than is actually required.
+ For example, many of the selects could have just used SELECT * FROM... instead of listing all of the columns.
+ This is to demonstrate that even complex SQL can be handled and coded and formatted the way SQL was meant
+ to be (i.e. not a bunch of concatenated strings in a Java class). -->
+ 
+	<!-- This XML file will hold only the queries which would be used for Admin module Reports -->
+	<!-- Added by Varadaraj Muni 01-Sep-2010 -->
+<sqlMap namespace="TraceReportModule">
+<select id="trace_rept_540"  parameterClass="cargo.cms.trace.report.bo.AbandonedReportCargoBO"  resultClass="cargo.cms.trace.report.bo.AbandonedReportCargoBO">
+	select
+		SUBSTR(awb.awb_no,1,3)||'-'||SUBSTR(awb.awb_no,4)
+		awbNoDisplay,to_char(awb.awb_date,'DDMONYY') awbDate,substr
+		(awb.awb_no, 1, 3) as awbPfx, substr (awb.awb_no, 4) as awbSfx,
+		awb.awb_type as awbType, awb.awb_no as awbNo, awb.orig as origin,
+		awb.dest as dest,
+		decode(ec.shpr_name,'',ic.shpr_name,ec.shpr_name) as expShipper,
+		decode(ec.csgne_name,'',ic.csgne_name,ec.csgne_name) as expConsignee,
+		decode(ic.shpr_name,'',ec.shpr_name,ic.shpr_name) as impShipper,
+		decode(ic.csgne_name,'',ec.csgne_name,ic.csgne_name) as impConsignee,
+		awb.content as content,
+		decode(awb.spl_code1, null, '', awb.spl_code1)
+		|| decode(awb.spl_code2, null, '', ',' ||
+		awb.spl_code2)
+		|| decode(awb.spl_code3, null, '', ',' || awb.spl_code3)
+		|| decode(awb.spl_code4, null, '', ',' || awb.spl_code4)
+		||
+		decode(awb.spl_code5, null, '', ',' ||awb.spl_code5)
+		||
+		decode(awb.spl_code6, null, '', ',' || awb.spl_code6)
+		||
+		decode(awb.spl_code7, null, '', ',' || awb.spl_code7)
+		||
+		decode(awb.spl_code8, null, '', ',' || awb.spl_code8)
+		||
+		decode(awb.spl_code9, null, '', ',' || awb.spl_code9) as shc,
+		decode(awb.pcs,null,'',awb.pcs)||'/'||
+		decode(awb.wt,null,'',awb.wt) awbPcWt,
+		decode((decode(awb.awb_type,'E','',decode(ics.flt_key,null,'',ics.flt_key || '/')) ||
+		decode(awb.awb_type,'E','',to_char(ics.flt_date,'DDMONYY'))),'',
+		(decode(awb.awb_type,'E','',decode(epa.flt_key,null,'',epa.flt_key || '/')) ||
+		decode(awb.awb_type,'E','',to_char(epa.flt_date,'DDMONYY'))),(decode(awb.awb_type,'E','',decode(ics.flt_key,null,'',ics.flt_key || '/')) ||
+		decode(awb.awb_type,'E','',to_char(ics.flt_date,'DDMONYY'))))  as
+		impFltNoDate
+		from awb awb
+		left join exp_car ec
+		on ec.awb_no = awb.awb_no
+		and ec.awb_date = awb.awb_date
+		and (awb.awb_type = 'E' or awb.awb_type =
+		'T')
+		left join imp_car_awb ic
+		on ic.awb_no = awb.awb_no
+		and ic.awb_date = awb.awb_date
+		and (awb.awb_type = 'I' or awb.awb_type =
+		'T')
+		left join imp_car_shp ics
+		on ics.awb_no = awb.awb_no
+		and ics.awb_date = awb.awb_date
+		and (awb.awb_type = 'I' or awb.awb_type =
+		'T')
+		left join exp_pmanifest_awb epa
+		on epa.awb_no = awb.awb_no
+		and epa.awb_date = awb.awb_date
+		and (awb.awb_type = 'E' or awb.awb_type =
+		'T')
+		where (awb.spl_code1 = 'ABN'
+		or awb.spl_code2 = 'ABN'
+		or awb.spl_code3 = 'ABN'
+		or awb.spl_code4 = 'ABN'
+		or awb.spl_code5 = 'ABN'
+		or awb.spl_code6 = 'ABN'
+		or awb.spl_code7 = 'ABN'
+		or awb.spl_code8 = 'ABN'
+		or awb.spl_code9 = 'ABN')
+		<isNotEmpty prepend="AND" property="carr">
+			awb.carr_code = #carr#
+		</isNotEmpty>
+		<isNotEmpty prepend="AND" property="awbType">
+			awb.awb_type = #awbType#
+		</isNotEmpty>
+		<isNotEmpty prepend="AND" property="catalog">
+		awb.catalog = #catalog#
+		</isNotEmpty>
+		<isNotEmpty prepend="AND" property="awbNo">
+			awb.awb_no = #awbNo#
+		</isNotEmpty>
+		<isNotEmpty prepend="AND" property="agentName">
+			awb.AGENT_NAME =
+			#agentName#
+		</isNotEmpty>
+		<isEmpty property="carr">
+			<isEmpty property="awbNo">
+				<isNotEmpty property="loginCarrier">
+				   AND ( awb.carr_code= #loginCarrier# OR  awb.carr_code IN (SELECT CARR_CODE FROM MAST_CARR_GRP WHERE GRP_CARR_CODE  = #loginCarrier#))             
+            	</isNotEmpty>
+            </isEmpty>
+        </isEmpty>	
+		<dynamic prepend="ORDER BY ">
+			<isNotEmpty property="sortOrder.sortField">
+				$sortOrder.sortField$
+	           </isNotEmpty>
+		</dynamic>
+</select>
+<select id="trace_rept_540_1"  parameterClass="cargo.cms.trace.report.bo.AbandonedReportCargoBO"  resultClass="java.lang.String">
+ select decode(sum(ai.locn_pcs),null,'',sum(ai.locn_pcs))||'/'||
+   	  decode(sum(ai.locn_wt),null,'',sum(ai.locn_wt)) invPcWt
+      from awb_inventory ai
+      	where ai.awb_no = #awbNo#
+		and ai.awb_date = #awbDate#
+</select>
+
+   <parameterMap id="getTracingRecordsMap" class="map">		      
+		<parameter property="CARR" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>    
+		<parameter property="PORT" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>  
+		<parameter property="FROMDATE" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>    
+		<parameter property="TODATE" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/> 
+	</parameterMap>
+	   
+	<procedure id="getTracingReport" parameterMap="getTracingRecordsMap">
+		{call PRC_CREATE_TRC_SUMMARY(?,?,?,?)}
+	</procedure>
+
+	<select id="discripancy_Rept_704" parameterClass="cargo.cms.trace.report.bo.DiscrpReptBO"  resultClass="cargo.cms.trace.report.bo.DiscrpReptBO">
+		select 
+		GT.PORT as port,
+		GT.AWB_NO as awbNo,
+		substr(GT.AWB_NO,0,3) as awbNoPFX,
+		substr(GT.AWB_NO,4) as awbNoSFX,
+		to_char(GT.AWB_DATE,'DDMONYY') as awbDate,
+		GT.FLT_KEY as fltKey,
+		to_char(GT.FLT_DATE,'DDMONYY') as fltDate,
+		GT.ORG as orig,
+		GT.DEST as dest,
+		GT.DCPRNCY_PCS as discPc,
+		GT.REMARK as rmk,
+		GT.REASON as reson
+		FROM GT_TRC_SUMMARY GT		 
+		WHERE 1 = 1 
+		<isNotEmpty property="port">
+			AND GT.PORT = #port#
+		</isNotEmpty>	
+		<isNotEmpty property="carr">
+			and GT.CARR = #carr#
+		</isNotEmpty>
+		<isEmpty property="carr">
+        	<isNotEmpty property="loginCarrier">
+                	AND   (GT.CARR = #loginCarrier#
+					OR GT.CARR IN (SELECT CARR_CODE FROM MAST_CARR_GRP WHERE GRP_CARR_CODE = #loginCarrier#))
+			</isNotEmpty>
+        	</isEmpty>		
+		order by port asc		
+	</select>
+
+<!-- Commented by srinivas for uat bug 2594, As the data is fetching from procedure. 
+
+<select id="discripancy_Rept_704" parameterClass="cargo.cms.trace.report.bo.DiscrpReptBO"  resultClass="cargo.cms.trace.report.bo.DiscrpReptBO">
+		select B.FULT_PRTY as port,
+		A.AWB_NO as awbNo,
+		substr(A.AWB_NO,0,3) as awbNoPFX,
+		substr(A.AWB_NO,4) as awbNoSFX,
+		to_char(A.AWB_DATE,'DDMONYY') as awbDate,
+		B.FLT_KEY as fltKey,
+		to_char(B.FLT_DATE,'DDMONYY') as fltDate,
+		A.ORIG as orig,
+		A.DEST as dest,
+		B.DCRPNCY_PCS as discPc,
+		B.REMARKS as rmk,
+		B.REASON as reson
+		FROM TRC_AWB A LEFT JOIN TRC_FLT B 
+		ON A.AWB_NO=B.AWB_NO 
+		AND A.AWB_DATE=B.AWB_DATE
+		WHERE To_char(A.CR_DATE,'DDMONYY') between to_date(#dateFrom#,'DDMONYY') and 
+		to_date(#dateTo#,'DDMONYY')
+		and b.dcrpncy_typ in ('MSCA','FDCA')
+		and (b.reason = 'I' OR (b.reason = 'U' OR b.reason IS NULL))
+		<isNotEmpty property="port">
+			and B.FULT_PRTY = #port#
+		</isNotEmpty>
+		<isNotEmpty property="carr">
+			and A.CARRIER = #carr#
+		</isNotEmpty>
+</select>
+
+ -->
+ 
+ 	<parameterMap id="getMonTracingRecordsMap" class="map">		      
+		<parameter property="CARR" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>    
+		<parameter property="PORT" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>  
+		<parameter property="MONTH" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>    
+		<parameter property="YEAR" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/> 
+	</parameterMap>
+	   
+	<procedure id="getMonthlyTracingReport" parameterMap="getMonTracingRecordsMap">
+		{call PRC_CREATE_TRC_MON_SUMMARY(?,?,?,?)}
+	</procedure>
+	
+	<select id="disc_Monthly_Rept_703" parameterClass="cargo.cms.trace.report.bo.DiscrpReptBO"  resultClass="cargo.cms.trace.report.bo.DiscrpReptBO">
+			select port, sspd, fdca, unidentifd ,totCase , totHandl, decode(totHandl, 0, 0, ROUND(totCase*100/totHandl,2)) percent from (select PORT as port,
+			count(awb_no) totHandl, 
+			sum(CASE WHEN REMARK='U' THEN 0.5 ELSE 0 END) unidentifd,
+			(sum(CASE WHEN REASON = 'SSPD' THEN 1 ELSE 0 END))+(sum(CASE WHEN REASON = 'MSCA' THEN 1 ELSE 0 END)) sspd ,
+			sum(CASE WHEN REASON = 'DMGD' THEN 1 ELSE 0 END) dmgd ,
+			sum(CASE WHEN REASON = 'WFWD' THEN 1 ELSE 0 END) wfwd,
+			sum(CASE WHEN REASON = 'FDAW' THEN 1 ELSE 0 END) fdaw,
+			sum(CASE WHEN REASON = 'MSAW' THEN 1 ELSE 0 END) msaw,
+			sum(CASE WHEN REASON = 'FDCN' THEN 1 ELSE 0 END) fdav,
+			sum(CASE WHEN REASON = 'MSCN' THEN 1 ELSE 0 END) msav,
+			sum(CASE WHEN REASON = 'FDCA' THEN 1 ELSE 0 END) fdca,
+			sum(CASE WHEN REASON = 'MSCA' THEN 1 ELSE 0 END) msca,
+			sum(CASE WHEN REASON = 'UNLO' THEN 1 ELSE 0 END) unlo,
+			sum(CASE WHEN REASON = 'UNK' THEN 1 ELSE 0 END) unk,
+			(sum(CASE WHEN REMARK='U' THEN 0.5 ELSE 0 END)+
+			sum(CASE WHEN REASON = 'SSPD' THEN 1 ELSE 0 END)+
+			sum(CASE WHEN REASON = 'MSCA' THEN 1 ELSE 0 END)+
+			sum(CASE WHEN REASON = 'FDCA' THEN 1 ELSE 0 END)) totCase
+			from GT_TRC_SUMMARY
+			where 1 = 1      
+      		<isNotEmpty property="port">
+         		 AND PORT = #port#
+        	</isNotEmpty>	
+        	<isNotEmpty property="carr">
+          		AND CARR = #carr#
+        	</isNotEmpty>
+        	<isEmpty property="carr">
+        	<isNotEmpty property="loginCarrier">
+                	AND   (CARR = #loginCarrier#
+					OR CARR IN (SELECT CARR_CODE FROM MAST_CARR_GRP WHERE GRP_CARR_CODE = #loginCarrier#))
+			</isNotEmpty>
+        	</isEmpty>	
+        	group by PORT)
+	
+			<!--	Commented by srinivas for uat bug 2594, As the data is fetching from procedure. 
+			
+			select port, sspd, fdca, unidentifd, totCase, totHandl, decode(totHandl, 0, 0, ROUND(totCase*100/totHandl,2)) percent from (select FULT_PRTY as port,
+			count(awb_no) totHandl, 
+			sum(CASE WHEN reason='U' THEN 1 ELSE 0 END) unidentifd,
+			(sum(CASE WHEN DCRPNCY_TYP = 'SSPD' THEN 1 ELSE 0 END))+(sum(CASE WHEN DCRPNCY_TYP = 'MSCA' THEN 1 ELSE 0 END)) sspd ,
+			sum(CASE WHEN DCRPNCY_TYP = 'DMGD' THEN 1 ELSE 0 END) dmgd ,
+			sum(CASE WHEN DCRPNCY_TYP = 'WFWD' THEN 1 ELSE 0 END) wfwd,
+			sum(CASE WHEN DCRPNCY_TYP = 'FDAW' THEN 1 ELSE 0 END) fdaw,
+			sum(CASE WHEN DCRPNCY_TYP = 'MSAW' THEN 1 ELSE 0 END) msaw,
+			sum(CASE WHEN DCRPNCY_TYP = 'FDCN' THEN 1 ELSE 0 END) fdav,
+			sum(CASE WHEN DCRPNCY_TYP = 'MSCN' THEN 1 ELSE 0 END) msav,
+			sum(CASE WHEN DCRPNCY_TYP = 'FDCA' THEN 1 ELSE 0 END) fdca,
+			sum(CASE WHEN DCRPNCY_TYP = 'MSCA' THEN 1 ELSE 0 END) msca,
+			sum(CASE WHEN DCRPNCY_TYP = 'UNLO' THEN 1 ELSE 0 END) unlo,
+			sum(CASE WHEN DCRPNCY_TYP = 'UNK' THEN 1 ELSE 0 END) unk,
+			(sum(CASE WHEN reason='U' THEN 1 ELSE 0 END)+
+			sum(CASE WHEN DCRPNCY_TYP = 'SSPD' THEN 1 ELSE 0 END)+
+			sum(CASE WHEN DCRPNCY_TYP = 'MSCA' THEN 1 ELSE 0 END)+
+			sum(CASE WHEN DCRPNCY_TYP = 'FDCA' THEN 1 ELSE 0 END)) totCase
+			from trc_flt
+			where to_char(CR_DATE,'MON')=#month#
+			and to_char(CR_DATE,'YYYY')=#year#
+			<isNotEmpty property="port">
+				and FULT_PRTY = #port#
+				</isNotEmpty>
+				<isNotEmpty property="carr">
+				and AWB_PRFX = #carr#
+				</isNotEmpty>
+				group by FULT_PRTY)				
+			-->
+	</select>
+	
+<select id="fetchADMRecordList705" parameterClass="cargo.cms.trace.report.bo.MainADMRept_705BO"  resultClass="cargo.cms.trace.report.bo.MainADMRept_705BO">
+select
+substr(b.AWB_NO,0,3) as awbNoPFX,
+substr(b.AWB_NO,4) as awbNoSFX,
+(substr(b.AWB_NO,0,3) ||'-'||substr(b.AWB_NO,4)) awbNo,	
+b.AWB_DATE awbDate,
+b.ORIG org,
+b.DEST dest,
+b.PCS pc,
+b.WGT wt,
+(select content from awb a where a.awb_no=b.AWB_NO and a.awb_date=b.awb_date) content,
+(SELECT CODE_DESC  FROM CUST_COMPANY WHERE CODE=b.AGENT_CODE AND AGENT_YN = 'Y' AND ACTIVE = 'Y' AND BLACKLISTED='N') agent,
+b.REQ_TYPE request,
+b.REQ_STS status,
+b.REMARKS rmk
+from TRC_ADM_REQ b 
+where b.AWB_NO is not null
+<isNotEmpty property="awbNo">
+	and b.AWB_NO=#awbNo#
+</isNotEmpty>
+<isNotEmpty property="agent">
+	and (b.AGENT_CODE=(SELECT CODE  FROM CUST_COMPANY WHERE CODE_DESC = #agent# AND AGENT_YN = 'Y' AND ACTIVE = 'Y' AND BLACKLISTED='N')
+		 or b.agent_name = #agent#)
+</isNotEmpty>
+<isNotEmpty property="loginCarrier">
+	AND (SUBSTR(b.AWB_NO,1,3) IN (SELECT CODE FROM MAST_AWB_PREFIX WHERE CARR_CODE = #loginCarrier#) 
+                  		 OR SUBSTR(b.AWB_NO,1,3) IN (SELECT CODE FROM MAST_AWB_PREFIX WHERE	CARR_CODE IN(SELECT CARR_CODE FROM MAST_CARR_GRP WHERE GRP_CARR_CODE = #loginCarrier#)))
+</isNotEmpty>            	
+</select>
+<select id="fetchMtnCrgRecord707" parameterClass="cargo.cms.trace.report.bo.MaintainCargo707BO" resultClass="cargo.cms.trace.report.bo.MaintainCargo707BO">
+select SUBSTR(a.AWB_NO,1,3)||'-'||SUBSTR(a.AWB_NO,4) awbNo1,
+a.AWB_NO awbNo,
+TO_CHAR(a.AWB_DATE,'DDMONYY') awbDate,
+a.DCRPNCY_TYP discType,
+a.DCRPNCY_PCS irrPcs,
+a.FLT_KEY fltKey,
+TO_CHAR(a.FLT_DATE,'DDMONYY') fltDate,
+	b.orig orig, 
+  a.FULT_PRTY partyAtFlt,
+  a.REMARKS remarks,
+  a.DCRPNCY_STS status,
+  a.reason reason,
+    b.dest dest, 
+    b.content cont, 
+    b.pcs pcs, 
+    b.wgt wt,
+    c.COD_LOC locCode,
+    c.LOC_PCS pcs,NVL(c.LSP,'') lsp,
+    b.carrier carrCode from trc_flt a left join
+    trc_awb b on 
+    a.awb_date= b.awb_date 
+    and a.awb_no= b.awb_no left join
+    trc_loc c on 
+    a.awb_date= c.awb_date 
+    and a.awb_no= c.awb_no
+    and a.DCRPNCY_TYP=c.DCRPNCY_TYP
+    where 
+    a.awb_no=#awbNo#
+		and a.dcrpncy_typ=#discType#
+		</select>
+<select  id="fetchDiscDetail707" parameterClass="cargo.cms.trace.bo.CargoTracingFltBO" resultClass="cargo.cms.trace.bo.CargoTracingFltBO">
+ SELECT SUBSTR(a.AWB_NO,1,3)
+  ||'-'
+  ||SUBSTR(a.AWB_NO,4) awbNoDisp       ,
+  a.AWB_NO awbNo                       ,
+  TO_CHAR(a.AWB_DATE,'DDMONYY') awbDate,
+  a.DCRPNCY_TYP discType               ,
+  a.DCRPNCY_PCS irrPcs1                ,
+  TO_CHAR(a.CR_DATE,'DDMONYY') crDate  ,
+  b.orig orig                          ,
+  b.dest dest                          ,
+  b.content cont                       ,
+  b.pcs pcs                            ,
+  b.wgt wt                             ,
+  a.COD_LOC locCode                    ,
+  a.LOC_PCS pcs                        ,
+  NVL(a.LSP,'') lsp                 ,
+  b.carrier carrCode,
+  (select sum(c.DAM_PCS) from awb_inventory c where a.AWB_NO=c.AWB_NO and
+    a.AWB_DATE=c.AWB_DATE) dmgPc 
+   FROM trc_loc a,
+  trc_awb b
+  WHERE a.awb_date= b.awb_date
+AND a.awb_no      = b.awb_no
+AND a.awb_no      =#awbNo#
+AND a.dcrpncy_typ =#discType#
+
+</select>
+
+<select id="viewTracingRecordXls707" parameterClass="cargo.cms.trace.bo.CargoTracingFltBO" resultClass="cargo.cms.trace.bo.CargoTracingFltBO">
+	select awbNoDisp,awbNo,awbDate,discType, fltKey,
+		fltDate,fltType,irrPcs,crDate, orig, dest,
+		cont, pcs, wt,carrCode,awbType,status,partyAtFlt,reason,remarks from
+		(select SUBSTR(a.AWB_NO,1,3)||'-'||SUBSTR(a.AWB_NO,4) awbNoDisp,a.AWB_NO
+		awbNo,
+		TO_CHAR(a.AWB_DATE,'DDMONYY') awbDate,a.DCRPNCY_TYP discType,
+		TO_CHAR(a.flt_key) fltKey,
+		TO_CHAR(a.flt_date,'DDMONYY') fltDate,decode(TO_CHAR(a.flt_type),'A','Import','I','Import','D','Export','E','Export') fltType,
+		a.DCRPNCY_PCS
+		irrPcs,TO_CHAR(b.CR_DATE,'DDMONYY') crDate, b.orig orig, b.dest dest,
+		b.content cont, b.pcs pcs, b.wgt wt,b.carrier carrCode,b.awb_Type
+		awbType, A.FULT_PRTY PARTYATFLT,A.REMARKS	remarks,NVL(a.DCRPNCY_STS,'Initiated') status,NVL(a.reason,'U') reason
+		from trc_flt a
+		left join flt_opr fo on fo.flt_key = a.flt_key and fo.sch_date=a.flt_date, 
+		trc_awb b 
+		where a.awb_date= b.awb_date and a.awb_no=
+		b.awb_no
+		<isNotEmpty prepend="AND" property="awbNo">
+			a.awb_no = #awbNo#
+		</isNotEmpty>
+		<isNotEmpty prepend="AND" property="carrCode">
+			b.CARRIER = #carrCode#
+		</isNotEmpty>
+		<isNotEmpty prepend="AND" property="loginCarrier">
+            (b.CARRIER = #loginCarrier#
+            OR b.CARRIER IN (SELECT CARR_CODE FROM MAST_CARR_GRP WHERE GRP_CARR_CODE= #loginCarrier#))
+        </isNotEmpty>
+		<isNotEmpty property="crDateFrom">
+			<isNotEmpty property="crDateTo">
+				AND to_char(b.CR_DATE,'DDMONYY')
+				between to_date(#crDateFrom#,'DDMONYY') and to_date(#crDateTo#,'DDMONYY')
+			</isNotEmpty>
+		</isNotEmpty>
+		<isNotEmpty prepend="AND" property="status">
+				<isEqual property="status" compareValue="Initiated">
+				    (a.DCRPNCY_STS = #status# or a.DCRPNCY_STS is null)
+				</isEqual>
+				<isNotEqual property="status" compareValue="Initiated">
+					 a.DCRPNCY_STS = #status#
+				</isNotEqual>
+		</isNotEmpty>
+		<isNotEmpty prepend="AND" property="discType">
+			a.DCRPNCY_TYP =
+			#discType#
+		</isNotEmpty>
+		<isNotEmpty property="fltKey">
+			<isNotEmpty property="fltDate">
+				and a.flt_key = #fltKey# and a.flt_date = #fltDate#
+			</isNotEmpty>
+		</isNotEmpty>
+		<isEmpty property="fltKey">
+			<isNotEmpty  property="fltDate">
+				and NVL(FO.ACT_DATE,NVL(FO.EST_DATE,FO.SCH_DATE)) = #fltDate#
+			</isNotEmpty>
+		</isEmpty>
+		UNION
+		select SUBSTR(a.AWB_NO,1,3)||'-'||SUBSTR(a.AWB_NO,4)
+		awbNoDisp,a.AWB_NO awbNo,TO_CHAR(a.AWB_DATE,'DDMONYY')
+		awbDate,a.DCRPNCY_TYP discType,'' fltKey,'' fltDate,''
+		fltType,a.DCRPNCY_PCS irrPcs,TO_CHAR(b.CR_DATE,'DDMONYY') crDate,
+		b.orig orig, b.dest dest,
+		b.content cont, b.pcs pcs, b.wgt wt,b.carrier carrCode,b.awb_Type awbType,
+		'' partyAtFlt, A.REMARKS	remarks,NVL(a.DCRPNCY_STS,'Initiated') status,NVL(a.reason,'U') reason
+		from
+		trc_loc a, trc_awb b where a.awb_date= b.awb_date and a.awb_no=
+		b.awb_no
+		<isNotEmpty prepend="AND" property="awbNo">
+			a.awb_no = #awbNo#
+		</isNotEmpty>
+		<isNotEmpty prepend="AND" property="carrCode">
+			b.CARRIER = #carrCode#
+		</isNotEmpty>
+		<isNotEmpty prepend="AND" property="loginCarrier">
+            (b.CARRIER = #loginCarrier#
+            OR b.CARRIER IN (SELECT CARR_CODE FROM MAST_CARR_GRP WHERE GRP_CARR_CODE= #loginCarrier#))
+        </isNotEmpty>
+		<isNotEmpty property="crDateFrom">
+			<isNotEmpty property="crDateTo">
+				AND to_char(b.CR_DATE,'DDMONYY')
+				between to_date(#crDateFrom#,'DDMONYY') and to_date(#crDateTo#,'DDMONYY')
+			</isNotEmpty>
+		</isNotEmpty>
+		<isNotEmpty prepend="AND" property="status">
+			<isEqual property="status" compareValue="Initiated">
+				     (a.DCRPNCY_STS = #status# or a.DCRPNCY_STS is null)
+				</isEqual>
+				<isNotEqual property="status" compareValue="Initiated">
+					 a.DCRPNCY_STS = #status#
+				</isNotEqual>
+		</isNotEmpty>
+		<isNotEmpty prepend="AND" property="discType">
+			a.DCRPNCY_TYP =
+			#discType#
+		</isNotEmpty>
+		)
+		<dynamic prepend="ORDER BY">
+			<isNotEmpty property="sortOrder.sortField">
+				$sortOrder.sortField$
+		    </isNotEmpty>
+		</dynamic>
+</select>
+
+<!--Added by Mahesh B N for Inventory Check Result starts-->
+<select id="SqlGetNonCoveredLocFromLoc1" parameterClass="cargo.cms.trace.bo.InventoryCheckResultBO" resultClass="cargo.cms.trace.bo.InventoryCheckResultBO">		
+		select t1.loc_code location,
+		awb.awb_type awbtype, awb.awb_no awbno, awb.PCS awbpcs, awb.WT awbwt,awb.PCS||'/'||awb.wt awbpcs1,
+		decode(substr(awb.AWB_NO,0,3)||'-'||substr(awb.AWB_NO,4),'-','',substr(awb.AWB_NO,0,3)||'-'||substr(awb.AWB_NO,4)) as awbDisp
+		From Awb_Inventory T1
+   		Join Awb Awb  On T1.Awb_No = Awb.Awb_No And T1.Awb_Date = Awb.Awb_Date
+		Where T1.Loc_Code = #location#
+   		 And Not Exists (Select Null From Trc_Wos_Inv_Dtl   Where Cod_Loc = #location# And Cr_Date &lt; Sysdate - #movmentdays#)
+    	 And Exists (select null from mast_wh_loc  Where code = #location#)				                      
+   </select>	
+   
+	<select id="SqlGetNonCoveredLocFromGrp1"
+		parameterClass="cargo.cms.trace.bo.InventoryCheckResultBO"
+		resultClass="cargo.cms.trace.bo.InventoryCheckResultBO">     
+		select t1.loc_code location,
+		awb.awb_type awbtype, awb.awb_no awbno, awb.PCS awbpcs, awb.WT awbwt,awb.PCS||'/'||awb.wt awbpcs1,
+		decode(substr(awb.AWB_NO,0,3)||'-'||substr(awb.AWB_NO,4),'-','',substr(awb.AWB_NO,0,3)||'-'||substr(awb.AWB_NO,4)) as awbDisp
+		from awb_inventory t1 join awb awb  on t1.awb_no=awb.awb_no
+		where t1.loc_code in (select code from mast_wh_loc  Where wh_Group = #group#) 
+		 And Not Exists (Select Null From Trc_phy_Inv_Dtl   Where cod_grp=#group# And Cr_Date &lt; Sysdate - #movmentdays#)
+    	 And Exists (select null from mast_wh_loc  Where wh_Group =#group#)
+	</select>
+<!--Added by Mahesh B N for Inventory Check Result ends-->
+
+<select id="locnListforPickingOrder" parameterClass="cargo.cms.trace.report.bo.PickingorderBO719" resultClass="cargo.cms.trace.report.bo.PickingorderBO719">
+select distinct (select code_desc from cust_company where code=A.AGENT_CODE) agentName,
+A.AWB_NO awbNo,
+SUBSTR(A.awb_No,0,3) as awbNoPfx,
+SUBSTR(A.awb_No,4) as awbNoSfx,
+A.HAWB_NO hawbNo,
+A.LSP_NO lsp,
+A.ULD_KEY uld,
+A.LOC_CODE locn,
+A.LOCN_PCS pc,
+A.LOCN_WT wt
+from ASV_INVENTORY A 
+where A.HAWB_NO=#hawbNo# and
+A.AGENT_CODE=(select code from cust_company where code_desc=#agentName#)
+</select>
+<select id="pickorderHeader719" parameterClass="cargo.cms.hawb.bo.PickingOrderActionBO" resultClass="cargo.cms.hawb.bo.PickingOrderActionBO">
+select A.PO_NO orderNo,
+TO_CHAR(A.PO_DATE,'DDMONYY') orderDate,
+A.PURPOSE purpose,
+A.TRUCK_NO truck,
+A.DLV_TO dlvTo,
+A.DLV_TO_HKID hkid,
+A.DOC_REF_NO refNo,
+A.STATUS status, 
+A.target target,
+B.HAWB_NO hawbNo,
+B.AGENT_CODE agentCode,
+B.AWB_NO awbNo,
+(select code_desc from cust_company where code=B.AGENT_CODE) agentName, 
+B.ULD_KEY uld,
+decode(c.SPL_CODE1, null, '', c.SPL_CODE1 || ',')
+		|| decode(c.SPL_CODE2, null, '', c.SPL_CODE2 || ',')
+		|| decode(c.SPL_CODE3, null, '', c.SPL_CODE3) shc,
+(select code_desc from cust_company where code=C.CSGN_CODE) csgnee   
+from ASV_PICK_ORDER_HD A left join ASV_inventory B on
+A.PO_NO=B.PO_NO left join asv_hawb C on
+B.HAWB_NO=C.HAWB_NO and
+B.AGENT_CODE=C.AGENT_CODE
+where A.PO_NO=#orderNo#
+</select>
+<select id="viewhawbAssignDiscRept720" parameterClass="cargo.cms.trace.report.bo.AssignDiscBO" resultClass="cargo.cms.trace.report.bo.AssignDiscBO">
+select a.HAWB_NO hawbNo,
+a.agent_code agentCode,
+g.code_desc agentName,
+a.FLOW flow,
+a.AWB_NO awbNo,
+((SUBSTR(a.awb_No,0,3))||'-'||(SUBSTR(a.awb_No,4)))as awbNum,
+to_char(a.AWB_DATE,'DDMONYY') awbDate,
+a.CR_USER_ID assignBy,
+TO_CHAR(a.CR_DATE,'DDMONYY HH24:MI') assignDate,
+b.awb_no awbNo1, 
+((SUBSTR(b.awb_No,0,3))||'-'||(SUBSTR(b.awb_No,4)))as awbNum1
+from asv_hawb a 
+join cust_company g on a.agent_code = g.code
+join edi_fhl_hawb c on a.hawb_no=c.hawb_no 
+join edi_fhl b on b.tr_no = c.tr_no
+join edi_fwb f on b.awb_no = f.awb_no and b.awb_date = f.awb_date
+where (a.agent_code = f.agent_acc_no or g.code_desc = f.agent_name) and not (NVL(a.awb_no,'*') = b.awb_no and NVL(a.awb_date,'12MAR2000') = b.awb_date)
+</select>
+</sqlMap>

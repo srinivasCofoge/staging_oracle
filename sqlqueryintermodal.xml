@@ -1,0 +1,3066 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+<!-- The SQL in these maps files has purposely been typed with more verbosity than is actually required.
+ For example, many of the selects could have just used SELECT * FROM... instead of listing all of the columns.
+ This is to demonstrate that even complex SQL can be handled and coded and formatted the way SQL was meant
+ to be (i.e. not a bunch of concatenated strings in a Java class).  -->
+
+<sqlMap namespace="InterModalModule">
+	<!-- Intermodal Mayank work start here 21-OCT-2011 -->
+
+	<!-- Create Truck Manifest start here 21-OCT-2011 -->
+		<select id="itm_Create_truck_manfst_getShpList" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO"  resultClass="cargo.cms.itm.bo.ItmTruckManfBO">
+SELECT  CAR_SHP.rowId rid, CAR_SHP.AWB_NO AS  awbNo,substr(CAR_SHP.AWB_NO,1,3)||'-'||substr(CAR_SHP.AWB_NO,4,8) AS  awbNoDisp,	TO_CHAR(CAR_SHP.AWB_DATE,'DDMONYY') AS awbDate,
+			CAR_SHP.FLT_KEY AS fltKey,TO_CHAR(CAR_SHP.FLT_DATE,'DDMONYY') AS fltDate,PKG_COMMON.GET_FLT_ATA(CAR_SHP.FLT_KEY,CAR_SHP.FLT_DATE,'A') AS ata,
+            awb.ORIG AS awbOrigin, awb.DEST AS awbDest,  NVL(AWB.PCS,0) awbPcs,NVL(AWB.WT,0) awbWt,
+			CAR_SHP.MANIFEST_PCS AS manfPcs,CAR_SHP.MANIFEST_WT AS manfWt, nvl(INVNT.LOCNPC,0) AS invPcs,
+			nvl(INVNT.LOCNWT,0) AS invWt, nvl(awb.CNSL_IND,'N') consol,
+            (SELECT V.CC_CODE FROM V_CST_IMP_CC_CODE_AWB V
+				WHERE nvl(V.FLT_KEY,'*') = NVL(CAR_SHP.FLT_KEY,'*') AND nvl( V.FLT_DATE,'31AUG2000') = NVL(CAR_SHP.FLT_DATE,'31AUG2000')
+						AND V.AWB_NO =  CAR_SHP.AWB_NO  AND NVL(V.HAWB_NO, '000000000000000000') =  '000000000000000000' AND ROWNUM = 1)  AS ccCode,                 
+						nvl(trkMnf.TRK_MANF_PCS,0) trkMnfPcs , nvl(trkMnf.TRK_MANF_WT,0) trkMnfWt,
+						(CAR_SHP.MANIFEST_PCS - nvl(trkMnf.TRK_MANF_PCS,0)) AS avlPcs, (CAR_SHP.MANIFEST_WT - nvl(trkMnf.TRK_MANF_WT,0)) AS avlWt,
+			nvl(bkgPcs,0) bkgPcs, nvl(bkgWt,0) bkgWt
+  from  
+	   IMP_CAR_SHP CAR_SHP 
+	       join awb  on CAR_SHP.AWB_NO   = awb.AWB_NO AND CAR_SHP.AWB_DATE  = awb.AWB_DATE  and awb.awb_type = 'T' and awb.AWB_CLOSED_YN = 'N'       
+	       left OUTER JOIN ( SELECT AWB_NO,AWB_DATE,FLT_KEY,FLT_DATE,SUM(LOCN_PCS) LOCNPC,SUM(LOCN_WT) LOCNWT FROM AWB_INVENTORY 
+	          	   WHERE LOCN_PCS &gt; 0 AND LOCN_WT &gt; 0 GROUP BY AWB_NO, AWB_DATE, FLT_KEY, FLT_DATE ) INVNT 
+                       ON CAR_SHP.AWB_NO=INVNT.AWB_NO AND CAR_SHP.AWB_DATE=INVNT.AWB_DATE
+                             AND nvl(INVNT.FLT_KEY, '*') = nvl(CAR_SHP.FLT_KEY, '*') AND nvl( CAR_SHP.FLT_DATE, '31AUG2000')= nvl(INVNT.FLT_DATE, '31AUG2000')
+		LEFT OUTER JOIN (select   sum( trkShp.TRK_MANF_PCS) TRK_MANF_PCS , sum(trkShp.TRK_MANF_WT) TRK_MANF_WT,  trkShp.AWB_NO , trkShp.AWB_DATE, trkShp.IMP_FLT_KEY, trkShp.IMP_FLT_DATE
+	                 from ITM_TRK_MANF_HD  trkHd , ITM_TRK_MANF_SHP  trkShp    
+	                 where trkHd.TR_NO = trkShp.TR_NO and trkHd.TRUCK_FLT_NO = trkShp.TRUCK_FLT_NO and trkHd.TRUCK_FLT_DATE = trkShp.TRUCK_FLT_DATE and trkHd.status not in ('VOID')
+	                  group by trkShp.AWB_NO , trkShp.AWB_DATE, trkShp.IMP_FLT_KEY, trkShp.IMP_FLT_DATE  ) trkMnf
+	           on CAR_SHP.AWB_NO=trkMnf.AWB_NO AND CAR_SHP.AWB_DATE=trkMnf.AWB_DATE 
+	                         AND nvl(trkMnf.IMP_FLT_KEY , '*') = nvl(CAR_SHP.FLT_KEY, '*') AND nvl(CAR_SHP.FLT_DATE , '31AUG2000') = nvl(trkMnf.IMP_FLT_DATE, '31AUG2000')
+	                   
+	    left join (select  sum(fblShp.PCS) bkgPcs , sum(fblShp.NET_WT) bkgWt, fblShp.AWB_NO , fblShp.AWB_DATE 
+                     from EDI_FBL fblHd, EDI_FBL_SHP fblShp where fblShp.TR_NO = fblHd.TR_NO 
+                  
+                  <isNotEmpty property="inbFltKey"> 
+                           and fblHd.flt_key = #inbFltKey# 
+                           <isNotEmpty property="inbFltDate"> 
+			                        and fblHd.flt_date = #inbFltDate#
+			                </isNotEmpty>
+                </isNotEmpty>
+                
+                   group by  fblShp.AWB_NO , fblShp.AWB_DATE ) fbl
+               on fbl.awb_no = CAR_SHP.AWB_NO and fbl.AWB_DATE = CAR_SHP.AWB_DATE
+	         where 1 =1
+        <isEqual property="status" compareValue="INV">
+	       and     LOCNPC &gt; 0
+	    	</isEqual>
+	    	<isEqual property="status" compareValue="PLN">
+	        and   trkMnf.TRK_MANF_PCS &gt; 0 
+	    	</isEqual>
+	    	<isEqual property="status" compareValue="BKD">
+	      and     bkgPcs &gt; 0 
+	    	</isEqual>
+	        <isNotEmpty property="awbOrigin"> 
+				AND awb.ORIG =  #awbOrigin#
+			</isNotEmpty>
+			<isNotEmpty property="awbDest"> 
+				and awb.DEST = #awbDest#
+			</isNotEmpty>
+			<isNotEmpty property="awbNo"> 
+				 and  CAR_SHP.AWB_NO = #awbNo#
+			</isNotEmpty>
+           	<isNotEmpty property="inbFltKey"> 
+					 and CAR_SHP.FLT_KEY = #inbFltKey# 
+					  <isNotEmpty property="inbFltDate"> 
+							 and CAR_SHP.FLT_DATE = #inbFltDate#
+					</isNotEmpty>
+			</isNotEmpty>
+	          
+			<isNotEmpty property="trkFltKey"> 
+						<isNotEmpty property="trkFltDate"> 
+					and EXISTS (select null from ITM_TRK_MANF_HD  trkHd , ITM_TRK_MANF_SHP shp 
+									where trkHd.TR_NO = shp.TR_NO and trkHd.TRUCK_FLT_NO = shp.TRUCK_FLT_NO and trkHd.TRUCK_FLT_DATE	= shp.TRUCK_FLT_DATE and trkHd.status not in ('VOID')
+									  and trkHd.truck_flt_no = #trkFltKey#  and to_char(trkHd.truck_flt_date,'DDMONYY') = #trkFltDate#
+									  and shp.AWB_NO=CAR_SHP.AWB_NO AND shp.AWB_DATE=CAR_SHP.AWB_DATE 
+	                         		  AND nvl(shp.IMP_FLT_KEY , '*') = nvl(CAR_SHP.FLT_KEY, '*') AND nvl(shp.IMP_FLT_DATE , '31AUG2000') =nvl(CAR_SHP.FLT_DATE, '31AUG2000'))
+	                   </isNotEmpty>      
+			</isNotEmpty>
+			<!--<isEmpty property="trkFltKey">
+				<isNotEmpty property="trkFltDate"> 
+				and EXISTS (select null from ITM_TRK_MANF_SHP shp where  to_char(shp.truck_flt_date,'DDMONYY') = #trkFltDate#
+					  and shp.AWB_NO=CAR_SHP.AWB_NO AND shp.AWB_DATE=CAR_SHP.AWB_DATE 
+	                         AND nvl(shp.IMP_FLT_KEY , '*') = nvl(CAR_SHP.FLT_KEY, '*') AND nvl(shp.IMP_FLT_DATE , '31AUG2000') =nvl(CAR_SHP.FLT_DATE, '31AUG2000'))				
+				</isNotEmpty>
+			</isEmpty>
+			-->
+			<isEqual property="fltRangeSrchInd" compareValue="Y"> 
+				<isNotEmpty property="inbFltDateFrom"> 
+					<isNotEmpty property="inbFltDateTo"> 
+						 and CAR_SHP.FLT_DATE BETWEEN TO_DATE(#inbFltDateFrom#, 'ddMONyy') AND TO_DATE(#inbFltDateTo#, 'ddMONyy')
+					</isNotEmpty>
+				</isNotEmpty>
+			</isEqual>
+			<isNotEmpty property="arlRowId">
+	           <iterate prepend="AND" property="arlRowId" open="(" close=")" conjunction="OR" >
+			              CAR_SHP.rowid =  #arlRowId[]#
+	          </iterate>  
+	        </isNotEmpty>  
+ 	
+ 	<isEqual property="expSearchInd" compareValue="Y">	
+                           
+union 
+SELECT  CAR_SHP.rowId rid, CAR_SHP.AWB_NO AS  awbNo,substr(CAR_SHP.AWB_NO,1,3)||'-'||substr(CAR_SHP.AWB_NO,4,8) AS  awbNoDisp,	TO_CHAR(CAR_SHP.AWB_DATE,'DDMONYY') AS awbDate,
+			'' AS fltKey,'' AS fltDate,'' AS ata,
+            awb.ORIG AS awbOrigin, awb.DEST AS awbDest,  NVL(AWB.PCS,0) awbPcs,NVL(AWB.WT,0) awbWt,
+			CAR_SHP.PCS AS manfPcs,CAR_SHP.WT AS manfWt, nvl(INVNT.LOCNPC,0) AS invPcs,
+			nvl(INVNT.LOCNWT,0) AS invWt, nvl(awb.CNSL_IND,'N') consol,
+            (SELECT V.CC_CODE FROM V_CST_EXP_CC_CODE V
+				WHERE V.AWB_NO =  CAR_SHP.AWB_NO  AND NVL(V.HAWB_NO, '000000000000000000') =  '000000000000000000' AND ROWNUM = 1)  AS ccCode,                 
+						nvl(trkMnf.TRK_MANF_PCS,0) trkMnfPcs , nvl(trkMnf.TRK_MANF_WT,0) trkMnfWt,
+						(CAR_SHP.PCS - nvl(trkMnf.TRK_MANF_PCS,0)) AS avlPcs, (CAR_SHP.WT - nvl(trkMnf.TRK_MANF_WT,0)) AS avlWt,
+			nvl(bkgPcs,0) bkgPcs, nvl(bkgWt,0) bkgWt
+  from  
+	   EXP_CAR CAR_SHP 
+	       join awb  on CAR_SHP.AWB_NO   = awb.AWB_NO AND CAR_SHP.AWB_DATE  = awb.AWB_DATE  and awb.awb_type = 'T' and awb.AWB_CLOSED_YN = 'N'       
+	       left OUTER JOIN ( SELECT AWB_NO,AWB_DATE,FLT_KEY,FLT_DATE,SUM(LOCN_PCS) LOCNPC,SUM(LOCN_WT) LOCNWT FROM AWB_INVENTORY 
+	          	   WHERE LOCN_PCS &gt; 0 AND LOCN_WT &gt; 0 GROUP BY AWB_NO, AWB_DATE, FLT_KEY, FLT_DATE ) INVNT 
+                       ON CAR_SHP.AWB_NO=INVNT.AWB_NO AND CAR_SHP.AWB_DATE=INVNT.AWB_DATE
+                             
+		LEFT OUTER JOIN (select   sum( trkShp.TRK_MANF_PCS) TRK_MANF_PCS , sum(trkShp.TRK_MANF_WT) TRK_MANF_WT, trkShp.AWB_NO , trkShp.AWB_DATE
+	                 from ITM_TRK_MANF_HD  trkHd , ITM_TRK_MANF_SHP  trkShp    
+	                 where trkHd.TR_NO = trkShp.TR_NO and trkHd.TRUCK_FLT_NO = trkShp.TRUCK_FLT_NO and trkHd.TRUCK_FLT_DATE	= trkShp.TRUCK_FLT_DATE and trkHd.status not in ('VOID')
+	                  group by trkShp.AWB_NO , trkShp.AWB_DATE ) trkMnf
+	           on CAR_SHP.AWB_NO=trkMnf.AWB_NO AND CAR_SHP.AWB_DATE=trkMnf.AWB_DATE 
+	    left join (select  sum(fblShp.PCS) bkgPcs , sum(fblShp.NET_WT) bkgWt, fblShp.AWB_NO , fblShp.AWB_DATE 
+                     from EDI_FBL fblHd, EDI_FBL_SHP fblShp where fblShp.TR_NO = fblHd.TR_NO 
+                     
+                <isNotEmpty property="inbFltKey"> 
+                        <isNotEmpty property="inbFltDate"> 
+                           and fblHd.flt_key = #inbFltKey# and fblHd.flt_date = #inbFltDate#
+                        </isNotEmpty>
+                </isNotEmpty>
+                   group by  fblShp.AWB_NO , fblShp.AWB_DATE ) fbl
+               on fbl.awb_no = CAR_SHP.AWB_NO and fbl.AWB_DATE = CAR_SHP.AWB_DATE
+        where CAR_SHP.ACCEPT_MODE = 'TIT'   
+         <isEqual property="status" compareValue="INV">
+	       and     LOCNPC &gt; 0
+	    	</isEqual>
+	    	<isEqual property="status" compareValue="PLN">
+	        and   TRK_MANF_PCS &gt; 0 
+	    	</isEqual>
+	    	<isEqual property="status" compareValue="BKD">
+	      and     bkgPcs &gt; 0 
+	    	</isEqual>
+	        <isNotEmpty property="awbOrigin"> 
+				AND awb.ORIG =  #awbOrigin#
+			</isNotEmpty>
+			<isNotEmpty property="awbDest"> 
+				and awb.DEST = #awbDest#
+			</isNotEmpty>
+			<isNotEmpty property="awbNo"> 
+				 and  CAR_SHP.AWB_NO = #awbNo#
+			</isNotEmpty>
+          <isNotEmpty property="trkFltKey"> 
+						<isNotEmpty property="trkFltDate"> 
+					and EXISTS (select null from ITM_TRK_MANF_HD  trkHd , ITM_TRK_MANF_SHP shp 
+									where  trkHd.TR_NO = trkShp.TR_NO and trkHd.TRUCK_FLT_NO = trkShp.TRUCK_FLT_NO and trkHd.TRUCK_FLT_DATE = trkShp.TRUCK_FLT_DATE and trkHd.status not in ('VOID')
+									and shp.truck_flt_no = #trkFltKey#  and to_char(shp.truck_flt_date,'DDMONYY') = #trkFltDate#
+								  	and shp.AWB_NO = CAR_SHP.AWB_NO AND shp.AWB_DATE = CAR_SHP.AWB_DATE 
+								  	and shp.IMP_FLT_KEY is null AND shp.IMP_FLT_DATE is null)
+	                   </isNotEmpty>      
+			</isNotEmpty>
+			<!--<isEmpty property="trkFltKey">
+				<isNotEmpty property="trkFltDate"> 
+				and EXISTS (select null from ITM_TRK_MANF_SHP shp where  to_char(shp.truck_flt_date,'DDMONYY') = #trkFltDate#
+					  and shp.AWB_NO=CAR_SHP.AWB_NO AND shp.AWB_DATE=CAR_SHP.AWB_DATE AND
+					  shp.IMP_FLT_KEY is null AND shp.IMP_FLT_DATE is null)
+	                   </isNotEmpty>      
+			</isEmpty>
+			
+			--><isNotEmpty property="arlRowId">
+	           <iterate prepend="AND" property="arlRowId"
+	          open="(" close=")" conjunction="OR" >
+	              CAR_SHP.rowid =  #arlRowId[]#
+	          </iterate>  
+	        </isNotEmpty>  
+	   </isEqual> 
+	</select>
+	
+			<select id="itm_Create_truck_manfst_getShpList_Imp" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO"  resultClass="cargo.cms.itm.bo.ItmTruckManfBO">
+SELECT  CAR_SHP.rowId rid, CAR_SHP.AWB_NO AS  awbNo,substr(CAR_SHP.AWB_NO,1,3)||'-'||substr(CAR_SHP.AWB_NO,4,8) AS  awbNoDisp,	TO_CHAR(CAR_SHP.AWB_DATE,'DDMONYY') AS awbDate,
+			CAR_SHP.FLT_KEY AS fltKey,TO_CHAR(CAR_SHP.FLT_DATE,'DDMONYY') AS fltDate,PKG_COMMON.GET_FLT_ATA(CAR_SHP.FLT_KEY,CAR_SHP.FLT_DATE,'A') AS ata,
+            awb.ORIG AS awbOrigin, awb.DEST AS awbDest,  NVL(AWB.PCS,0) awbPcs,NVL(AWB.WT,0) awbWt,
+			CAR_SHP.MANIFEST_PCS AS manfPcs,CAR_SHP.MANIFEST_WT AS manfWt, nvl(INVNT.LOCNPC,0) AS invPcs,
+			nvl(INVNT.LOCNWT,0) AS invWt, nvl(awb.CNSL_IND,'N') consol,
+            (SELECT V.CC_CODE FROM V_CST_IMP_CC_CODE_AWB V
+				WHERE nvl(V.FLT_KEY,'*') = NVL(CAR_SHP.FLT_KEY,'*') AND nvl( V.FLT_DATE,'31AUG2000') = NVL(CAR_SHP.FLT_DATE,'31AUG2000')
+						AND V.AWB_NO =  CAR_SHP.AWB_NO  AND NVL(V.HAWB_NO, '000000000000000000') =  '000000000000000000' AND ROWNUM = 1)  AS ccCode,                 
+						nvl(trkMnf.TRK_MANF_PCS,0) trkMnfPcs , nvl(trkMnf.TRK_MANF_WT,0) trkMnfWt,
+						(CAR_SHP.MANIFEST_PCS - nvl(trkMnf.TRK_MANF_PCS,0)) AS avlPcs, (CAR_SHP.MANIFEST_WT - nvl(trkMnf.TRK_MANF_WT,0)) AS avlWt,
+			nvl(bkgPcs,0) bkgPcs, nvl(bkgWt,0) bkgWt
+  from  
+	   IMP_CAR_SHP CAR_SHP 
+	       join awb  on CAR_SHP.AWB_NO   = awb.AWB_NO AND CAR_SHP.AWB_DATE  = awb.AWB_DATE  and awb.awb_type = 'T' and awb.AWB_CLOSED_YN = 'N'       
+	       left OUTER JOIN ( SELECT AWB_NO,AWB_DATE,FLT_KEY,FLT_DATE,SUM(LOCN_PCS) LOCNPC,SUM(LOCN_WT) LOCNWT FROM AWB_INVENTORY 
+	          	   WHERE LOCN_PCS &gt; 0 AND LOCN_WT &gt; 0 GROUP BY AWB_NO, AWB_DATE, FLT_KEY, FLT_DATE ) INVNT 
+                       ON CAR_SHP.AWB_NO=INVNT.AWB_NO AND CAR_SHP.AWB_DATE=INVNT.AWB_DATE
+                             AND nvl(INVNT.FLT_KEY, '*') = nvl(CAR_SHP.FLT_KEY, '*') AND nvl( CAR_SHP.FLT_DATE, '31AUG2000')= nvl(INVNT.FLT_DATE, '31AUG2000')
+		LEFT OUTER JOIN (select   sum( trkShp.TRK_MANF_PCS) TRK_MANF_PCS , sum(trkShp.TRK_MANF_WT) TRK_MANF_WT, trkShp.AWB_NO , trkShp.AWB_DATE, trkShp.IMP_FLT_KEY, trkShp.IMP_FLT_DATE
+	                 from ITM_TRK_MANF_HD  trkHd , ITM_TRK_MANF_SHP  trkShp    
+	                 where trkHd.TR_NO = trkShp.TR_NO and trkHd.TRUCK_FLT_NO = trkShp.TRUCK_FLT_NO and trkHd.TRUCK_FLT_DATE	= trkShp.TRUCK_FLT_DATE and trkHd.status not in ('VOID') 
+	                  group by trkShp.AWB_NO , trkShp.AWB_DATE, trkShp.IMP_FLT_KEY, trkShp.IMP_FLT_DATE ) trkMnf
+	           on CAR_SHP.AWB_NO=trkMnf.AWB_NO AND CAR_SHP.AWB_DATE=trkMnf.AWB_DATE 
+	                         AND nvl(trkMnf.IMP_FLT_KEY , '*') = nvl(CAR_SHP.FLT_KEY, '*') AND nvl(CAR_SHP.FLT_DATE , '31AUG2000') =nvl(trkMnf.IMP_FLT_DATE, '31AUG2000')
+	                   
+	    left join (select  sum(fblShp.PCS) bkgPcs , sum(fblShp.NET_WT) bkgWt, fblShp.AWB_NO , fblShp.AWB_DATE 
+                     from EDI_FBL fblHd, EDI_FBL_SHP fblShp where fblShp.TR_NO = fblHd.TR_NO 
+                   group by  fblShp.AWB_NO , fblShp.AWB_DATE ) fbl
+               on fbl.awb_no = CAR_SHP.AWB_NO and fbl.AWB_DATE = CAR_SHP.AWB_DATE
+	         where 1 =1
+         and CAR_SHP.rowid =  #rid#
+	</select>
+	
+			<select id="itm_Create_truck_manfst_getShpList_Exp" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO"  resultClass="cargo.cms.itm.bo.ItmTruckManfBO">
+
+SELECT  CAR_SHP.rowId rid, CAR_SHP.AWB_NO AS  awbNo,substr(CAR_SHP.AWB_NO,1,3)||'-'||substr(CAR_SHP.AWB_NO,4,8) AS  awbNoDisp,	TO_CHAR(CAR_SHP.AWB_DATE,'DDMONYY') AS awbDate,
+			'' AS fltKey,'' AS fltDate,'' AS ata,
+            awb.ORIG AS awbOrigin, awb.DEST AS awbDest,  NVL(AWB.PCS,0) awbPcs,NVL(AWB.WT,0) awbWt,
+			CAR_SHP.PCS AS manfPcs,CAR_SHP.WT AS manfWt, nvl(INVNT.LOCNPC,0) AS invPcs,
+			nvl(INVNT.LOCNWT,0) AS invWt, nvl(awb.CNSL_IND,'N') consol,
+            (SELECT V.CC_CODE FROM V_CST_EXP_CC_CODE V
+				WHERE V.AWB_NO =  CAR_SHP.AWB_NO  AND NVL(V.HAWB_NO, '000000000000000000') =  '000000000000000000' AND ROWNUM = 1)  AS ccCode,                 
+						nvl(trkMnf.TRK_MANF_PCS,0) trkMnfPcs , nvl(trkMnf.TRK_MANF_WT,0) trkMnfWt,
+						(CAR_SHP.PCS - nvl(trkMnf.TRK_MANF_PCS,0)) AS avlPcs, (CAR_SHP.WT - nvl(trkMnf.TRK_MANF_WT,0)) AS avlWt,
+			nvl(bkgPcs,0) bkgPcs, nvl(bkgWt,0) bkgWt
+  from  
+	   EXP_CAR CAR_SHP 
+	       join awb  on CAR_SHP.AWB_NO   = awb.AWB_NO AND CAR_SHP.AWB_DATE  = awb.AWB_DATE  and awb.awb_type = 'T' and awb.AWB_CLOSED_YN = 'N'       
+	       left OUTER JOIN ( SELECT AWB_NO,AWB_DATE,FLT_KEY,FLT_DATE,SUM(LOCN_PCS) LOCNPC,SUM(LOCN_WT) LOCNWT FROM AWB_INVENTORY 
+	          	   WHERE LOCN_PCS &gt; 0 AND LOCN_WT &gt; 0 GROUP BY AWB_NO, AWB_DATE, FLT_KEY, FLT_DATE ) INVNT 
+                       ON CAR_SHP.AWB_NO=INVNT.AWB_NO AND CAR_SHP.AWB_DATE=INVNT.AWB_DATE
+                             
+		LEFT OUTER JOIN (select   sum( trkShp.TRK_MANF_PCS) TRK_MANF_PCS , sum(trkShp.TRK_MANF_WT) TRK_MANF_WT, trkShp.AWB_NO , trkShp.AWB_DATE, trkShp.IMP_FLT_KEY, trkShp.IMP_FLT_DATE
+	                 from ITM_TRK_MANF_HD  trkHd , ITM_TRK_MANF_SHP  trkShp    
+	                 where trkHd.TR_NO = trkShp.TR_NO and trkHd.TRUCK_FLT_NO = trkShp.TRUCK_FLT_NO and trkHd.TRUCK_FLT_DATE	= trkShp.TRUCK_FLT_DATE and trkHd.status not in ('VOID') 
+	                  group by trkShp.AWB_NO , trkShp.AWB_DATE, trkShp.IMP_FLT_KEY, trkShp.IMP_FLT_DATE ) trkMnf
+	           on CAR_SHP.AWB_NO=trkMnf.AWB_NO AND CAR_SHP.AWB_DATE=trkMnf.AWB_DATE 
+	    left join (select  sum(fblShp.PCS) bkgPcs , sum(fblShp.NET_WT) bkgWt, fblShp.AWB_NO , fblShp.AWB_DATE 
+                     from EDI_FBL fblHd, EDI_FBL_SHP fblShp where fblShp.TR_NO = fblHd.TR_NO 
+                     
+                
+                   group by  fblShp.AWB_NO , fblShp.AWB_DATE ) fbl
+               on fbl.awb_no = CAR_SHP.AWB_NO and fbl.AWB_DATE = CAR_SHP.AWB_DATE
+        where CAR_SHP.ACCEPT_MODE = 'TIT'   
+         and CAR_SHP.rowid =  #rid#
+			
+			
+	</select>
+	
+	<select id="itm_Create_truck_manfst_getShpListCOUNT" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO"  resultClass="cargo.cms.itm.bo.ItmTruckManfBO">
+ 
+		SELECT count(1)
+		FROM 
+	   	(select carshp.AWB_NO,	carshp.AWB_DATE, carshp.FLT_KEY, carshp.FLT_DATE, carshp.MANIFEST_PCS, carshp.MANIFEST_WT 
+	               from IMP_CAR_SHP carshp 
+	               join awb  on carshp.AWB_NO   = awb.AWB_NO AND carshp.AWB_DATE  = awb.AWB_DATE and awb_type = 'T' and AWB_CLOSED_YN = 'N'
+	       union
+	               select AWB_NO,	AWB_DATE, null FLT_KEY, null FLT_DATE, PCS MANIFEST_PCS, WT MANIFEST_WT from EXP_CAR where ACCEPT_MODE = 'TIT') CAR_SHP
+	       join awb  on CAR_SHP.AWB_NO   = awb.AWB_NO AND CAR_SHP.AWB_DATE  = awb.AWB_DATE             
+	       left OUTER JOIN ( SELECT AWB_NO,AWB_DATE,FLT_KEY,FLT_DATE,SUM(LOCN_PCS) LOCNPC,SUM(LOCN_WT) LOCNWT FROM AWB_INVENTORY 
+	          	   WHERE LOCN_PCS > 0 AND LOCN_WT > 0 GROUP BY AWB_NO, AWB_DATE, FLT_KEY, FLT_DATE ) INVNT 
+                       ON CAR_SHP.AWB_NO=INVNT.AWB_NO AND CAR_SHP.AWB_DATE=INVNT.AWB_DATE
+                             AND nvl(INVNT.FLT_KEY, '*') = nvl(CAR_SHP.FLT_KEY, '*') AND nvl( CAR_SHP.FLT_DATE, '31AUG2000')= nvl(INVNT.FLT_DATE, '31AUG2000')
+		LEFT OUTER JOIN (select  sum( trkShp.TRK_MANF_PCS) TRK_MANF_PCS , sum(trkShp.TRK_MANF_WT) TRK_MANF_WT, trkShp.AWB_NO , trkShp.AWB_DATE, trkShp.IMP_FLT_KEY, trkShp.IMP_FLT_DATE
+	                 from ITM_TRK_MANF_HD  trkHd , ITM_TRK_MANF_SHP  trkShp    
+	                 where trkHd.TR_NO = trkShp.TR_NO and trkHd.TRUCK_FLT_NO = trkShp.TRUCK_FLT_NO and trkHd.TRUCK_FLT_DATE	= trkShp.TRUCK_FLT_DATE and trkHd.status not in ('VOID')
+	                 group by trkShp.AWB_NO , trkShp.AWB_DATE, trkShp.IMP_FLT_KEY, trkShp.IMP_FLT_DATE) trkMnf
+	           on CAR_SHP.AWB_NO=trkMnf.AWB_NO AND CAR_SHP.AWB_DATE=trkMnf.AWB_DATE 
+	                         AND nvl(trkMnf.IMP_FLT_KEY , '*') = nvl(CAR_SHP.FLT_KEY, '*') AND nvl(CAR_SHP.FLT_DATE , '31AUG2000') =nvl(trkMnf.IMP_FLT_DATE, '31AUG2000')
+	    left join (select  sum(fblShp.PCS) bkgPcs , sum(fblShp.NET_WT) bkgWt, fblShp.AWB_NO , fblShp.AWB_DATE 
+                     from EDI_FBL fblHd, EDI_FBL_SHP fblShp where fblShp.TR_NO = fblHd.TR_NO
+                     <isNotEmpty property="inbFltKey"> 
+							 and flt_key = #inbFltKey# 
+					</isNotEmpty>
+		           	<isNotEmpty property="inbFltDate"> 
+						 and flt_key = #inbFltKey# and flt_date = #inbFltDate#
+					</isNotEmpty>
+                     group by  fblShp.AWB_NO , fblShp.AWB_DATE ) fbl
+               on fbl.awb_no = CAR_SHP.AWB_NO and fbl.AWB_DATE = CAR_SHP.AWB_DATE
+	         where
+			 <isEmpty property="status"> 
+				1 = 1
+			</isEmpty> 		
+          	<isEqual property="status" compareValue="INV">
+	           LOCNPC > 0
+	    	</isEqual>
+	    	<isEqual property="status" compareValue="PLN">
+	           TRK_MANF_PCS > 0 
+	    	</isEqual>
+	    	<isEqual property="status" compareValue="BKD">
+	           bkgPcs > 0 
+	    	</isEqual>
+	        <isNotEmpty property="awbOrigin"> 
+				AND awb.ORIG =  #awbOrigin#
+			</isNotEmpty>
+			<isNotEmpty property="awbDest"> 
+				and awb.DEST = #awbDest#
+			</isNotEmpty>
+			<isNotEmpty property="awbNo"> 
+				 and  CAR_SHP.AWB_NO = #awbNo#
+			</isNotEmpty>
+           	<isNotEmpty property="inbFltKey"> 
+					 and CAR_SHP.FLT_KEY = #inbFltKey#
+			</isNotEmpty>
+	        <isNotEmpty property="inbFltDate"> 
+					and CAR_SHP.FLT_DATE = #inbFltDate#
+			</isNotEmpty>
+           	<isNotEmpty property="trkFltKey"> 
+					 and trkMnf.TRUCK_FLT_NO = #trkFltKey# 
+			</isNotEmpty>
+			<isNotEmpty property="trkFltDate"> 
+				 and trkMnf.TRUCK_FLT_DATE = #trkFltDate#
+			</isNotEmpty>
+			<isNotEmpty property="inbFltDateFrom"> 
+				<isNotEmpty property="inbFltDateTo"> 
+					 and CAR_SHP.FLT_DATE BETWEEN TO_DATE(#inbFltDateFrom#, 'ddMONyy') AND TO_DATE(#inbFltDateTo#, 'ddMONyy')
+				</isNotEmpty>
+			</isNotEmpty>
+	</select><!--
+and  nvl(fhlHd.FLT_CARR||fhlHd.FLT_NO, '*') = nvl(#fltKey#, '*') 
+			and nvl(fhlHd.FLT_DATE , '31AUG2000') = nvl(#fltDate#, '31AUG2000')
+
+	--><select id="itm_Create_truck_manfst_getHouseList" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO"  resultClass="cargo.cms.itm.bo.ItmTruckManfBO">
+	<![CDATA[ 
+		select fhlHd.AWB_NO AS  awbNo,substr(fhlHd.AWB_NO,1,3)||'-'||substr(fhlHd.AWB_NO,4,8) AS  awbNoDisp,	
+		TO_CHAR(fhlHd.AWB_DATE,'DDMONYY') AS awbDate,
+		fhlHd.FLT_CARR||fhlHd.FLT_NO AS fltKey,TO_CHAR(fhlHd.FLT_DATE,'DDMONYY') AS fltDate,
+		fhlHawb.HAWB_NO hawbNo, fhlHawb.HAWB_ORG hawbOrig, fhlHawb.HAWB_DEST hawbDest, 
+		fhlHawb.HAWB_PCS hawbPcs, fhlHawb.HAWB_NET_WT hawbWt,
+		nvl(trkMnf.TRK_HAWB_MANF_PCS,0) trkMnfPcs, nvl(trkMnf.TRK_HAWB_MANF_WT,0) trkMnfWt,
+		(fhlHawb.HAWB_PCS - nvl(trkMnf.TRK_HAWB_MANF_PCS,0)) AS avlHawbPcs,
+		(fhlHawb.HAWB_NET_WT - nvl(trkMnf.TRK_HAWB_MANF_WT,0)) AS avlHawbWt
+		from EDI_FHL fhlHd
+		join EDI_FHL_HAWB fhlHawb on fhlHd.TR_NO = fhlHawb.TR_NO
+		LEFT OUTER JOIN ( select trkShp.AWB_NO , trkShp.AWB_DATE,  trkHawb.HAWB_NO , 
+							 		sum(trkHawb.TRK_MANF_PCS) TRK_HAWB_MANF_PCS, sum(trkHawb.TRK_MANF_WT) TRK_HAWB_MANF_WT
+							from ITM_TRK_MANF_HD  trkHd 
+							join ITM_TRK_MANF_SHP  trkShp on trkHd.TR_NO = trkShp.TR_NO 
+							join ITM_TRK_MANF_SHP_HAWB   trkHawb on trkHd.TR_NO = trkHawb.TR_NO and trkShp.doc_line_no = trkHawb.dtl_doc_line_no
+							where trkHd.status <> 'VOID'
+							group by trkShp.AWB_NO , AWB_DATE,  trkHawb.HAWB_NO) trkMnf
+		on fhlHd.AWB_NO=trkMnf.AWB_NO AND fhlHd.AWB_DATE=trkMnf.AWB_DATE and fhlHawb.HAWB_NO = trkMnf.HAWB_NO 
+		where fhlHd.AWB_NO = #awbNo# and  fhlHd.AWB_DATE = #awbDate#  
+			
+		]]>			
+	</select>
+
+	<select id="itm_get_truck_dtls" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO"  resultClass="cargo.cms.itm.bo.ItmTruckManfBO">
+	<![CDATA[ 
+		select TRUCK_FLT_NO trkFltKey, to_char(TRUCK_FLT_DATE,'DDMONYY') trkFltDate, 
+				UNLDG_PT1 unldgPtOne, UNLDG_PT2 unldgPtTwo, UNLDG_PT3 unldgPtThree, 
+				to_char(NVL(SCH_TIME,0),'0000') schTime, OPERATOR operater, CAPACITY capacity, RESTRICTIONS restriction
+		 from ITM_TRK_FLT where TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE  = #trkFltDate#
+	]]>			
+	</select>
+
+	<insert id="insert_ITM_TRK_MANF_HD" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >					
+		Insert into ITM_TRK_MANF_HD (TR_NO,TRUCK_FLT_NO,TRUCK_FLT_DATE,TRUCK_NO,SCH_TIME,UNLDG_PT,CLS_RD_PERMIT,CROSS_DATE,CROSS_TIME,CTRL_PT_CODE,
+		TRK_MANF_PCS,TRK_MANF_WT,STATUS,CONFIRM_IND,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE,TR_TYPE,TR_EVENT) 
+		values (#trNo#,#trkFltKey#,#trkFltDate#,#truckNo#,#schTime#,#unldgPt#,#clsRdPermit#,#crossDate#,
+		#crossTime#,#ctrlPtCode#,#ttlNewTrkMnfPcs#,#ttlNewTrkMnfWt#,'CREATED',#confirmInd#,
+		#lmUserId#,sysdate,#lmUserId#,sysdate,'IM','ITMCTM')
+	</insert>
+
+
+	<insert id="insert_ITM_TRK_MANF_SHP" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >					
+		Insert into ITM_TRK_MANF_SHP (TR_NO,TRUCK_FLT_NO,TRUCK_FLT_DATE,DOC_LINE_NO,AWB_NO,AWB_DATE,IMP_FLT_KEY,IMP_FLT_DATE,ATA,ORIG,DEST,
+		MANF_PCS, MANF_WT,IMP_CC, CNSL_IND, TRK_MANF_PCS, TRK_MANF_WT,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE) 
+		values (#trNo#,#trkFltKey#,#trkFltDate#,#docLineNo#,#awbNo#,#awbDate#,#fltKey#,#fltDate#,#ata#,#awbOrigin#,#awbDest#,
+		#manfPcs#,#manfWt#,#ccCode#,#consol#,#newTrkMnfPcs#,#newTrkMnfWt#,#lmUserId#,sysdate,#lmUserId#,sysdate)
+	</insert>
+	
+	<insert id="insert_ITM_TRK_MANF_AWB" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >					
+		Insert into ITM_TRK_MANF_AWB 
+				(TR_NO,TRUCK_FLT_NO,TRUCK_FLT_DATE,DOC_LINE_NO,AWB_NO,AWB_DATE, 
+					TRK_MANF_PCS,TRK_MANF_WT,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE,TR_TYPE) 
+		values (#trNo#,#trkFltKey#,#trkFltDate#,#awbDocLineNo#,#awbNo#,#awbDate#,
+				#newTrkMnfPcs#,#newTrkMnfWt#,#lmUserId#,sysdate,#lmUserId#,sysdate,#trtype#)
+	</insert>
+	
+	<update id="update_ITM_TRK_MANF_AWB" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >					
+		update 	ITM_TRK_MANF_AWB 
+		set 	TRK_MANF_PCS = TRK_MANF_PCS - nvl(#trkMnfPcs#,0) + nvl(#newTrkMnfPcs#,0) ,
+				TRK_MANF_WT = TRK_MANF_WT - nvl(#trkMnfWt#,0) + nvl(#newTrkMnfWt#,0),
+				LM_USER_ID = #lmUserId#,
+				LM_DATE = sysdate,
+				TR_TYPE = #trtype#
+		where 	TR_NO = #trNo# and TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate# 
+				and DOC_LINE_NO = #awbDocLineNo# and AWB_NO = #awbNo# and AWB_DATE = #awbDate# 
+	</update>
+	
+	<insert id="insert_ITM_TRK_MANF_SHP_HAWB" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >					
+		Insert into ITM_TRK_MANF_SHP_HAWB (TR_NO,TRUCK_FLT_NO,TRUCK_FLT_DATE,DTL_DOC_LINE_NO,HAWB_NO,DEST,IMP_CC,HAWB_PCS,HAWB_WT,
+				TRK_MANF_PCS,TRK_MANF_WT,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE) 
+		values (#trNo#,#trkFltKey#,#trkFltDate#,#docLineNo#,#hawbNo#,#hawbDest#,#ccCode#,#hawbPcs#,#hawbWt#,
+		#newTrkMnfPcs#,#newTrkMnfWt#,#lmUserId#,sysdate,#lmUserId#,sysdate)
+	</insert>
+	
+	<insert id="insert_ITM_TRK_MANF_AWB_HAWB" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >					
+		Insert into ITM_TRK_MANF_AWB_HAWB (TR_NO,TRUCK_FLT_NO,TRUCK_FLT_DATE,DTL_DOC_LINE_NO,
+				HAWB_NO,TRK_MANF_PCS,TRK_MANF_WT,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE) 
+		values (#trNo#,#trkFltKey#,#trkFltDate#,#awbDocLineNo#,#hawbNo#,
+		#newTrkMnfPcs#,#newTrkMnfWt#,#lmUserId#,sysdate,#lmUserId#,sysdate)
+	</insert>
+	
+	<update id="update_ITM_TRK_MANF_AWB_HAWB" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >					
+		update 	ITM_TRK_MANF_AWB_HAWB 
+		set 	TRK_MANF_PCS = TRK_MANF_PCS - nvl(#trkMnfPcs#,0)  + nvl(#newTrkMnfPcs#,0) ,
+				TRK_MANF_WT = TRK_MANF_WT - nvl(#trkMnfWt#,0)  + nvl(#newTrkMnfWt#,0) ,
+				LM_USER_ID = #lmUserId#,
+				LM_DATE = sysdate
+		where 	TR_NO = #trNo# and TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate# 
+				and DTL_DOC_LINE_NO = #awbDocLineNo# and HAWB_NO = #hawbNo# 
+	</update>
+
+	<select id="getHawbPcsWtForAmend" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO"  resultClass="cargo.cms.itm.bo.ItmTruckManfBO">
+	<![CDATA[ 
+        select   nvl(sum(trkHawb.TRK_MANF_PCS),0) trkMnfPcs,  nvl(sum(trkHawb.TRK_MANF_WT),0) trkMnfWt
+            from ITM_TRK_MANF_HD  trkHd 
+            join ITM_TRK_MANF_SHP  trkShp on trkHd.TR_NO = trkShp.TR_NO 
+            join ITM_TRK_MANF_SHP_HAWB   trkHawb on trkHd.TR_NO = trkHawb.TR_NO and trkShp.doc_line_no = trkHawb.dtl_doc_line_no
+          where trkHd.status <> 'VOID' and trkShp.AWB_NO = #awbNo# and  trkShp.AWB_DATE = #awbDate# and hawb_no = #hawbNo# and trkHd.tr_no <> #trNo#
+          group by trkShp.AWB_NO , AWB_DATE,  trkHawb.HAWB_NO
+	]]>			
+	</select>
+
+	<select id="get_ITM_TRK_MANF_SHP_DOCLINENO" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.Integer" >
+	<![CDATA[
+	   select nvl(max(DOC_LINE_NO),0) from ITM_TRK_MANF_SHP where TR_NO = #trNo# and TRUCK_FLT_NO = #trkFltKey# 
+	   									and TRUCK_FLT_DATE = #trkFltDate# 
+	]]>
+	</select>
+
+	<select id="get_ITM_TRK_MANF_SHP_DOCLINENO_Count" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.Integer" >
+	<![CDATA[
+	   select count(1) from ITM_TRK_MANF_SHP where TR_NO = #trNo# and TRUCK_FLT_NO = #trkFltKey# 
+	   									and TRUCK_FLT_DATE = #trkFltDate# 
+	]]>
+	</select>
+	
+	<select id="get_ITM_TRK_MANF_SHP_DOCLINENO_AWB_MAX" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.Integer" >
+	<![CDATA[
+	   select nvl(max(DOC_LINE_NO),0) from ITM_TRK_MANF_SHP where TR_NO = #trNo# and TRUCK_FLT_NO = #trkFltKey# 
+	   									and TRUCK_FLT_DATE = #trkFltDate# and AWB_NO = #awbNo# and AWB_DATE = #awbDate#
+	   										and IMP_FLT_KEY = #fltKey# and IMP_FLT_DATE = #fltDate#
+	]]>
+	</select>
+		
+	<select id="get_ITM_TRK_MANF_SHP_HAWB_DTLDOCLINENO_COUNT" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.Integer" >
+	<![CDATA[
+	   select  count(1) from ITM_TRK_MANF_SHP_HAWB where TR_NO = #trNo# and TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate#  and DTL_DOC_LINE_NO  = #docLineNo# and HAWB_NO = #hawbNo# 
+	]]>
+	</select>	
+	
+	<select id="get_ITM_TRK_MANF_AWB_DOCLINENO" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.Integer" >
+	<![CDATA[
+	   select nvl(max(DOC_LINE_NO),0) from ITM_TRK_MANF_AWB where TR_NO = #trNo# and TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate# 
+	]]>
+	</select>
+	
+	<select id="get_ITM_TRK_MANF_AWB_DOCLINENO_Count" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.Integer" >
+	<![CDATA[
+	   select count(1) from ITM_TRK_MANF_AWB where TR_NO = #trNo# and TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate# 
+	]]>
+	</select>
+	
+	<select id="get_ITM_TRK_MANF_AWB_DOCLINENO_AWB_MAX" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.Integer" >
+	<![CDATA[
+	   select nvl(max(DOC_LINE_NO),0) from ITM_TRK_MANF_AWB where TR_NO = #trNo# and TRUCK_FLT_NO = #trkFltKey# 
+	   									and TRUCK_FLT_DATE = #trkFltDate# and AWB_NO = #awbNo# and AWB_DATE = #awbDate#
+	]]>
+	</select>
+	
+	<select id="get_ITM_TRK_MANF_AWB_HAWB_DTLDOCLINENO_COUNT" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.Integer" >
+	<![CDATA[
+	   select  count(1) from ITM_TRK_MANF_AWB_HAWB where TR_NO = #trNo# and TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate#  and DTL_DOC_LINE_NO  = #awbDocLineNo# and HAWB_NO = #hawbNo# 
+	]]>
+	</select>
+	
+	<select id="ITM_check_valid_city" parameterClass="java.lang.String" resultClass="java.lang.Integer" >
+		<![CDATA[
+			select count(1) from MAST_CITY where code = #param#
+		]]>
+	</select>
+	
+	<select id="validateManifestSTD" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.Integer">
+	 <![CDATA[
+          select count(1) from ITM_TRK_MANF_HD 
+		  where
+		  status not in ('VOID') 
+		  and TRUCK_NO = #truckNo#		  
+		  and TRUCK_FLT_DATE = to_date(#trkFltDate#,'DDMONYY') 
+		  and TO_DATE(to_char(TRUCK_FLT_DATE,'DDMONYY') ||to_char(NVL(SCH_TIME,0),'0000'),'DDMONYY HH24MI') 
+          between
+          TO_DATE(#trkFltDate#||to_char(NVL(trim(replace(#schTime#,':','')),'0'),'0000'),'DDMONYYHH24MI')
+          and 
+          TO_DATE(#trkFltDate#||to_char(NVL(trim(replace(#schTime#,':','')),'0'),'0000'),'DDMONYYHH24MI') + (SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'TRK_MNF_SCH_TIME_AFTER')/24
+	 ]]>
+	</select> 
+	
+	<select id="validateManifestSTDMtn" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.Integer">
+	 <![CDATA[
+          select count(1) from ITM_TRK_MANF_HD 
+		  where
+		  status not in ('VOID') 
+		  and TRUCK_NO = #truckNo# 
+		  and TRUCK_FLT_NO <> #trkFltKey# 
+		  and TRUCK_FLT_DATE = to_date(#trkFltDate#,'DDMONYY') 
+		  and TO_DATE(to_char(TRUCK_FLT_DATE,'DDMONYY') ||to_char(NVL(SCH_TIME,0),'0000'),'DDMONYY HH24MI') 
+          between
+          TO_DATE(#trkFltDate#||to_char(NVL(trim(replace(#schTime#,':','')),'0'),'0000'),'DDMONYYHH24MI')
+          and 
+          TO_DATE(#trkFltDate#||to_char(NVL(trim(replace(#schTime#,':','')),'0'),'0000'),'DDMONYYHH24MI') + (SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'TRK_MNF_SCH_TIME_AFTER')/24
+	 ]]>
+	</select>   
+
+	<select id="validateManifestTruckFlt" parameterClass="map" resultClass="java.lang.Integer">
+	 <![CDATA[
+          select count(1) from ITM_TRK_MANF_HD 
+		  where
+		  status not in ('VOID')
+		  and TRUCK_FLT_NO = #trkFltKey# 
+		  and TRUCK_FLT_DATE between to_date(#startDate#,'DDMONYY') and  to_date(#endDate#,'DDMONYY')
+		  and SCH_TIME = replace(#schTime#,':','')
+	 ]]>
+	</select>  
+	
+	<select id="getTrNoManifestTruckFlight" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.String">
+	 <![CDATA[
+	      select TR_NO from ITM_TRK_MANF_HD where TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate# and status not in ('VOID')
+		   ]]>
+	</select>
+	
+	<select id="validateManifestTruckFlight" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.Integer">
+	 <![CDATA[
+	      select count(1) from ITM_TRK_MANF_HD where TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate# and status not in ('VOID')
+		   ]]>
+	</select>
+	
+	<select id="validateManifestTruckFlight_BU_STATUS" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.Integer">
+	 <![CDATA[
+	      select count(1) from ITM_TRK_MANF_HD where TR_NO = #trNo# and TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate#  and status not in ('VOID') and BU_COMPL_DATE is not null
+	     
+		   ]]>
+	</select>
+
+	<select id="validateTruckCarrierCode" parameterClass="java.lang.String" resultClass="java.lang.Integer">
+	 <![CDATA[
+	      select count(1) from MAST_TRUCK_CARRIER where UPPER(CODE) = UPPER(#param#)
+		   ]]>
+	</select>	
+
+	<select id="validate_truck_no" parameterClass="java.lang.String" resultClass="java.lang.Integer">
+		SELECT 
+			count(1)
+		FROM 
+			TRUCK_TRIP 
+		WHERE 
+			TRUCK_NO=#truckNo# AND CLOSED='N'
+	</select>
+
+	<!-- Create Truck Manifest end here 21-OCT-2011 -->
+	
+	<!-- Truck Flight Schedule Starts here 25-OCT-2011 -->
+	
+	<select id="get_trk_flt_Schedule_HD_list" parameterClass="cargo.cms.itm.bo.TrkFltScheduleBO"  resultClass="cargo.cms.itm.bo.TrkFltScheduleBO">
+		<![CDATA[ 
+			select distinct schHd.TR_NO trNo, schHd.TRUCK_FLT_NO trkFltKey,
+	  		to_char(schHd.START_DATE,'DDMONYY') trkSchStartDate, to_char(schHd.END_DATE ,'DDMONYY') trkSchEndDate,
+	  		to_char(schHd.START_DATE,'DDMONYY') startDate, to_char(schHd.END_DATE ,'DDMONYY') endDate
+			from ITM_TRK_FLT_SCH schHd, ITM_TRK_FLT_SCH_DTL schDtl
+			where schHd.TR_NO = schDtl.TR_NO 
+		]]>		
+		
+			<isNotEmpty property="trkFltKey"> 
+					 and schHd.TRUCK_FLT_NO = #trkFltKey#  
+			</isNotEmpty>
+			
+			<isNotEmpty property="operator"> 
+				and OPERATOR = #operator#
+			</isNotEmpty>
+			<isNotEmpty property="unldgPt"> 
+				and #unldgPt# in (schDtl.UNLDG_PT1,schDtl.UNLDG_PT2,schDtl.UNLDG_PT3)
+			</isNotEmpty>
+		
+		<isNotEmpty property="schDateTimeFrom"> 
+	           	<isNotEmpty property="schDateTimeTo"> 
+	           	
+	           	and ((TO_DATE(#schDateTimeFrom#,'DDMONYY HH24MI') between to_DATE(to_char(START_DATE,'DDMONYY') || ' ' || TO_CHAR(NVL(SCH_TIME,0),'0000'),'DDMONYY HH24MI') and 
+					to_DATE(to_char(END_DATE,'DDMONYY')  || ' ' || TO_CHAR(NVL(SCH_TIME,0),'0000'), 'DDMONYY HH24MI')) 
+				or 
+				(TO_DATE(#schDateTimeTo#,'DDMONYY HH24MI') between to_DATE(to_char(START_DATE,'DDMONYY') || ' ' || TO_CHAR(NVL(SCH_TIME,0),'0000'),'DDMONYY HH24MI')  and
+					to_DATE(to_char(END_DATE,'DDMONYY')  || ' ' || TO_CHAR(NVL(SCH_TIME,0),'0000'), 'DDMONYY HH24MI') ) 
+				or
+				(to_DATE(to_char(START_DATE,'DDMONYY')  || TO_CHAR(NVL(SCH_TIME,0),'0000'),'DDMONYY HH24MI') &gt;=  TO_DATE(#schDateTimeFrom#,'DDMONYY HH24MI')  and 
+					to_DATE(to_char(END_DATE,'DDMONYY')  || TO_CHAR(NVL(SCH_TIME,0),'0000'), 'DDMONYY HH24MI') &lt;= TO_DATE(#schDateTimeTo#,'DDMONYY HH24MI') ))  
+	           	
+					
+				</isNotEmpty>
+			</isNotEmpty>
+	</select>
+	
+	<select id="get_trk_flt_Schedule_DTL_list" parameterClass="cargo.cms.itm.bo.TrkFltScheduleBO"  resultClass="cargo.cms.itm.bo.TrkFltScheduleBO">
+		<![CDATA[ 
+			select TR_NO trNo , DOC_LINE_NO docLineNo , TRUCK_FLT_NO trkFltKey,	
+			TRIM(DECODE(NVL(MON_FLG,'N'),'Y',1,'') || DECODE(NVL(TUE_FLG,'N'),'Y',2,'') || DECODE(NVL(WED_FLG,'N'),'Y',3,'')
+						   || DECODE(NVL(THU_FLG,'N'),'Y',4,'') || DECODE(NVL(FRI_FLG,'N'),'Y',5,'') || DECODE(NVL(SAT_FLG,'N'),'Y',6,'') 
+						   || DECODE(NVL(SUN_FLG,'N'),'Y',7,'')) frequency,
+			SUBSTR(TRIM(TO_CHAR(NVL(SCH_TIME,0),'0000')),0,2) || ':' || SUBSTR(TRIM(TO_CHAR(NVL(SCH_TIME,0),'0000')),3,4) schTime, 
+			CAPACITY capacity, OPERATOR operator
+			from  ITM_TRK_FLT_SCH_DTL 
+			where TR_NO = #trNo# 
+		]]>		
+	</select>
+	
+	<select id="get_trk_flt_Schedule_MTN_list" parameterClass="cargo.cms.itm.bo.TrkFltScheduleBO"  resultClass="cargo.cms.itm.bo.TrkFltScheduleBO">
+		<![CDATA[ 
+			select TR_NO trNo , DOC_LINE_NO docLineNo , TRUCK_FLT_NO trkFltKey,	
+			UNLDG_PT1 unldgPtOne, UNLDG_PT2 unldgPtTwo, UNLDG_PT3 unldgPtThree, 
+			SUBSTR(TRIM(TO_CHAR(NVL(SCH_TIME,0),'0000')),0,2) || ':' || SUBSTR(TRIM(TO_CHAR(NVL(SCH_TIME,0),'0000')),3,4) schTime, 
+			SUBSTR(TRIM(TO_CHAR(NVL(SCH_TIME,0),'0000')),0,2) schTimeHH, SUBSTR(TRIM(TO_CHAR(NVL(SCH_TIME,0),'0000')),3,4) schTimeMI, 
+			OPERATOR operator, CAPACITY capacity, RESTRICTIONS restriction,
+			TRIM(DECODE(NVL(MON_FLG,'N'),'Y',1,'') || DECODE(NVL(TUE_FLG,'N'),'Y',2,'') || DECODE(NVL(WED_FLG,'N'),'Y',3,'')
+						   || DECODE(NVL(THU_FLG,'N'),'Y',4,'') || DECODE(NVL(FRI_FLG,'N'),'Y',5,'') || DECODE(NVL(SAT_FLG,'N'),'Y',6,'') 
+						   || DECODE(NVL(SUN_FLG,'N'),'Y',7,'')) frequency,
+			SUN_FLG AS sunday, 
+			MON_FLG AS monday,
+			TUE_FLG AS tuesday, 
+			WED_FLG AS wednesday, 
+			THU_FLG AS thursday, 
+			FRI_FLG AS friday, 
+			SAT_FLG AS saturday,
+			SUN_FLG AS oldSunday, 
+			MON_FLG AS oldMonday,
+			TUE_FLG AS oldTuesday, 
+			WED_FLG AS oldWednesday, 
+			THU_FLG AS oldThursday, 
+			FRI_FLG AS oldFriday, 
+			SAT_FLG AS oldSaturday
+			 from  ITM_TRK_FLT_SCH_DTL 
+			where TR_NO = #trNo# 
+		]]>		
+	</select>
+	
+	<insert id="insert_ITM_TRK_FLT_SCH" parameterClass="cargo.cms.itm.bo.TrkFltScheduleBO" >					
+		Insert into ITM_TRK_FLT_SCH (TR_NO,TRUCK_FLT_NO,START_DATE,END_DATE,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE) 
+		values (#trNo#,#trkFltKey#,#startDate#,#endDate#,#lmUserId#,sysdate,#lmUserId#,sysdate)
+	</insert>
+	
+	<update id="update_ITM_TRK_FLT_SCH" parameterClass="cargo.cms.itm.bo.TrkFltScheduleBO" >					
+		update ITM_TRK_FLT_SCH
+		set START_DATE = #startDate#,
+		END_DATE = #endDate#,
+		LM_USER_ID = #lmUserId#,
+		LM_DATE = sysdate
+		where TR_NO = #trNo# and TRUCK_FLT_NO = #trkFltKey#
+	</update>
+	
+	<insert id="insert_ITM_TRK_FLT_SCH_DTL" parameterClass="cargo.cms.itm.bo.TrkFltScheduleBO" >					
+		Insert into ITM_TRK_FLT_SCH_DTL (TR_NO,DOC_LINE_NO,TRUCK_FLT_NO,UNLDG_PT1,UNLDG_PT2,UNLDG_PT3,
+		SCH_TIME,OPERATOR,CAPACITY,RESTRICTIONS,MON_FLG,TUE_FLG,WED_FLG,THU_FLG,FRI_FLG,SAT_FLG,SUN_FLG,
+		CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE) 
+		values (#trNo#,#docLineNo#,#trkFltKey#,#unldgPtOne#,#unldgPtTwo#,#unldgPtThree#,
+		#schTime#,#operator#,#capacity#,#restriction#,#monday#,#tuesday#,#wednesday#,#thursday#,#friday#,#saturday#,#sunday#,
+		#lmUserId#,sysdate,#lmUserId#,sysdate)
+	</insert>
+	
+	<delete id="delete_ITM_TRK_FLT_SCH_DTL" parameterClass="cargo.cms.itm.bo.TrkFltScheduleBO" >					
+		delete from ITM_TRK_FLT_SCH_DTL where  TR_NO = #trNo#
+	</delete>
+	
+	<delete id="delete_ITM_TRK_FLT_SCH" parameterClass="cargo.cms.itm.bo.TrkFltScheduleBO" >					
+		delete from ITM_TRK_FLT_SCH where  TR_NO = #trNo#
+	</delete>
+	
+	<select id="get_Trk_Flt_Sch"  parameterClass="cargo.cms.itm.bo.TrkFltScheduleBO"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT DISTINCT CONCAT( CONCAT(TO_CHAR(START_DATE,'DDMONYY'),' - ') ,TO_CHAR(END_DATE,'DDMONYY'))  AS codeId ,
+		 CONCAT( CONCAT(TO_CHAR(START_DATE,'DDMONYY'),' - ') ,TO_CHAR(END_DATE,'DDMONYY'))  AS codeDesc FROM ITM_TRK_FLT_SCH 
+		 WHERE TRUCK_FLT_NO = #trkFltKey# 
+   	</select>
+	
+	<select id="validateManifestSTDForTruckSchedule" parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+	 <![CDATA[
+	      	select count(1) from ITM_TRK_MANF_HD 
+	      	where status not in ('VOID') and 
+	      	TO_DATE(to_char(TRUCK_FLT_DATE,'DDMONYY') ||' ' ||to_char(NVL(SCH_TIME,0),'0000'),'DDMONYY HH24MI') 
+	          between TO_DATE(#startDate# ||' ' ||#schTime#,'DDMONYY HH24MI') and TO_DATE(#endDate# ||' ' ||#schTime#,'DDMONYY HH24MI') 
+		   	and TRUCK_FLT_NO = #trkFltKey#
+		   ]]>  
+	</select> 
+	
+	<select id="validateCreateTruckSchedule"  parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+	<![CDATA[
+		SELECT  count(1) as totalRowCount
+		FROM   ITM_TRK_FLT_SCH
+		WHERE    ((TO_DATE(#startDate#,'DDMONYY') between START_DATE and END_DATE) or (TO_DATE(#endDate#,'DDMONYY')between START_DATE and END_DATE) or
+		     		 (START_DATE >= TO_DATE(#startDate#,'DDMONYY')  and END_DATE<=TO_DATE(#endDate#,'DDMONYY')))
+			and TRUCK_FLT_NO = #trkFltKey#
+		     		
+		]]>
+   	</select>
+   	<select id="validateAmendTruckSchedule"  parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+	<![CDATA[
+		SELECT  count(1) as totalRowCount
+		FROM   ITM_TRK_FLT_SCH
+		WHERE    ((TO_DATE(#startDate#,'DDMONYY') between START_DATE and END_DATE) or (TO_DATE(#endDate#,'DDMONYY')between START_DATE and END_DATE) or
+		     		 (START_DATE >= TO_DATE(#startDate#,'DDMONYY')  and END_DATE<=TO_DATE(#endDate#,'DDMONYY')))
+		     		  and TRUCK_FLT_NO = #trkFltKey#
+		     		 and TR_NO <> #trNo#
+		]]>
+   	</select>
+	
+	<parameterMap id="ins_upd_daily_truck_flight_map" class="java.util.HashMap" >
+	<parameter property="TR_NO" jdbcType="VARCHAR"	javaType="java.lang.String" mode="IN"/>              
+	<parameter property="TRK_FLT_KEY" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>             
+	<parameter property="START_DATE" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/> 
+	<parameter property="END_DATE" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+	</parameterMap>		
+
+	<procedure id="ins_upd_daily_truck_flight"  parameterMap="ins_upd_daily_truck_flight_map" >
+		{call pkg_schedule_truck_flight.ins_upd_daily_truck_flight(?,?,?,?)}
+	</procedure>
+	
+	<!-- Truck Flight Schedule End here 25-OCT-2011 -->
+
+	<!-- Maintain Truck Manifest Start here 07-Nov-2011 -->
+
+
+<!--  Query Changed :: FQA PHASE II :: 2445 :: RANJITH :: STARTS-->
+<select id="getTrkFltListForMtnTruckManifest" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+	 SELECT  trkHd.TR_NO trNo,  trkHd.TRUCK_FLT_NO trkFltKey, 
+        to_char(trkHd.TRUCK_FLT_DATE, 'DDMONYY') trkFltDate, 
+        SUBSTR(TRIM(TO_CHAR(NVL(trkHd.SCH_TIME,0),'0000')),0,2) || ':' || SUBSTR(TRIM(TO_CHAR(NVL(trkHd.SCH_TIME,0),'0000')),3,4) schTime, 
+        trkHd.truck_No truckNo, 
+        trkHd.UNLDG_PT unldgPt,  
+        trkFlt.CAPACITY capacity, 
+        trkFlt.OPERATOR operator,       
+        trkHd.TRK_MANF_PCS trkMnfPcs , 
+        trkHd.TRK_MANF_WT trkMnfWt,
+        DTL.loadedPcs loadedPcs,
+        DTL.loadedWt loadedWt,
+        DTL.ofldPcs ofldPcs,
+        DTL.ofldWt ofldWt,
+        T.bkgPc bkgPcs,
+        T.bkgWt bkgWt,
+        STATUS status,
+		trkFlt.UNLDG_PT1 unldgPtOne, 
+        trkFlt.UNLDG_PT2 unldgPtTwo, 
+        trkFlt.UNLDG_PT3  unldgPtThree,
+        trkFlt.RESTRICTIONS restriction, trkHd.CLS_RD_PERMIT clsRdPermit, to_char(trkHd.CROSS_DATE,'DDMONYY') crossDate,trkHd.CTRL_PT_CODE ctrlPtCode,
+        SUBSTR(TRIM(TO_CHAR(NVL(trkHd.CROSS_TIME,0),'0000')),0,2) || ':' || SUBSTR(TRIM(TO_CHAR(NVL(trkHd.CROSS_TIME,0),'0000')),3,4) crossTime,
+        SUBSTR(TRIM(TO_CHAR(NVL(trkHd.CROSS_TIME,0),'0000')),0,2) crossTimeHH, SUBSTR(TRIM(TO_CHAR(NVL(trkHd.CROSS_TIME,0),'0000')),3,4) crossTimeMI,
+        (select send_status as submitedStatus from cst_subm   where truck_no = trkHd.TRUCK_NO and sch_DATE  = trkHd.TRUCK_FLT_DATE and sch_time = trkHd.SCH_TIME  and flt_type='T' and rec_type='INA'
+         	            AND VER_NO = (SELECT MAX(VER_NO)  FROM CST_SUBM  WHERE TRUCK_NO = trkHd.TRUCK_NO 
+		                          AND SCH_DATE  = trkHd.TRUCK_FLT_DATE and sch_time = trkHd.SCH_TIME AND FLT_TYPE = 'T' AND rec_type='INA')) accsStatus,
+		nvl(CONFIRM_IND,'N') confirmInd
+ 	from ITM_TRK_MANF_HD  trkHd  
+ 	JOIN ITM_TRK_FLT trkFlt ON trkHd.TRUCK_FLT_NO = trkFlt.TRUCK_FLT_NO and trkHd.TRUCK_FLT_DATE	= trkFlt.TRUCK_FLT_DATE
+ 	JOIN ( SELECT SUM(A.OFFLD_PCS) ofldPcs,SUM(A.OFFLD_WT) ofldWt,sum(B.BU_PCS) loadedPcs,sum(B.BU_WT) loadedWt ,  A.TR_NO
+	        FROM ITM_TRK_MANF_SHP A 
+	        JOIN ITM_TRK_MANF_HD HD ON A.TR_NO = HD.TR_NO
+	        JOIN ITM_TRK_MANF_AWB B ON A.TR_NO = B.TR_NO and A.AWB_NO = B.AWB_NO AND A.AWB_DATE = B.AWB_DATE       
+	        <isNotEmpty property="awbNo"> 
+				WHERE  NVL(A.AWB_NO,'*') = #awbNo#
+			</isNotEmpty>
+	        GROUP BY A.TR_NO) DTL ON trkHd.TR_NO = DTL.TR_NO 
+ 	LEFT JOIN (SELECT  SUM(FBL.PC) bkgPc ,SUM(FBL.WT)  bkgWt,TRK.TRUCK_FLT_NO TRUCK_FLT_NO,TRK.TRUCK_FLT_DATE TRUCK_FLT_DATE FROM  (SELECT SUM(fblShp.PCS) PC,SUM(fblShp.NET_WT) WT,fblShp.awb_no AWB_NO,fblShp.awb_date AWB_DATE,fblHd.flt_key FLT_KEY,fblHd.flt_date FLT_DATE
+ 	FROM EDI_FBL fblHd , EDI_FBL_SHP fblShp 
+  	where fblShp.TR_NO = fblHd.TR_NO GROUP BY fblShp.awb_no, fblShp.awb_date, fblHd.flt_key, fblHd.flt_date)FBL 
+  	JOIN ITM_TRK_MANF_SHP TRK  ON FBL.AWB_NO = TRK.AWB_NO AND FBL.AWB_DATE = TRK.AWB_DATE AND FBL.FLT_KEY = TRK.IMP_FLT_KEY AND FBL.FLT_DATE = TRK.IMP_FLT_DATE
+  	 <isNotEmpty property="awbNo"> 
+		WHERE  NVL(FBL.AWB_NO,'*') = #awbNo#
+	</isNotEmpty>
+  	 GROUP BY TRK.TRUCK_FLT_NO, TRK.TRUCK_FLT_DATE) T 
+  	ON trkHd.TRUCK_FLT_NO = T.TRUCK_FLT_NO and trkHd.TRUCK_FLT_DATE	= T.TRUCK_FLT_DATE
+  	where 1 = 1
+  			<isNotEmpty property="status"> 
+	      			and trkHd.status = #status#
+			</isNotEmpty>
+
+			<isNotEmpty property="trkFltKey"> 
+					 and trkHd.TRUCK_FLT_NO = #trkFltKey#
+			</isNotEmpty>
+			<isNotEmpty property="trkFltDate"> 
+					 and trkHd.TRUCK_FLT_Date = #trkFltDate#
+			</isNotEmpty>
+			<isNotEmpty property="truckNo"> 
+					 and trkHd.truck_No = #truckNo#
+			</isNotEmpty>
+
+			<isNotEmpty property="trkDateTimeFrom"> 
+	           	<isNotEmpty property="trkDateTimeTo"> 
+	           		and to_DATE(to_char(trkHd.TRUCK_FLT_DATE,'DDMONYY') || ' ' || TO_CHAR(NVL(trkHd.SCH_TIME,0),'0000'),'DDMONYY HH24MI')  
+	           			between TO_DATE(#trkDateTimeFrom#,'DDMONYY HH24MI') and TO_DATE(#trkDateTimeTo#,'DDMONYY HH24MI') 
+				</isNotEmpty>
+		</isNotEmpty>
+</select>
+
+<!--  Query Changed :: FQA PHASE II :: 2445 :: RANJITH :: ENDS -->
+<select id="getAccsSubmStat" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+	 <![CDATA[
+select a.* from (SELECT 
+	decode(A.REC_TYPE,'BAS','Breakdown',decode(A.REC_TYPE,'AMA','Amended',decode(A.REC_TYPE,'INA','Initial')))  as accsRecTypeName,
+        decode(A.REC_TYPE,'BAS',3,decode(A.REC_TYPE,'AMA',2,decode(A.REC_TYPE,'INA',1)))  as num,
+	A.REC_TYPE as accsRecType,
+	A.VER_NO as accsVerNo, A.LM_VER as accsLmVerNo,
+	DECODE(A.SEND_STATUS,'A','ACCEPTED','R','REJECTED','P','IN PROGRESS','W','PENDING','REJECTED') as accsStatusCode,
+	A.SEND_STATUS as accsStatus
+FROM CST_SUBM  A  
+WHERE A.REC_TYPE = decode(A.REC_TYPE,'BAS','BAS',decode(A.REC_TYPE,'AMA','AMA','INA'))  
+	and   TO_CHAR(A.SCH_DATE,'ddMONYY') =  TO_DATE(#trkFltDate#,'ddMONYY')
+	AND A.sch_time =  trim(replace(#schTime#,':',''))
+	AND A.TRUCK_NO =  #truckNo#
+	AND   A.FLT_TYPE = 'T' 
+	AND A.VER_NO = (SELECT MAX(VER_NO) FROM CST_SUBM WHERE
+			REC_TYPE = decode(REC_TYPE,'BAS','BAS',decode(REC_TYPE,'AMA','AMA','INA'))  
+			and   TO_CHAR(SCH_DATE,'ddMONYY') =  TO_DATE(#trkFltDate#,'ddMONYY')
+			AND sch_time = trim(replace(#schTime#,':',''))
+			AND TRUCK_NO = #truckNo#
+			AND   FLT_TYPE = 'T') order by num desc ) a where rownum = 1
+	 ]]>
+</select>
+
+<select id="getAccsFlightClear" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.String" >
+	 <![CDATA[
+		select NVL(decode(ACK_REC_TYPE,'CCA','Y','N'),'N') as accsFlightClear 
+		FROM CST_ACK WHERE TRUCK_NO = #truckNo#
+		AND sch_DATE =#trkFltDate# AND sch_time =  trim(replace(#schTime#,':','')) AND FLT_TYPE = 'T'   AND ACK_REC_TYPE ='CCA' AND ROWNUM=1
+	 ]]>
+</select>
+
+<select id="getAccsflightReject" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.String" >
+	 <![CDATA[
+		select NVL(decode(ACK_REC_TYPE,'TRJ','Y','N'),'N') as accsflightReject 
+		FROM CST_ACK WHERE   TRUCK_NO = #truckNo#
+		AND sch_DATE =#trkFltDate# AND sch_time =  trim(replace(#schTime#,':','')) AND FLT_TYPE = 'T'   AND ACK_REC_TYPE ='TRJ'  AND ROWNUM=1
+	 ]]>
+</select>
+	 
+<select id="getViewAwbTrkDtlList" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+	 <![CDATA[
+SELECT	 'Y' newOldShp, trkMnf.TR_NO trNo, trkMnf.DOC_LINE_NO awbDocLineNo, ROWNUM rnum, trkMnf.TRUCK_FLT_NO trkFltKey, to_char(trkMnf.TRUCK_FLT_DATE,'DDMONYY') trkFltDate, CAR_SHP.AWB_NO AS  awbNo,
+		TO_CHAR(CAR_SHP.AWB_DATE,'DDMONYY') AS awbDate,
+		substr(CAR_SHP.AWB_NO,1,3)||'-'||substr(CAR_SHP.AWB_NO,4,8) AS  awbNoDisp,	
+		CAR_SHP.FLT_KEY AS fltKey,TO_CHAR(CAR_SHP.FLT_DATE,'DDMONYY') AS fltDate, 
+		PKG_COMMON.GET_FLT_ATA(CAR_SHP.FLT_KEY,CAR_SHP.FLT_DATE,'A') AS ata,
+		awb.ORIG AS awbOrigin, awb.DEST AS awbDest,  NVL(AWB.PCS,0) awbPcs,NVL(AWB.WT,0) awbWt,
+		CAR_SHP.MANIFEST_PCS AS manfPcs,CAR_SHP.MANIFEST_WT AS manfWt, nvl(INVNT.LOCNPC,0) AS invPcs,
+		nvl(INVNT.LOCNWT,0) AS invWt, nvl(awb.CNSL_IND,'N') consol,
+		(SELECT V.CC_CODE FROM V_CST_IMP_CC_CODE_AWB V
+				WHERE nvl(V.FLT_KEY,'*') = NVL(CAR_SHP.FLT_KEY,'*') AND nvl( V.FLT_DATE,'31AUG2000') = NVL(CAR_SHP.FLT_DATE,'31AUG2000')
+				AND V.AWB_NO =  CAR_SHP.AWB_NO  AND NVL(V.HAWB_NO, '000000000000000000') =  '000000000000000000' AND ROWNUM = 1)  AS ccCode,                 
+		nvl(trkMnf.TRK_MANF_PCS,0) trkMnfPcs , nvl(trkMnf.TRK_MANF_WT,0) trkMnfWt,
+		nvl(trkMnf.TRK_MANF_PCS,0) newTrkMnfPcs , nvl(trkMnf.TRK_MANF_WT,0) newTrkMnfWt,
+		(CAR_SHP.MANIFEST_PCS - nvl(trkAWB.TRK_MANF_PCS,0)) AS avlPcs, 
+		(CAR_SHP.MANIFEST_WT - nvl(trkAWB.TRK_MANF_WT,0)) AS avlWt,
+		nvl(bkgPcs,0) bkgPcs, nvl(bkgWt,0) bkgWt,
+		(SELECT V.CC_CODE FROM V_CST_TRUCK_CC_CODE V
+				WHERE nvl(V.truck_no,'*') = NVL(trkMnf.truck_no,'*') AND nvl( V.sch_DATE,'31AUG2000') = NVL(trkMnf.TRUCK_FLT_DATE,'31AUG2000')
+				AND nvl( V.sch_time,'0') = NVL(trkMnf.sch_time,'0')
+				AND V.AWB_NO =  trkMnf.AWB_NO  AND NVL(V.HAWB_NO, '000000000000000000') =  '000000000000000000' AND ROWNUM = 1)  AS trkFltCcCode
+FROM 
+(select  trkHd.TR_NO , trkHd.truck_no, trkHd.sch_time , trkHd.TRUCK_FLT_NO, trkHd.TRUCK_FLT_DATE , trkShp.TRK_MANF_PCS , trkShp.TRK_MANF_WT, trkShp.DOC_LINE_NO DOC_LINE_NO,
+		trkShp.AWB_NO , trkShp.AWB_DATE, trkShp.IMP_FLT_KEY FLT_KEY, trkShp.IMP_FLT_DATE FLT_DATE
+		from ITM_TRK_MANF_HD  trkHd , ITM_TRK_MANF_SHP  trkShp    
+		where trkHd.TR_NO = trkShp.TR_NO and trkHd.TRUCK_FLT_NO = trkShp.TRUCK_FLT_NO and trkHd.TRUCK_FLT_DATE	= trkShp.TRUCK_FLT_DATE and trkHd.status not in  ('VOID','CLOSED','BU_COMPLETE','POSTED') ) trkMnf
+join (select  sum(trkShp.TRK_MANF_PCS) TRK_MANF_PCS,  sum(trkShp.TRK_MANF_WT) TRK_MANF_WT, 
+		trkShp.AWB_NO , trkShp.AWB_DATE
+		from ITM_TRK_MANF_HD  trkHd , ITM_TRK_MANF_AWB  trkShp    
+		where trkHd.TR_NO = trkShp.TR_NO and trkHd.TRUCK_FLT_NO = trkShp.TRUCK_FLT_NO  and  trkHd.TRUCK_FLT_DATE = trkShp.TRUCK_FLT_DATE and trkHd.status not in  ('VOID','CLOSED','BU_COMPLETE','POSTED') group by  trkShp.AWB_NO , trkShp.AWB_DATE) trkAWB    
+                on trkAWB.AWB_NO   = trkMnf.AWB_NO AND trkMnf.AWB_DATE  = trkAWB.AWB_DATE                   
+		
+join (select carshp.AWB_NO,	carshp.AWB_DATE, carshp.FLT_KEY, carshp.FLT_DATE, carshp.MANIFEST_PCS, carshp.MANIFEST_WT 
+		from IMP_CAR_SHP carshp 
+		join awb  on carshp.AWB_NO   = awb.AWB_NO AND carshp.AWB_DATE  = awb.AWB_DATE and awb_type = 'T' and AWB_CLOSED_YN = 'N'
+		union
+		select AWB_NO,	AWB_DATE, null FLT_KEY, null FLT_DATE, PCS MANIFEST_PCS, WT MANIFEST_WT from EXP_CAR where ACCEPT_MODE = 'TIT') CAR_SHP
+		on CAR_SHP.AWB_NO=trkMnf.AWB_NO AND CAR_SHP.AWB_DATE=trkMnf.AWB_DATE 
+		AND nvl(trkMnf.FLT_KEY , '*') = nvl(CAR_SHP.FLT_KEY, '*') AND nvl(CAR_SHP.FLT_DATE , '31AUG2000') =nvl(trkMnf.FLT_DATE, '31AUG2000')             
+
+join awb  on trkMnf.AWB_NO   = awb.AWB_NO AND trkMnf.AWB_DATE  = awb.AWB_DATE         
+
+left OUTER JOIN ( SELECT AWB_NO,AWB_DATE,FLT_KEY,FLT_DATE,SUM(LOCN_PCS) LOCNPC,SUM(LOCN_WT) LOCNWT FROM AWB_INVENTORY 
+					WHERE LOCN_PCS > 0 AND LOCN_WT > 0 GROUP BY AWB_NO, AWB_DATE, FLT_KEY, FLT_DATE ) INVNT 
+					ON trkMnf.AWB_NO=INVNT.AWB_NO AND trkMnf.AWB_DATE=INVNT.AWB_DATE
+					AND nvl(INVNT.FLT_KEY, '*') = nvl(trkMnf.FLT_KEY, '*') AND nvl( trkMnf.FLT_DATE, '31AUG2000')= nvl(INVNT.FLT_DATE, '31AUG2000')         
+left join (select  sum(fblShp.PCS) bkgPcs , sum(fblShp.NET_WT) bkgWt, 
+				fblShp.AWB_NO , fblShp.AWB_DATE , fblHd.FLT_KEY ,		fblHd.FLT_DATE
+				from EDI_FBL fblHd, EDI_FBL_SHP fblShp where fblShp.TR_NO = fblHd.TR_NO 
+				group by  fblHd.FLT_KEY , fblHd.FLT_DATE, fblShp.AWB_NO , fblShp.AWB_DATE ) fbl
+				on fbl.awb_no = trkMnf.AWB_NO and fbl.AWB_DATE = trkMnf.AWB_DATE 
+				AND nvl(fbl.FLT_KEY, '*') = nvl(trkMnf.FLT_KEY, '*') 
+				AND nvl( trkMnf.FLT_DATE, '31AUG2000')= nvl(fbl.FLT_DATE, '31AUG2000')
+]]>
+where	TR_NO = #trNo# and  trkMnf.TRUCK_FLT_NO = #trkFltKey# and trkMnf.TRUCK_FLT_Date = #trkFltDate#
+order by trkMnf.TRUCK_FLT_DATE 
+</select>
+
+
+
+<select id="getAllViewAwbTrkDtlList" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+	 <![CDATA[
+SELECT	 'Y' newOldShp,  trkMnf.TR_NO trNo, trkMnf.DOC_LINE_NO awbDocLineNo, ROWNUM rnum, trkMnf.TRUCK_FLT_NO trkFltKey, to_char(trkMnf.TRUCK_FLT_DATE,'DDMONYY') trkFltDate, CAR_SHP.AWB_NO AS  awbNo,
+		TO_CHAR(CAR_SHP.AWB_DATE,'DDMONYY') AS awbDate,
+		substr(CAR_SHP.AWB_NO,1,3)||'-'||substr(CAR_SHP.AWB_NO,4,8) AS  awbNoDisp,	
+		CAR_SHP.FLT_KEY AS fltKey,TO_CHAR(CAR_SHP.FLT_DATE,'DDMONYY') AS fltDate, 
+		PKG_COMMON.GET_FLT_ATA(CAR_SHP.FLT_KEY,CAR_SHP.FLT_DATE,'A') AS ata,
+		awb.ORIG AS awbOrigin, awb.DEST AS awbDest,  NVL(AWB.PCS,0) awbPcs,NVL(AWB.WT,0) awbWt,
+		CAR_SHP.MANIFEST_PCS AS manfPcs,CAR_SHP.MANIFEST_WT AS manfWt, nvl(INVNT.LOCNPC,0) AS invPcs,
+		nvl(INVNT.LOCNWT,0) AS invWt, nvl(awb.CNSL_IND,'N') consol,
+		(SELECT V.CC_CODE FROM V_CST_IMP_CC_CODE_AWB V
+				WHERE nvl(V.FLT_KEY,'*') = NVL(CAR_SHP.FLT_KEY,'*') AND nvl( V.FLT_DATE,'31AUG2000') = NVL(CAR_SHP.FLT_DATE,'31AUG2000')
+				AND V.AWB_NO =  CAR_SHP.AWB_NO  AND NVL(V.HAWB_NO, '000000000000000000') =  '000000000000000000' AND ROWNUM = 1)  AS ccCode,                 
+		nvl(trkMnf.TRK_MANF_PCS,0) trkMnfPcs , nvl(trkMnf.TRK_MANF_WT,0) trkMnfWt,
+		nvl(trkMnf.TRK_MANF_PCS,0) newTrkMnfPcs , nvl(trkMnf.TRK_MANF_WT,0) newTrkMnfWt,
+		(CAR_SHP.MANIFEST_PCS - nvl(trkAWB.TRK_MANF_PCS,0)) AS avlPcs, 
+		(CAR_SHP.MANIFEST_WT - nvl(trkAWB.TRK_MANF_WT,0)) AS avlWt,
+		nvl(bkgPcs,0) bkgPcs, nvl(bkgWt,0) bkgWt,
+		(SELECT V.CC_CODE FROM V_CST_TRUCK_CC_CODE V
+				WHERE nvl(V.truck_no,'*') = NVL(trkMnf.truck_no,'*') AND nvl( V.sch_DATE,'31AUG2000') = NVL(trkMnf.TRUCK_FLT_DATE,'31AUG2000')
+				AND nvl( V.sch_time,'0') = NVL(trkMnf.sch_time,'0')
+				AND V.AWB_NO =  trkMnf.AWB_NO  AND NVL(V.HAWB_NO, '000000000000000000') =  '000000000000000000' AND ROWNUM = 1)  AS trkFltCcCode
+FROM 
+(select a.* from (select  trkHd.TR_NO , trkHd.truck_no, trkHd.sch_time , trkHd.TRUCK_FLT_NO, trkHd.TRUCK_FLT_DATE , trkShp.TRK_MANF_PCS , trkShp.TRK_MANF_WT, trkShp.DOC_LINE_NO DOC_LINE_NO,
+		trkShp.AWB_NO , trkShp.AWB_DATE, trkShp.IMP_FLT_KEY FLT_KEY, trkShp.IMP_FLT_DATE FLT_DATE
+		from ITM_TRK_MANF_HD  trkHd , ITM_TRK_MANF_SHP  trkShp    
+		where trkHd.TR_NO = trkShp.TR_NO and trkHd.TRUCK_FLT_NO = trkShp.TRUCK_FLT_NO and trkHd.TRUCK_FLT_DATE	= trkShp.TRUCK_FLT_DATE and trkHd.status in (#status#) 
+		order by trkHd.lm_date desc) a where a.TR_NO = #trNo# and rownum = 1 ) trkMnf
+join (select  sum(trkShp.TRK_MANF_PCS) TRK_MANF_PCS,  sum(trkShp.TRK_MANF_WT) TRK_MANF_WT, 
+		trkShp.AWB_NO , trkShp.AWB_DATE
+		from ITM_TRK_MANF_HD  trkHd , ITM_TRK_MANF_AWB  trkShp    
+		where trkHd.TR_NO = trkShp.TR_NO and trkHd.TRUCK_FLT_NO = trkShp.TRUCK_FLT_NO  and  trkHd.TRUCK_FLT_DATE = trkShp.TRUCK_FLT_DATE and trkHd.status in (#status#) 
+		group by  trkShp.AWB_NO , trkShp.AWB_DATE) trkAWB    
+                on trkAWB.AWB_NO   = trkMnf.AWB_NO AND trkMnf.AWB_DATE  = trkAWB.AWB_DATE  
+join (select carshp.AWB_NO,	carshp.AWB_DATE, carshp.FLT_KEY, carshp.FLT_DATE, carshp.MANIFEST_PCS, carshp.MANIFEST_WT 
+		from IMP_CAR_SHP carshp 
+		join awb  on carshp.AWB_NO   = awb.AWB_NO AND carshp.AWB_DATE  = awb.AWB_DATE and awb_type = 'T' and AWB_CLOSED_YN = 'N'
+		union
+		select AWB_NO,	AWB_DATE, null FLT_KEY, null FLT_DATE, PCS MANIFEST_PCS, WT MANIFEST_WT from EXP_CAR where ACCEPT_MODE = 'TIT') CAR_SHP
+		on CAR_SHP.AWB_NO=trkMnf.AWB_NO AND CAR_SHP.AWB_DATE=trkMnf.AWB_DATE 
+		AND nvl(trkMnf.FLT_KEY , '*') = nvl(CAR_SHP.FLT_KEY, '*') AND nvl(CAR_SHP.FLT_DATE , '31AUG2000') =nvl(trkMnf.FLT_DATE, '31AUG2000')             
+
+join awb  on trkMnf.AWB_NO   = awb.AWB_NO AND trkMnf.AWB_DATE  = awb.AWB_DATE         
+
+left OUTER JOIN ( SELECT AWB_NO,AWB_DATE,FLT_KEY,FLT_DATE,SUM(LOCN_PCS) LOCNPC,SUM(LOCN_WT) LOCNWT FROM AWB_INVENTORY 
+					WHERE LOCN_PCS > 0 AND LOCN_WT > 0 GROUP BY AWB_NO, AWB_DATE, FLT_KEY, FLT_DATE ) INVNT 
+					ON trkMnf.AWB_NO=INVNT.AWB_NO AND trkMnf.AWB_DATE=INVNT.AWB_DATE
+					AND nvl(INVNT.FLT_KEY, '*') = nvl(trkMnf.FLT_KEY, '*') AND nvl( trkMnf.FLT_DATE, '31AUG2000')= nvl(INVNT.FLT_DATE, '31AUG2000')         
+left join (select  sum(fblShp.PCS) bkgPcs , sum(fblShp.NET_WT) bkgWt, 
+				fblShp.AWB_NO , fblShp.AWB_DATE , fblHd.FLT_KEY ,		fblHd.FLT_DATE
+				from EDI_FBL fblHd, EDI_FBL_SHP fblShp where fblShp.TR_NO = fblHd.TR_NO 
+				group by  fblHd.FLT_KEY , fblHd.FLT_DATE, fblShp.AWB_NO , fblShp.AWB_DATE ) fbl
+				on fbl.awb_no = trkMnf.AWB_NO and fbl.AWB_DATE = trkMnf.AWB_DATE 
+				AND nvl(fbl.FLT_KEY, '*') = nvl(trkMnf.FLT_KEY, '*') 
+				AND nvl( trkMnf.FLT_DATE, '31AUG2000')= nvl(fbl.FLT_DATE, '31AUG2000')
+]]>
+where trkMnf.TR_NO = #trNo# and trkMnf.TRUCK_FLT_NO = #trkFltKey# and trkMnf.TRUCK_FLT_Date = #trkFltDate#
+order by trkMnf.TRUCK_FLT_DATE 
+</select>
+<select id="getViewAwbHawbTrkDtlList" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+	 <![CDATA[
+		select   'Y' newOldShp, trkMnf.TR_NO trNo, trkMnf.DTL_DOC_LINE_NO awbDocLineNo, ROWNUM rnum, trkMnf.TRUCK_FLT_NO trkFltKey, to_char(trkMnf.TRUCK_FLT_DATE,'DDMONYY') trkFltDate, 
+		fhlHd.AWB_NO AS  awbNo,substr(fhlHd.AWB_NO,1,3)||'-'||substr(fhlHd.AWB_NO,4,8) AS  awbNoDisp,	
+		TO_CHAR(fhlHd.AWB_DATE,'DDMONYY') AS awbDate,
+		fhlHd.FLT_CARR||fhlHd.FLT_NO AS fltKey,TO_CHAR(fhlHd.FLT_DATE,'DDMONYY') AS fltDate,
+		fhlHawb.HAWB_NO hawbNo, fhlHawb.HAWB_ORG hawbOrig, fhlHawb.HAWB_DEST hawbDest, 
+		fhlHawb.HAWB_PCS hawbPcs, fhlHawb.HAWB_NET_WT hawbWt,
+		(fhlHawb.HAWB_PCS - nvl(trkMnfHawb.TRK_HAWB_MANF_PCS,0)) AS avlHawbPcs,
+		(fhlHawb.HAWB_NET_WT - nvl(trkMnfHawb.TRK_HAWB_MANF_WT,0)) AS avlHawbWt,
+		nvl(trkMnf.TRK_HAWB_MANF_PCS,0) trkMnfPcs , nvl(trkMnf.TRK_HAWB_MANF_WT,0) trkMnfWt,
+		nvl(trkMnf.TRK_HAWB_MANF_PCS,0) newTrkMnfPcs , nvl(trkMnf.TRK_HAWB_MANF_WT,0) newTrkMnfWt,
+		(SELECT V.CC_CODE FROM V_CST_IMP_CC_CODE_AWB V
+				WHERE nvl(V.FLT_KEY,'*') = NVL(fhlHd.FLT_CARR||fhlHd.FLT_NO,'*') AND nvl( V.FLT_DATE,'31AUG2000') = NVL(fhlHd.FLT_DATE,'31AUG2000')
+				AND V.AWB_NO =  fhlHd.AWB_NO  AND V.HAWB_NO =  fhlHawb.HAWB_NO AND ROWNUM = 1)  AS ccCode, 
+		(SELECT V.CC_CODE FROM V_CST_TRUCK_CC_CODE V
+				WHERE nvl(V.truck_no,'*') = NVL(trkMnf.truck_no,'*') AND nvl( V.sch_DATE,'31AUG2000') = NVL(trkMnf.TRUCK_FLT_DATE,'31AUG2000')
+				AND nvl( V.sch_time,'0') = NVL(trkMnf.sch_time,'0')
+				AND V.AWB_NO =  fhlHd.AWB_NO  AND V.HAWB_NO =  fhlHawb.HAWB_NO AND ROWNUM = 1)  AS trkFltCcCode 
+				
+		from (select  trkHd.TR_NO , trkHd.truck_no, trkHd.sch_time , trkHd.TRUCK_FLT_NO, trkHd.TRUCK_FLT_DATE , trkShp.AWB_NO , trkShp.AWB_DATE,  trkHawb.HAWB_NO , trkShp.IMP_FLT_KEY, trkShp.IMP_FLT_DATE,
+				trkShp.TRK_MANF_PCS , trkShp.TRK_MANF_WT, trkHawb.TRK_MANF_PCS TRK_HAWB_MANF_PCS, trkHawb.TRK_MANF_WT TRK_HAWB_MANF_WT,
+				trkHawb.DTL_DOC_LINE_NO DTL_DOC_LINE_NO
+				from ITM_TRK_MANF_HD  trkHd 
+		        join ITM_TRK_MANF_SHP trkShp on trkHd.TR_NO = trkShp.TR_NO
+		        join itm_trk_manf_shp_hawb   trkHawb on trkHd.TR_NO = trkHawb.TR_NO and trkShp.doc_line_no = trkHawb.DTL_DOC_LINE_NO) trkMnf
+			        
+		left join  (select trkHawb.HAWB_NO HAWB_NO,  sum(trkHawb.TRK_MANF_PCS) TRK_HAWB_MANF_PCS, sum(trkHawb.TRK_MANF_WT) TRK_HAWB_MANF_WT
+						        from ITM_TRK_MANF_HD  trkHd 
+						        join ITM_TRK_MANF_SHP trkShp on trkHd.TR_NO = trkShp.TR_NO
+						        join itm_trk_manf_shp_hawb   trkHawb on trkHd.TR_NO = trkHawb.TR_NO and trkShp.doc_line_no = trkHawb.DTL_DOC_LINE_NO
+						        where trkHd.status not in ('VOID')  GROUP BY  trkHawb.HAWB_NO) trkMnfHawb 
+        on  trkMnfHawb.HAWB_NO = trkMnf.HAWB_NO 
+        			        
+        join  EDI_FHL fhlHd  on fhlHd.AWB_NO=trkMnf.AWB_NO AND fhlHd.AWB_DATE=trkMnf.AWB_DATE and trkMnf.HAWB_NO = trkMnf.HAWB_NO
+		join EDI_FHL_HAWB fhlHawb on fhlHd.TR_NO = fhlHawb.TR_NO and trkMnf.HAWB_NO = fhlHawb.HAWB_NO
+		]]>
+                where trkmnf.tr_no = #trNo# and trkMnf.DTL_DOC_LINE_NO = #awbDocLineNo#
+			 
+</select>
+
+<select id="fetchViewTruckSeal" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+	 <![CDATA[
+		select seal_no sealNo from TRUCK_SEAL 
+			where trip_id = ( select max(trip_id) from TRUCK_SEAL where  truck_no =  #truckNo# ) 
+			and  truck_no =  #truckNo#
+	]]>
+</select>
+<!--
+ and flt_key = #fltKey# and flt_Date = #fltDate#
+-->
+<select id="getLocnDtlList" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+	 <![CDATA[
+ select ROWNUM rnum,
+ 	A.AWB_NO as awbNo , CONCAT(CONCAT(SUBSTR(A.AWB_NO,0,3),'-'),SUBSTR(A.AWB_NO,4)) as awbNoDisp,
+ 	to_char(A.AWB_DATE,'DDMONYY') as awbDate,A.SEQ_NO as seqNo,A.CARR_CODE as carrCode, 
+ 	A.LOC_CODE locn, 
+	A.LSP_NO lspNo, 
+	A.ULD_KEY uldKey,
+	A.LOCN_PCS locnPcs, 
+	A.LOCN_WT locnWt, 
+	case when  (SELECT COUNT(1) FROM RTRV_MOVE_ORDER  WHERE (STATUS IS NULL OR STATUS = 'STARTED') AND (ULD = A.ULD_KEY or LSP = A.LSP_NO)) > 0 then 'Y' else 'N' end rtrvInd
+	from awb_inventory A where awb_no = #awbNo# and awb_date = #awbDate#
+	AND FLT_KEY IS NOT NULL
+	
+	
+]]>
+</select>
+<!--  AND and flt_key = #fltKey# and flt_Date = #fltDate#  -->
+<select id="getHouseInventoryList" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+	 <![CDATA[
+SELECT HAWB_NO hawbNo,
+		SEQ_NO seqNo,
+		sum(STRG_PCS) hawbPcs, 
+		sum(STRG_WT) hawbWt
+		FROM
+		HAWB_INVENTORY WHERE 
+		SEQ_NO in 
+		(SELECT SEQ_NO FROM AWB_INVENTORY 
+		WHERE AWB_NO = #awbNo# AND 
+		AWB_DATE = TO_DATE(#awbDate#,'DDMONYY') 
+		and SEQ_NO = (SELECT max(SEQ_NO) FROM AWB_INVENTORY 
+						WHERE AWB_NO = #awbNo# AND 
+						AWB_DATE = TO_DATE(#awbDate#,'DDMONYY'))) 
+		group BY HAWB_NO,SEQ_NO
+		]]>
+</select>
+
+	<update id="update_ITM_TRK_MANF_HD" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >		
+		 <![CDATA[			
+		update	ITM_TRK_MANF_HD set
+				TRUCK_NO = #truckNo#,
+				SCH_TIME = #schTime#,
+				UNLDG_PT = #unldgPt#,
+				CLS_RD_PERMIT = #clsRdPermit#,
+				CROSS_DATE = #crossDate#,
+				CROSS_TIME = #crossTime#,
+				CTRL_PT_CODE = #ctrlPtCode#,
+				TRK_MANF_PCS = #ttlNewTrkMnfPcs#,
+				TRK_MANF_WT = #ttlNewTrkMnfWt#,
+				LM_USER_ID = #lmUserId#,
+				LM_DATE = sysdate,
+				TR_TYPE = 'IM',
+				TR_EVENT = 'ITMATM'
+		where	TR_NO = #trNo# and  TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate# and status not in ('VOID')
+		]]>
+	</update>
+
+	<update id="update_ITM_TRK_MANF_SHP" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >					
+		update ITM_TRK_MANF_SHP set
+				TRK_MANF_PCS = TRK_MANF_PCS - nvl(#trkMnfPcs#,0) + nvl(#newTrkMnfPcs#,0) ,
+				TRK_MANF_WT = TRK_MANF_WT - nvl(#trkMnfWt#,0) + nvl(#newTrkMnfWt#,0),
+				LM_USER_ID = #lmUserId#,
+				LM_DATE = sysdate
+		where TR_NO = #trNo# and 
+			TRUCK_FLT_NO = #trkFltKey# and 
+			TRUCK_FLT_DATE = #trkFltDate# and 
+			DOC_LINE_NO = #docLineNo# and 
+			AWB_NO = #awbNo# and 
+			AWB_DATE = #awbDate# and 
+			IMP_FLT_KEY = #fltKey# and 
+			IMP_FLT_DATE = #fltDate# 
+	</update>
+
+	<update id="update_ITM_TRK_MANF_SHP_HAWB" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >					
+		update ITM_TRK_MANF_SHP_HAWB set
+				TRK_MANF_PCS = TRK_MANF_PCS - nvl(#trkMnfPcs#,0) + nvl(#newTrkMnfPcs#,0) ,
+				TRK_MANF_WT = TRK_MANF_WT - nvl(#trkMnfWt#,0) + nvl(#newTrkMnfWt#,0),
+				LM_USER_ID = #lmUserId#,
+				LM_DATE = sysdate
+			where TR_NO = #trNo# and 
+			TRUCK_FLT_NO = #trkFltKey# and 
+			TRUCK_FLT_DATE = #trkFltDate# and 
+			DTL_DOC_LINE_NO = #docLineNo# and 
+			HAWB_NO = #hawbNo#
+	</update>
+
+	<!--<delete id="delete_ITM_TRK_MANF_HD" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >					
+		delete from	ITM_TRK_MANF_HD
+			where TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate#
+	</delete> DOC_LINE_NO = #docLineNo# and 
+
+	--><delete id="delete_ITM_TRK_MANF_SHP" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >					
+		delete from ITM_TRK_MANF_SHP
+			where TR_NO = #trNo# and 
+			TRUCK_FLT_NO = #trkFltKey# and 
+			TRUCK_FLT_DATE = #trkFltDate# and 
+			AWB_NO = #awbNo# and 
+			AWB_DATE = #awbDate# and 
+			IMP_FLT_KEY = #fltKey# and 
+			IMP_FLT_DATE = #fltDate# 
+	</delete>
+
+	<delete id="delete_ITM_TRK_MANF_SHP_HAWB" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >					
+		delete from ITM_TRK_MANF_SHP_HAWB
+			where TR_NO = #trNo# and 
+			TRUCK_FLT_NO = #trkFltKey# and 
+			TRUCK_FLT_DATE = #trkFltDate# and
+			DTL_DOC_LINE_NO = #docLineNo# and 
+			HAWB_NO = #hawbNo#
+	</delete>
+	<!-- and DOC_LINE_NO = #awbDocLineNo# 	-->
+	<delete id="delete_ITM_TRK_MANF_AWB" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >					
+		delete 	from ITM_TRK_MANF_AWB
+			where TR_NO = #trNo# and TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate# 
+				and AWB_NO = #awbNo# and AWB_DATE = #awbDate#
+	</delete>
+<!-- and DTL_DOC_LINE_NO = #awbHawbDocLineNo#	-->
+	<delete id="delete_ITM_TRK_MANF_AWB_HAWB" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >					
+		delete 	from ITM_TRK_MANF_AWB_HAWB
+			where TR_NO = #trNo# and  TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate# 
+			and DTL_DOC_LINE_NO = #awbHawbDocLineNo# and HAWB_NO = #hawbNo# 
+	</delete>
+
+	<update id="update_void_ITM_TRK_MANF_HD" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >					
+		<![CDATA[
+			update	ITM_TRK_MANF_HD set
+					STATUS = 'VOID',
+					LM_USER_ID = #lmUserId#,
+					LM_DATE = sysdate,
+					TR_TYPE = 'IM',
+					TR_EVENT = 'ITMVOID'
+			where	TR_NO = #trNo# and TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate# and status not in ('VOID')
+		]]>
+	</update>
+	
+	<select id="checkBUStarted" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.Integer" >
+	 <![CDATA[
+		select count(1) from ITM_TRK_MANF_AWB 
+		where nvl(bu_pcs,0) > 0 and TR_NO = #trNo# and TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate# 
+		]]>
+	</select>
+	
+	<update id="update_void_ITM_TRK_MANF_AWB" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >					
+			update	ITM_TRK_MANF_AWB set
+				TR_TYPE = 'VOID',
+				LM_USER_ID = #lmUserId#,
+				LM_DATE = sysdate
+			where	TR_NO = #trNo# and TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate#
+	</update>
+
+	<update id="update_confirm_ITM_TRK_MANF_HD" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >		
+		<![CDATA[			
+		update	ITM_TRK_MANF_HD set
+				STATUS = decode(#confirmInd#,'Y','CONFIRM','N','CREATED'),	
+				CONFIRM_IND = #confirmInd#,
+				LM_USER_ID = #lmUserId#,
+				LM_DATE = sysdate,
+				TR_TYPE = 'IM',
+				TR_EVENT = decode(#confirmInd#,'Y','ITMCONFM','ITMUNCONFM')
+		where	TR_NO = #trNo# and TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate# and status not in ('VOID')
+		]]>
+	</update>
+	
+	<select id="get_ITM_TRK_FLT_unldgpt" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.Integer" >					
+		select count(1) from 	ITM_TRK_FLT 
+		where	TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate# and SCH_TIME = #schTimeInt# and #routeOneTwoThree# in (UNLDG_PT1,UNLDG_PT2,UNLDG_PT3)
+	</select>
+	
+
+	<!-- Maintain Truck Manifest End here 07-Nov-2011 -->
+	
+<select id="itm_get_truck_details" parameterClass="cargo.cms.itm.bo.ItmExitCheckPostBO"
+		resultClass="cargo.cms.itm.bo.ItmExitCheckPostBO">
+		select TRUCK_FLT_NO trkFltKey , TR_NO trNo , 
+		    to_char(TRUCK_FLT_DATE,'DDMONYY') trkFltDate,
+		    to_char(POST_DATE,'DDMONYY HH:MI') postDateTime,
+		    BU_COMPL_USER_ID buildComplDate,
+		    POST_USER_ID postUserId,
+		    status status
+				from ITM_TRK_MANF_HD 
+				WHERE TRUCK_NO = #truckNo# and status not in ('VOID') order by LM_DATE desc 
+	</select>
+  
+
+  
+  <select id="fetchExitCheckPostViewTruckSeal" parameterClass="cargo.cms.itm.bo.ItmExitCheckPostBO" resultClass="cargo.cms.itm.bo.ItmExitCheckPostBO" >
+	 <![CDATA[
+		select seal_no sealNo from TRUCK_SEAL 
+			where trip_id = ( select max(trip_id) from TRUCK_SEAL where  truck_no =  #truckNo# ) 
+			and  truck_no =  #truckNo#
+	]]>
+</select>
+
+	<update id="update_close_ITM_TRK_MANF_HD" parameterClass="map" >	
+		<![CDATA[				
+			update	ITM_TRK_MANF_HD set
+					STATUS = 'CLOSED',
+					LM_USER_ID = #lmUserId#,
+					LM_DATE = sysdate,
+					TR_TYPE = 'IM',
+					TR_EVENT = 'ITMFLTCLOS'
+			where	TR_NO = #trNo# and TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate# and status not in ('VOID')
+	   	]]>
+	</update>
+	
+	<parameterMap id="saveInaAssignMap" class="map" >
+		<parameter property="RESULT"  jdbcType="VARCHAR"	javaType="java.lang.String"	mode="OUT"/>
+		<parameter property="FLTTYPE" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="TRUCKNO"  jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="SCHDATE" jdbcType="VARCHAR"       javaType="java.lang.String" 	mode="IN"/>
+		<parameter property="SCHTIME" jdbcType="VARCHAR"       javaType="java.lang.String" 	mode="IN"/>
+		<parameter property="PTYPE" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+	</parameterMap>
+	<procedure id="checkInaCnsgnExistProc" parameterMap="saveInaAssignMap" >
+		{? = call FUN_CHECK_TRUCK_MAN(?,?,?,?)  }
+	</procedure>
+	
+	<insert id="saveSubmitInaDetailsTemp" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+		 INSERT INTO CST_SUBMIT_TEMP(FLT_KEY,FLT_DATE,VER_NO,CST_TYPE,AWB_NO,HAWB_NO,TRUCK_NO,SCH_DATE,SCH_TIME) 
+				 VALUES(#trkFltKey#, #trkFltDate#, '1','INA', #awbNo#,'', #truckNo#, #trkFltDate#, trim(replace(#schTime#,':','')))
+	</insert>
+	<insert id="saveInaCnsgnDetails" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+		 INSERT INTO CST_SUBM_TEMP( VER_NO, REC_TYPE, SUBM_DATE, LM_USER_ID, LM_DATE, 
+				 LM_VER, SEND_STATUS, FLT_KEY,  FLT_DATE,FLT_TYPE,TRUCK_NO,SCH_DATE,SCH_TIME) 
+				 VALUES(1, 'INA', SYSDATE, #lmUserId#, SYSDATE,'1', 'P', #trkFltKey#, #trkFltDate#,'T', #truckNo#, #trkFltDate#, trim(replace(#schTime#,':','')))
+	</insert>
+	
+	<insert id="saveSubmitInaDetailsTemp_AMA" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+		 INSERT INTO CST_SUBMIT_TEMP(FLT_KEY,FLT_DATE,VER_NO,CST_TYPE,AWB_NO,HAWB_NO,TRUCK_NO,SCH_DATE,SCH_TIME) 
+			 select truck_flt_no, truck_flt_date, SUBM_VER_NO, ACCS_IND,  AWB_NO, '0',TRUCK_NO,SCH_DATE,SCH_TIME 
+			            from CST_ITM_AWB 
+			            where ACCS_IND = 'AMA' and CHANGE_IND in ('A','U','D')	
+			                 and AWB_NO = #awbNo#	and AWB_DATE = #awbDate# 
+			                 and TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate# and sch_time = trim(replace(#schTime#,':',''))
+			                 and SUBM_VER_NO = #submVerNo#
+	</insert>
+	<insert id="saveInaCnsgnDetails_AMA" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+		 INSERT INTO CST_SUBM_TEMP( VER_NO, REC_TYPE, SUBM_DATE, LM_USER_ID, LM_DATE, LM_VER, SEND_STATUS, FLT_KEY,  FLT_DATE,FLT_TYPE,TRUCK_NO,SCH_DATE,SCH_TIME)                                  
+			select SUBM_VER_NO, ACCS_IND,SYSDATE,  #lmUserId#, SYSDATE, '1', 'P',truck_flt_no, truck_flt_date, 'T',TRUCK_NO,SCH_DATE,SCH_TIME 
+            from CST_ITM_AWB 
+            where ACCS_IND = 'AMA' and CHANGE_IND in ('A','U','D') 
+            and TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate# and sch_time = trim(replace(#schTime#,':',''))
+            and SUBM_VER_NO =  #submVerNo#
+            AND  ROWNUM = 1  
+	</insert>
+	
+	 <select id="select_CST_ITM_AWB_INA_Count" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.Integer" >
+	 <![CDATA[
+		select count(1) from CST_ITM_AWB 
+			where AWB_NO = #awbNo#
+			and AWB_DATE = #awbDate#
+			and TRUCK_NO = #truckNo#
+			and TRUCK_FLT_NO = #trkFltKey#
+			and TRUCK_FLT_DATE = #trkFltDate#
+			and sch_date = #trkFltDate#
+			and sch_time = trim(replace(#schTime#,':',''))
+			and ACCS_IND = 'INA'
+			and CHANGE_IND = 'N'	
+		]]>
+	</select>
+	
+	 <select id="select_CST_ITM_AWB_AMA_Count" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.Integer" >
+	 <![CDATA[
+		select count(1) from CST_ITM_AWB 
+			where AWB_NO = #awbNo#
+			and AWB_DATE = #awbDate#
+			and TRUCK_NO = #truckNo#
+			and TRUCK_FLT_NO = #trkFltKey#
+			and TRUCK_FLT_DATE = #trkFltDate#
+			and sch_date = #trkFltDate#
+			and sch_time = trim(replace(#schTime#,':',''))
+			and ACCS_IND = 'AMA'
+			and ACCS_SUBM_IND = 'Y'	
+		]]>
+	</select>
+	
+	<select id="select_CST_ITM_AWB_AMA_ins_upd_Count" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.Integer" >
+	 <![CDATA[
+		select count(1) from CST_ITM_AWB 
+			where AWB_NO = #awbNo#
+			and AWB_DATE = #awbDate#
+			and TRUCK_NO = #truckNo#
+			and TRUCK_FLT_NO = #trkFltKey#
+			and TRUCK_FLT_DATE = #trkFltDate#
+			and sch_date = #trkFltDate#
+			and sch_time = trim(replace(#schTime#,':',''))
+			and ACCS_IND = 'AMA' 
+			
+		]]>
+	</select>
+	
+	
+	<select id="select_CST_ITM_AWB_AMA_tr_no" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.Integer" >
+	 <![CDATA[
+		select tr_no from CST_ITM_AWB 
+			where AWB_NO = #awbNo#
+			and AWB_DATE = #awbDate#
+			and TRUCK_NO = #truckNo#
+			and TRUCK_FLT_NO = #trkFltKey#
+			and TRUCK_FLT_DATE = #trkFltDate#
+			and sch_date = #trkFltDate#
+			and sch_time = trim(replace(#schTime#,':',''))
+			and ACCS_IND = 'AMA'
+		]]>
+	</select>
+	
+	<insert id="Insert_CST_ITM_AWB" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+
+	Insert into CST_ITM_AWB 
+			(TR_NO,MSG_VER,AWB_NO,AWB_DATE,TRUCK_NO,TRUCK_FLT_NO,TRUCK_FLT_DATE,FLT_KEY,FLT_DATE,FLT_TYPE,ORG,DEST,
+			MAN_PCS,MAN_WGT,SUBM_VER_NO,
+			HDLG_AGENT,CNSL_IND,
+			ACCS_IND,CHANGE_IND,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE,LM_VER,sch_date,sch_time) 
+			values (#cstAwbTrNo#,#msgVer#,#awbNo#,#awbDate#,#truckNo#,#trkFltKey#,#trkFltDate#,#fltKey#,#fltDate#,#fltType#,#org#,#dest#,
+			#newTrkMnfPcs#,#newTrkMnfWt#,#submVerNo#,
+			#hdlgAgt#,#consol#,
+			#accsInd#,#changeInd#,#lmUserId#,sysdate,#lmUserId#,sysdate,#lmVerNo#,#trkFltDate#,trim(replace(#schTime#,':','')))
+	</insert>
+	
+	<select id="select_CST_ITM_HAWB_INA_Count" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.Integer" >
+	 <![CDATA[
+		select count(1) from CST_ITM_HAWB 
+			where AWB_NO = #awbNo#
+			and AWB_DATE = #awbDate#
+			and TRUCK_NO = #truckNo#
+			and TRUCK_FLT_NO = #trkFltKey#
+			and TRUCK_FLT_DATE = #trkFltDate#
+			and sch_date = #trkFltDate#
+			and sch_time = trim(replace(#schTime#,':',''))
+			and HAWB_NO = #hawbNo#
+			and ACCS_IND = 'INA'
+			and CHANGE_IND = 'N'	
+		]]>
+	</select>
+	
+	 <select id="select_CST_ITM_HAWB_AMA_Count" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.Integer" >
+	 <![CDATA[
+		select count(1) from CST_ITM_HAWB 
+			where AWB_NO = #awbNo#
+			and AWB_DATE = #awbDate#
+			and TRUCK_NO = #truckNo#
+			and TRUCK_FLT_NO = #trkFltKey#
+			and TRUCK_FLT_DATE = #trkFltDate#
+			and sch_date = #trkFltDate#
+			and sch_time = trim(replace(#schTime#,':',''))
+			and HAWB_NO = #hawbNo#
+			and ACCS_IND = 'AMA'
+			and ACCS_SUBM_IND = 'Y'	
+		]]>
+	</select>
+	
+	 <select id="select_CST_ITM_HAWB_AMA_ins_upd_Count" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.Integer" >
+	 <![CDATA[
+		select count(1) from CST_ITM_HAWB 
+			where AWB_NO = #awbNo#
+			and AWB_DATE = #awbDate#
+			and TRUCK_NO = #truckNo#
+			and TRUCK_FLT_NO = #trkFltKey#
+			and TRUCK_FLT_DATE = #trkFltDate#
+			and sch_date = #trkFltDate#
+			and sch_time = trim(replace(#schTime#,':',''))
+			and HAWB_NO = #hawbNo#
+			and ACCS_IND = 'AMA'
+		]]>
+	</select>
+	
+	<select id="select_CST_ITM_AWB_AMA_Check_Count" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.Integer" >
+	 <![CDATA[
+		select count(1) from CST_ITM_AWB 
+			where TRUCK_NO = #truckNo#
+			and TRUCK_FLT_NO = #trkFltKey#
+			and TRUCK_FLT_DATE = #trkFltDate#
+			and sch_date = #trkFltDate#
+			and sch_time = trim(replace(#schTime#,':',''))
+			and ACCS_IND = 'AMA'
+		]]>
+	</select>
+	
+	 <select id="select_CST_ITM_HAWB_AMA_Check_Count" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" resultClass="java.lang.Integer" >
+	 <![CDATA[
+		select count(1) from CST_ITM_HAWB 
+			where TRUCK_NO = #truckNo#
+			and TRUCK_FLT_NO = #trkFltKey#
+			and TRUCK_FLT_DATE = #trkFltDate#
+			and sch_date = #trkFltDate#
+			and sch_time = trim(replace(#schTime#,':',''))
+			and HAWB_NO = #hawbNo#
+			and ACCS_IND = 'AMA'
+		]]>
+	</select>
+
+	<update id="update_CST_ITM_AWB_AMA_CHANGE_IND" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+
+		update CST_ITM_AWB 
+			set 
+				MAN_PCS = #newTrkMnfPcs#,
+				MAN_WGT = #newTrkMnfWt#,
+				CHANGE_IND = #changeInd#,
+			    LM_USER_ID = #lmUserId#,
+			    LM_DATE = sysdate
+		where AWB_NO = #awbNo#
+			and AWB_DATE = #awbDate#
+			and TRUCK_NO = #truckNo#
+			and TRUCK_FLT_NO = #trkFltKey#
+			and TRUCK_FLT_DATE = #trkFltDate#
+			and sch_date = #trkFltDate#
+			and sch_time = trim(replace(#schTime#,':',''))
+			and ACCS_IND = 'AMA'
+	
+	</update>
+	
+	<update id="update_CST_ITM_HAWB_AMA_CHANGE_IND" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+	
+		update CST_ITM_HAWB 
+			set 
+				MAN_PCS = #newTrkMnfPcs#,
+				MAN_WGT = #newTrkMnfWt#,
+				CHANGE_IND = #changeInd#,
+			    LM_USER_ID = #lmUserId#,
+			    LM_DATE = sysdate
+		where AWB_NO = #awbNo#
+			and AWB_DATE = #awbDate#
+			and TRUCK_NO = #truckNo#
+			and TRUCK_FLT_NO = #trkFltKey#
+			and TRUCK_FLT_DATE = #trkFltDate#
+			and sch_date = #trkFltDate#
+			and sch_time = trim(replace(#schTime#,':',''))
+			and HAWB_NO = #hawbNo#
+			and ACCS_IND = 'AMA'	
+	</update>
+	
+	<insert id="Insert_CST_ITM_HAWB" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+
+	Insert into CST_ITM_HAWB 
+			(TR_NO,MSG_VER,AWB_NO,AWB_DATE,HAWB_NO,TRUCK_NO,TRUCK_FLT_NO,TRUCK_FLT_DATE,FLT_KEY,FLT_DATE,FLT_TYPE,ORG,DEST,
+			MAN_PCS,MAN_WGT,SUBM_VER_NO,
+			HDLG_AGENT,CNSL_IND,
+			ACCS_IND,CHANGE_IND,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE,LM_VER,sch_date,sch_time) 
+			values (#cstAwbTrNo#,#msgVer#,#awbNo#,#awbDate#,#hawbNo#,#truckNo#,#trkFltKey#,#trkFltDate#,#fltKey#,#fltDate#,#fltType#,#org#,#dest#,
+			#newTrkMnfPcs#,#newTrkMnfWt#,#submVerNo#,
+			#hdlgAgt#,#consol#,
+			#accsInd#,#changeInd#,#lmUserId#,sysdate,#lmUserId#,sysdate,#lmVerNo#,#trkFltDate#,trim(replace(#schTime#,':','')))
+	</insert>
+	
+	<delete id="delete_CST_ITM_AWB_INA" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+		delete from CST_ITM_AWB 
+			where TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate# and sch_time = trim(replace(#schTime#,':',''))
+			and ACCS_IND = 'INA' and CHANGE_IND = 'N' 	
+	</delete>
+	
+	<delete id="delete_CST_ITM_HAWB_INA" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+		delete from CST_ITM_HAWB 
+			where TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate# and sch_time = trim(replace(#schTime#,':',''))
+				and ACCS_IND = 'INA' and CHANGE_IND = 'N'		
+	</delete>
+	
+	<delete id="delete_CST_ITM_AWB_AMA" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+		<![CDATA[
+		delete from CST_ITM_AWB 
+			where TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate# and sch_time = trim(replace(#schTime#,':',''))
+			and ACCS_IND = 'AMA' and CHANGE_IND in ('A','U','D') and ACCS_SUBM_IND <> 'Y'	
+		]]>
+	</delete>
+	
+	<delete id="delete_CST_ITM_HAWB_AMA" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+		<![CDATA[
+		delete from CST_ITM_HAWB 
+			where TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate# and sch_time = trim(replace(#schTime#,':',''))
+			and ACCS_IND = 'AMA' and CHANGE_IND in ('A','U','D') and ACCS_SUBM_IND <> 'Y'
+		]]>						
+	</delete>
+	
+	<delete id="delete_CST_ITM_AWB_AMA_SELECT" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+		<![CDATA[
+		delete from CST_ITM_AWB 
+			where TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate# and sch_time = trim(replace(#schTime#,':',''))
+			and AWB_NO = #awbNo# and AWB_DATE = #awbDate# and ACCS_IND = 'AMA'and ACCS_SUBM_IND <> 'Y'
+		]]>
+	</delete>
+	
+	<delete id="delete_CST_ITM_HAWB_AMA_SELECT" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+		<![CDATA[
+		delete from CST_ITM_HAWB 
+			where TRUCK_FLT_NO = #trkFltKey# and TRUCK_FLT_DATE = #trkFltDate# and sch_time = trim(replace(#schTime#,':',''))
+			and AWB_NO = #awbNo# and AWB_DATE = #awbDate# and ACCS_IND = 'AMA' and HAWB_NO = #hawbNo# and ACCS_SUBM_IND <> 'Y'
+		]]>						
+	</delete>
+	
+	<update id="update_CST_ITM_AWB" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+
+		update CST_ITM_AWB 
+			set ACCS_IND = #accsInd#,
+			    CHANGE_IND = #changeInd#,
+			    LM_USER_ID = #lmUserId#,
+			    LM_DATE = sysdate
+		where AWB_NO = #awbNo#
+			and AWB_DATE = #awbDate#
+			and TRUCK_NO = #truckNo#
+			and TRUCK_FLT_NO = #trkFltKey#
+			and TRUCK_FLT_DATE = #trkFltDate#
+			and sch_date = #trkFltDate#
+			and sch_time = trim(replace(#schTime#,':',''))
+	
+	</update>
+	
+	<update id="update_CST_ITM_HAWB" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+	
+		update CST_ITM_HAWB 
+			set ACCS_IND = #accsInd#,
+			    CHANGE_IND = #changeInd#,
+			    LM_USER_ID = #lmUserId#,
+			    LM_DATE = sysdate
+		where AWB_NO = #awbNo#
+			and AWB_DATE = #awbDate#
+			and TRUCK_NO = #truckNo#
+			and TRUCK_FLT_NO = #trkFltKey#
+			and TRUCK_FLT_DATE = #trkFltDate#
+			and sch_date = #trkFltDate#
+			and sch_time = trim(replace(#schTime#,':',''))
+			and HAWB_NO = #hawbNo#
+	
+	</update>
+	
+	<update id="update_CST_ITM_AWB_AMA" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+
+		update CST_ITM_AWB 
+			set ACCS_SUBM_IND = 'Y',
+			    LM_USER_ID = #lmUserId#,
+			    LM_DATE = sysdate
+		where AWB_NO = #awbNo#
+			and AWB_DATE = #awbDate#
+			and TRUCK_NO = #truckNo#
+			and TRUCK_FLT_NO = #trkFltKey#
+			and TRUCK_FLT_DATE = #trkFltDate#
+			and sch_date = #trkFltDate#
+			and sch_time = trim(replace(#schTime#,':',''))
+			and ACCS_IND = 'AMA'
+			and CHANGE_IND in ('A','U','D')	
+	</update>
+	
+	<update id="update_CST_ITM_HAWB_AMA" parameterClass="cargo.cms.itm.bo.ItmTruckManfBO" >
+	
+		update CST_ITM_HAWB 
+			set ACCS_SUBM_IND = 'Y',
+			    LM_USER_ID = #lmUserId#,
+			    LM_DATE = sysdate
+		where AWB_NO = #awbNo#
+			and AWB_DATE = #awbDate#
+			and TRUCK_NO = #truckNo#
+			and TRUCK_FLT_NO = #trkFltKey#
+			and TRUCK_FLT_DATE = #trkFltDate#
+			and sch_date = #trkFltDate#
+			and sch_time = trim(replace(#schTime#,':',''))
+			and HAWB_NO = #hawbNo#
+			and ACCS_IND = 'AMA'
+			and CHANGE_IND in ('A','U','D')
+	
+	</update>
+	
+	<!-- Intermodal Mayank work Ends here 21-OCT-2011 -->
+	
+	
+	<!-- TRUCK BUILDUP :: RANJITH :: STARTS  -->
+	<select id="sqlGetTruckFltHdForBup" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO" resultClass="cargo.cms.itm.bo.TruckBuildUpBO">
+		select  HD.TR_NO trNo, HD.TRUCK_FLT_NO truckFltKey,
+		       to_char(HD.TRUCK_FLT_DATE,'DDMONYY') truckFltDate,
+		       HD.TRUCK_NO truckNo,
+	           ltrim(SUBSTR(TRIM(TO_CHAR(HD.SCH_TIME,'0000')),0,2)|| ':'||  SUBSTR(TRIM(TO_CHAR(HD.SCH_TIME,'0000')),3,4), ':') schTime,
+		       HD.UNLDG_PT unldgPt,
+		       decode(HD.BU_COMPL_DATE,null,'N','Y') buComp_YN,
+		       HD.STATUS status,
+	           FLT.CAPACITY truckCapacity,
+		       #userID# userID
+		FROM ITM_TRK_MANF_HD HD
+	    		JOIN ITM_TRK_FLT FLT ON HD.TRUCK_FLT_NO = FLT.TRUCK_FLT_NO AND HD.TRUCK_FLT_DATE = FLT.TRUCK_FLT_DATE
+		WHERE HD.TRUCK_FLT_NO = #truckFltKey# AND HD.TRUCK_FLT_DATE = to_date(#truckFltDate#,'DDMONYY') and  HD.status not in ('VOID')
+	</select>
+	<select id="sqlGetTruckFltAwbDetailForBup" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO" resultClass="cargo.cms.itm.bo.TruckBuildUpBO">
+	<![CDATA[
+	SELECT TRK.TR_NO trNo,
+	  TRK.TRUCK_FLT_NO truckFltKey,
+	  to_char(TRK.TRUCK_FLT_DATE,'DDMONYY') truckFltDate,
+	  TRK.AWB_NO awbNo, 
+      SUBSTR(TRK.AWB_NO,1,3)||'-'||SUBSTR(TRK.AWB_NO,4) awbNoDisp, 
+	  to_char(TRK.AWB_DATE,'DDMONYY') awbDate,
+	  (NVL(TRK.TRK_MANF_PCS,0)-NVL(TRK.BU_PCS,0)) osTruckManfPcs,
+	  (NVL(TRK.TRK_MANF_WT,0)- NVL(TRK.BU_WT,0)) osTruckManfWt,
+	  TRK.DOC_LINE_NO docLineNo,
+	  NVL(INV.LOCN_PCS,0) invPcs,
+	  NVL(INV.LOCN_WT,0) invWt,
+      NVL(INV.AWB_COUNT,0) locCount,
+	  NVL(TRK.BU_PCS,0) oldLoadPc,
+	  NVL(TRK.BU_WT,0) oldLoadWt,
+      AWB.ORIG orig,
+      AWB.DEST dest,
+      #userID# userID
+   FROM ITM_TRK_MANF_AWB TRK 
+   JOIN ITM_TRK_MANF_HD HD ON TRK.TR_NO = HD.TR_NO AND TRK.TRUCK_FLT_NO = HD.TRUCK_FLT_NO AND TRK.TRUCK_FLT_DATE = HD.TRUCK_FLT_DATE and HD.status not in ('VOID')
+   LEFT JOIN (SELECT COUNT(1) AWB_COUNT,AWB_NO,AWB_DATE,SUM(NVL(LOCN_PCS,0)) LOCN_PCS,SUM(NVL(LOCN_WT,0)) LOCN_WT 
+                                    FROM AWB_INVENTORY  WHERE NVL(FLT_KEY,'*')||''||to_char(NVL(FLT_DATE,'21AUG01'),'DDMONYY') <> #truckFltKey#||#truckFltDate# AND LOC_CODE <> (select RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'TRUCK_DUMMY_LOC')
+                                    GROUP BY AWB_NO,AWB_DATE)INV 
+  	ON TRK.AWB_NO = INV.AWB_NO  AND TRK.AWB_DATE = INV.AWB_DATE
+    JOIN AWB ON TRK.AWB_NO = AWB.AWB_NO  AND TRK.AWB_DATE = AWB.AWB_DATE
+  	WHERE TRK.TR_NO = #trNo# and TRK.TRUCK_FLT_NO = #truckFltKey# AND TRK.TRUCK_FLT_DATE = to_date(#truckFltDate#,'DDMONYY')
+  	]]>
+  	</select>
+	
+	<select id="sqlGetTruckFltHawbDetailForBup" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO" resultClass="cargo.cms.itm.bo.TruckBuildUpBO">
+	     SELECT TR_NO trNo, TRUCK_FLT_NO truckFltKey,
+	       to_char(TRUCK_FLT_DATE,'DDMONYY') truckFltDate,
+	       DTL_DOC_LINE_NO docLineNo,
+	       TRK.HAWB_NO  hawbNo,
+           FHL.HAWB_PCS hawbPc,
+           FHL.HAWB_WT hawbWt,
+           NVL(TRK.TRK_MANF_PCS,0)-NVL(TRK.BU_PCS,0) osTruckManfPcs,
+           NVL(TRK.TRK_MANF_WT,0)- NVL(TRK.BU_WT,0) osTruckManfWt,
+           NVL(TRK.BU_PCS,0) oldLoadPc,
+           NVL(TRK.BU_WT,0) oldLoadWt,
+           #userID# userID
+    FROM ITM_TRK_MANF_AWB_HAWB TRK 
+    JOIN (select HAWB_NO,SUM(NVL(HAWB_PCS,0)) HAWB_PCS,SUM(NVL(HAWB_NET_WT,0)) HAWB_WT  
+    		from edi_fhl_hawb h
+		    JOIN  edi_fhl a ON a.TR_NO = h.TR_NO 
+		    WHERE a.AWB_NO = #awbNo# and a.AWB_DATE = to_date(#awbDate#,'DDMONYY') GROUP BY HAWB_NO) FHL
+    ON TRK.HAWB_NO = FHL.HAWB_NO
+    WHERE TR_NO = #trNo# and TRUCK_FLT_NO = #truckFltKey# and TRUCK_FLT_DATE = to_date(#truckFltDate#,'DDMONYY') and DTL_DOC_LINE_NO = #docLineNo#
+     </select>
+     
+     <select id="sqlGetTruckFltAwbInvDtlForBup" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO" resultClass="cargo.cms.itm.bo.TruckBuildUpBO">
+     <![CDATA[
+     SELECT SEQ_NO seqNo,
+     		AWB_NO awbNo,
+     		to_char(AWB_DATE,'DDMONYY') awbDate,
+     		LOC_CODE locCode,
+     		LSP_NO lspNo,
+     		ULD_KEY uldKey,
+     		LOCN_PCS locnPcs,
+     		LOCN_WT locnWt,
+     		#userID# userID,
+     		#truckFltKey# truckFltKey,
+     		#truckFltDate# truckFltDate
+     FROM AWB_INVENTORY WHERE AWB_NO = #awbNo# and AWB_DATE =  to_date(#awbDate#,'DDMONYY')	AND NVL(FLT_KEY,'*')||''||to_char(NVL(FLT_DATE,'21AUG01'),'DDMONYY') <> #truckFltKey#||#truckFltDate# AND LOC_CODE <> (select RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'TRUCK_DUMMY_LOC')
+     ]]>
+     </select>
+     
+      <select id="sqlGetTruckFltAwbInvDtlForSingleLoc" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO" resultClass="cargo.cms.itm.bo.TruckBuildUpBO">
+     <![CDATA[
+     SELECT SEQ_NO seqNo,
+     		AWB_NO awbNo,
+     		to_char(AWB_DATE,'DDMONYY') awbDate,
+     		LOC_CODE locCode,
+     		LSP_NO lspNo,
+     		ULD_KEY uldKey,
+     		LOCN_PCS locnPcs,
+     		LOCN_WT locnWt,
+     		LOCN_PCS loadPc,
+     		LOCN_WT loadWt,
+     		#userID# userID,
+     		#truckFltKey# truckFltKey,
+     		#truckFltDate# truckFltDate
+     FROM AWB_INVENTORY WHERE AWB_NO = #awbNo# and AWB_DATE =  to_date(#awbDate#,'DDMONYY')	AND NVL(FLT_KEY,'*')||''||to_char(NVL(FLT_DATE,'21AUG01'),'DDMONYY') <> #truckFltKey#||#truckFltDate# AND LOC_CODE <> (select RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'TRUCK_DUMMY_LOC')
+     ]]>
+     </select>
+     
+     <update id="sqlUpdateTruckBupPcWt" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO">
+     UPDATE ITM_TRK_MANF_AWB 
+     SET	BU_PCS = (NVL(BU_PCS,0)-NVL(#oldLoadPc#,0))+NVL(#newLoadPc#,0),
+     		BU_WT = (NVL(BU_WT,0)-NVL(#oldLoadWt#,0))+NVL(#newLoadWt#,0),
+     		LM_USER_ID = #userID#,
+     		LM_DATE = sysdate
+     WHERE TR_NO = #trNo# and TRUCK_FLT_NO = #truckFltKey# AND TRUCK_FLT_DATE = #truckFltDate# AND AWB_NO = #awbNo# AND AWB_DATE = to_date(#awbDate#,'DDMONYY')
+     </update>
+     
+      <update id="sqlUpdateTruckHawbBupPcWt" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO">
+     UPDATE ITM_TRK_MANF_AWB_HAWB
+     SET	BU_PCS = (NVL(BU_PCS,0)-NVL(#oldLoadPc#,0))+NVL(#newLoadPc#,0),
+     		BU_WT = (NVL(BU_WT,0)-NVL(#oldLoadWt#,0))+NVL(#newLoadWt#,0),
+     		LM_USER_ID = #userID#,
+     		LM_DATE = sysdate
+     WHERE TR_NO = #trNo# and TRUCK_FLT_NO = #truckFltKey# AND TRUCK_FLT_DATE = #truckFltDate# AND HAWB_NO = #hawbNo# AND DTL_DOC_LINE_NO = #docLineNo#
+     </update>
+     
+     <update id="sqlReduceInvForTruckBup" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO">
+     UPDATE AWB_INVENTORY
+     SET	LOCN_PCS = NVL(LOCN_PCS,0)-NVL(#loadPc#,0),
+     		LOCN_WT = NVL(LOCN_WT,0)-NVL(#loadWt#,0),
+     		LM_USER_ID = #userID#,
+     		LM_DATE = sysdate
+     WHERE SEQ_NO = #seqNo#
+     </update>
+     
+     <delete id="sqlDeleteInvForTruckBup" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO">
+     DELETE FROM  AWB_INVENTORY WHERE SEQ_NO = #seqNo# and NVL(LOCN_PCS,0) = 0 AND NVL(LOCN_WT,0) = 0
+     </delete>
+     
+     <update id="sqlUpdateTruckInvForBup" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO">
+     UPDATE AWB_INVENTORY
+     SET	LOCN_PCS = NVL(LOCN_PCS,0)+NVL(#loadPc#,0),
+     		LOCN_WT = NVL(LOCN_WT,0)+NVL(#loadWt#,0),
+     		LM_USER_ID = #userID#,
+     		LM_DATE = sysdate
+     WHERE NVL(FLT_KEY,'*') = #truckFltKey# 
+       AND NVL(FLT_DATE,'12AUG01') = to_date(#truckFltDate#,'DDMONYY')
+       AND LOC_CODE = (select RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'TRUCK_DUMMY_LOC')
+     </update>
+     
+     <insert id="sqlInsertTruckInvForBup" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO">
+	INSERT INTO AWB_INVENTORY
+	 (AWB_NO, AWB_DATE,LOC_CODE,
+	 LOCN_PCS, LOCN_WT,STRG_DATE,CR_USER_ID, CR_DATE,BUP_WT,BULK_WT,
+	 LM_USER_ID, LM_DATE, FLT_DATE, FLT_KEY,FLT_TYPE,SEQ_NO)
+	 VALUES
+	 (#awbNo#,#awbDate#,(select RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'TRUCK_DUMMY_LOC'),
+	 #loadPc#,#loadWt#,sysdate, #userID#, sysdate,0,0,
+	 #userID#, sysdate,#truckFltDate#,#truckFltKey#,'T',AWB_INV_SEQ.NEXTVAL)
+	</insert>
+	
+	
+	<update id="sqlTruckFltBuildUpComplete" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO">
+	 <![CDATA[
+		 UPDATE ITM_TRK_MANF_HD
+			SET BU_COMPL_USER_ID = #userID#,
+			BU_COMPL_DATE = sysdate,
+			STATUS = 'BU_COMPLETE',
+			TR_TYPE = 'IM',
+			TR_EVENT = 'ITMBUCTM',
+			LM_USER_ID = #userID#,
+			LM_DATE = sysdate
+			WHERE TR_NO = #trNo# and TRUCK_FLT_NO= #truckFltKey# AND TRUCK_FLT_DATE = to_date(#truckFltDate#,'DDMONYY') and status not in ('VOID')
+    	]]>
+		<isNotEmpty property="truckNo">
+		AND TRUCK_NO= #truckNo#
+		</isNotEmpty> 
+	</update>
+	
+	
+	<update id="sqlTruckFltBuildUpUnComplete" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO">
+	<![CDATA[
+		UPDATE ITM_TRK_MANF_HD
+			SET BU_COMPL_USER_ID = null,
+			BU_COMPL_DATE = null,
+			STATUS = 'CREATED',
+			TR_TYPE = 'IM',
+			TR_EVENT = 'ITMBUUTM',
+			LM_USER_ID = #userID#,
+			LM_DATE = sysdate
+			WHERE TR_NO = #trNo# and TRUCK_FLT_NO= #truckFltKey# AND TRUCK_FLT_DATE = to_date(#truckFltDate#,'DDMONYY') AND TRUCK_NO= #truckNo# and status not in ('VOID')
+		]]>
+	</update>
+	
+	<update id="sqlReduceTruckFltInventory" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO">
+	 UPDATE AWB_INVENTORY
+     SET	LOCN_PCS = NVL(LOCN_PCS,0)-NVL(#locnPcs#,0),
+     		LOCN_WT = NVL(LOCN_WT,0)-NVL(#locnWt#,0),
+     		LM_USER_ID = #userID#,
+     		LM_DATE = sysdate
+     WHERE NVL(FLT_KEY,'*') = #truckFltKey# 
+       AND NVL(FLT_DATE,'12AUG01') = to_date(#truckFltDate#,'DDMONYY')
+       AND LOC_CODE = (select RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'TRUCK_DUMMY_LOC')
+	</update>
+	
+	<insert id="sqlUpdateUnloadInventory" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO">
+	<![CDATA[
+	UPDATE AWB_INVENTORY
+     SET	LOCN_PCS = NVL(LOCN_PCS,0)+NVL(#locnPcs#,0),
+     		LOCN_WT = NVL(LOCN_WT,0)+NVL(#locnWt#,0),
+     		LM_USER_ID = #userID#,
+     		LM_DATE = sysdate
+     WHERE AWB_NO = #awbNo#
+       AND AWB_DATE = to_date(#awbDate#,'DDMONYY')
+       AND LOC_CODE = #locCode#
+       AND NVL(LSP_NO,'*') = NVL(#lspNo#,'*') 	 
+       AND NVL(ULD_KEY,'*')= NVL(#uldKey#,'*')	
+       AND NVL(FLT_KEY,'*')||NVL(FLT_DATE,to_date('12AUG01','DDMONYY')) <> #truckFltKey#||to_date(#truckFltDate#,'DDMONYY') AND LOC_CODE <> (select RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'TRUCK_DUMMY_LOC')
+       ]]>
+    </insert>
+	
+	<insert id="sqlCreateUnloadInventory" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO">
+	INSERT INTO AWB_INVENTORY
+	 (AWB_NO, AWB_DATE,LOC_CODE,LSP_NO,ULD_KEY,
+	 LOCN_PCS, LOCN_WT,STRG_DATE,CR_USER_ID, CR_DATE,BUP_WT,BULK_WT,
+	 LM_USER_ID, LM_DATE,SEQ_NO)
+	 VALUES
+	 (#awbNo#,#awbDate#,#locCode#,#lspNo#,#uldKey#,
+	 #locnPcs#,#locnWt#,sysdate, #userID#, sysdate,0,0,
+	 #userID#, sysdate,AWB_INV_SEQ.NEXTVAL)
+	</insert>
+     
+     <select id="isValidTruckFlt" parameterClass="map" resultClass="java.lang.Integer">
+     SELECT COUNT(1) FROM ITM_TRK_FLT WHERE TRUCK_FLT_NO = #truckFltKey# AND TRUCK_FLT_DATE = TO_DATE(#truckFltDate#,'DDMONYY')
+     </select>
+     
+     <select id="isValidTruckRegistrationNo" parameterClass="map" resultClass="java.lang.Integer">
+     SELECT COUNT(1) FROM ITM_TRK_MANF_HD WHERE TRUCK_NO = #truckNo# AND TRUCK_FLT_DATE = TO_DATE(#schDate#,'DDMONYY') and status not in ('VOID') 
+     </select>
+     
+     <select id="truckFltAckStatus" parameterClass="map" resultClass="java.lang.Integer">
+     SELECT COUNT(1) FROM CST_ACK WHERE FLT_KEY = #truckFltKey# AND FLT_DATE = TO_DATE(#truckFltDate#,'DDMONYY') AND ACK_REC_TYPE=#ackStatus#
+     </select>     
+     
+     
+     <select id="sqlCheckAwbConstrained" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO" resultClass="java.lang.Integer">
+     select count(1) from mast_constraint_code     
+     where code in (select cc_code from V_CST_TRK_CC_CODE WHERE TRUCK_NO = #truckNo# AND SCH_DATE = #truckFltDate# AND SCH_TIME = trim(replace(#schTime#,':','')) AND AWB_NO = #awbNo# AND HAWB_NO = '000000000000000000') and NVL(CONSTRAINT,'N') = 'Y'
+     </select> 
+     
+     <select id="sqlCheckHawbConstrained" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO" resultClass="java.lang.Integer">
+     select count(1) from mast_constraint_code     
+		where code in (select cc_code from V_CST_TRK_CC_CODE WHERE TRUCK_NO = #truckNo# AND SCH_DATE = #truckFltDate# AND SCH_TIME = trim(replace(#schTime#,':','')) AND AWB_NO = #awbNo# AND HAWB_NO = #hawbNo#) and NVL(CONSTRAINT,'N') = 'Y'
+     </select> 
+     
+     <select id="checkForConstrainedShipments" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO" resultClass="java.lang.Integer">
+     	select count(1) from mast_constraint_code     
+		where code in (select cc_code from V_CST_TRK_CC_CODE WHERE TRUCK_NO = #truckNo# AND SCH_DATE = #truckFltDate# AND SCH_TIME = trim(replace(#schTime#,':',''))) and NVL(CONSTRAINT,'N') = 'Y'
+     </select> 
+     
+     
+     
+     
+     <!-- HHT Starts -->
+     <select id="sqlGetTruckFltAwbDetailForBupHHT" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO" resultClass="cargo.cms.itm.bo.TruckBuildUpBO">
+	<![CDATA[
+	
+	SELECT HD.TR_NO trNo,
+	  TRK.TRUCK_FLT_NO truckFltKey,
+	  to_char(TRK.TRUCK_FLT_DATE,'DDMONYY') truckFltDate,
+	  TRK.AWB_NO awbNo, 
+      SUBSTR(TRK.AWB_NO,1,3)||'-'||SUBSTR(TRK.AWB_NO,4) awbNoDisp, 
+	  to_char(TRK.AWB_DATE,'DDMONYY') awbDate,
+	  NVL(TRK.TRK_MANF_PCS,0)-NVL(TRK.BU_PCS,0)  osTruckManfPcs,
+	  NVL(TRK.TRK_MANF_WT,0)-NVL(TRK.BU_WT,0) osTruckManfWt,
+	  TRK.DOC_LINE_NO docLineNo,
+	  NVL(INV.LOCN_PCS,0) invPcs,
+	  NVL(INV.LOCN_WT,0) invWt,
+      NVL(INV.AWB_COUNT,0) locCount,
+	  NVL(TRK.BU_PCS,0) oldLoadPc,
+	  NVL(TRK.BU_WT,0) oldLoadWt,
+      SHP.CNSL_IND cnslInd,
+      #userID# userID
+   FROM ITM_TRK_MANF_AWB TRK 
+   JOIN ITM_TRK_MANF_HD HD ON TRK.TR_NO = HD.TR_NO AND TRK.TRUCK_FLT_NO = HD.TRUCK_FLT_NO AND TRK.TRUCK_FLT_DATE = HD.TRUCK_FLT_DATE and HD.status not in ('VOID')
+   JOIN ITM_TRK_MANF_SHP SHP ON TRK.TR_NO = SHP.TR_NO AND  TRK.TRUCK_FLT_NO = SHP.TRUCK_FLT_NO AND TRK.TRUCK_FLT_DATE = SHP.TRUCK_FLT_DATE AND TRK.AWB_NO = SHP.AWB_NO AND TRK.AWB_DATE = SHP.AWB_DATE
+   JOIN (SELECT COUNT(1) AWB_COUNT,AWB_NO,AWB_DATE,SUM(NVL(LOCN_PCS,0)) LOCN_PCS,SUM(NVL(LOCN_WT,0)) LOCN_WT 
+                                    FROM AWB_INVENTORY  
+                                    WHERE NVL(FLT_KEY,'*')||''||to_char(NVL(FLT_DATE,'21AUG01'),'DDMONYY') <> #truckFltKey#||#truckFltDate# AND LOC_CODE <> (select RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'TRUCK_DUMMY_LOC')
+                                    AND NVL(LSP_NO,'*') = NVL(#lspNo#,'*')
+                                    AND NVL(ULD_KEY,'*') = NVL(#uldKey#,'*')
+                                    GROUP BY AWB_NO,AWB_DATE)INV 
+  	ON TRK.AWB_NO = INV.AWB_NO  AND TRK.AWB_DATE = INV.AWB_DATE
+    WHERE TRK.TR_NO = #trNo# and TRK.TRUCK_FLT_NO = #truckFltKey# AND TRK.TRUCK_FLT_DATE = to_date(#truckFltDate#,'DDMONYY')
+  	]]>
+  	</select>
+  	
+  	<select id="getInvSeqNoForTruckBupHHT" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO" resultClass="java.lang.String">
+     SELECT SEQ_NO FROM  AWB_INVENTORY
+      WHERE AWB_NO = #awbNo# 
+      	AND AWB_DATE = #awbDate# 
+      	AND NVL(LSP_NO,'*') = NVL(#lspNo#,'*') 
+      	AND NVL(ULD_KEY,'*') = NVL(#uldKey#,'*')
+     </select>
+     
+     <update id="sqlUpdateTruckBupPcWtHHT" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO">
+     UPDATE ITM_TRK_MANF_AWB 
+     SET	BU_PCS = NVL(BU_PCS,0)+NVL(#loadPc#,0),
+     		BU_WT = NVL(BU_WT,0)+NVL(#loadWt#,0),
+     		LM_USER_ID = #userID#,
+     		LM_DATE = sysdate
+     WHERE TR_NO = #trNo# and TRUCK_FLT_NO = #truckFltKey# AND TRUCK_FLT_DATE = #truckFltDate# AND AWB_NO = #awbNo# AND AWB_DATE = to_date(#awbDate#,'DDMONYY')
+     </update>
+     
+ <!-- removed AND  DTL_DOC_LINE_NO = #docLineNo#    -->
+      <update id="sqlUpdateTruckHawbBupPcWtHHT" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO">
+     UPDATE ITM_TRK_MANF_AWB_HAWB
+     SET	BU_PCS = (NVL(BU_PCS,0)+NVL(#loadPc#,0)),
+     		BU_WT = (NVL(BU_WT,0)+NVL(#loadWt#,0)),
+     		LM_USER_ID = #userID#,
+     		LM_DATE = sysdate
+     WHERE TR_NO = #trNo# and TRUCK_FLT_NO = #truckFltKey# AND TRUCK_FLT_DATE = #truckFltDate#  AND HAWB_NO = #hawbNo#
+     </update>
+     
+     <update id="sqlUpdateRemainingPcsLocation" parameterClass="map">
+     UPDATE AWB_INVENTORY
+     SET	ULD_KEY = #ULD_KEY#,
+     		LSP_NO = #LSP_NO#,
+     		LOC_CODE = DECODE(#ULD_KEY#,null,(SELECT LOC_CODE FROM LSP_INVENTORY WHERE LSP_NO=#LSP_NO#),(SELECT LOC_CODE FROM ULD_INVENTORY WHERE ULD_KEY=#ULD_KEY#)),
+     		LM_USER_ID = #userID#,
+     		LM_DATE = sysdate
+     WHERE SEQ_NO=#SEQ_NO#
+     </update>
+     
+      <select id="sqlGetPostTruckFltHeader" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO" resultClass="cargo.cms.itm.bo.TruckBuildUpBO">
+   SELECT  HD.TR_NO trNo, HD.TRUCK_FLT_NO truckFltKey ,
+     to_char(HD.TRUCK_FLT_DATE,'DDMONYY') truckFltDate,
+     HD.TRUCK_NO truckNo ,
+     ltrim(SUBSTR(TRIM(TO_CHAR(HD.SCH_TIME,'0000')),0,2)|| ':'||  SUBSTR(TRIM(TO_CHAR(HD.SCH_TIME,'0000')),3,4), ':') schTime,
+     FLT.RESTRICTIONS restriction,
+     HD.CLS_RD_PERMIT roadPermitNo,
+     to_char(CROSS_DATE,'DDMONYY') crossingDate,
+     ltrim(SUBSTR(TRIM(TO_CHAR(CROSS_TIME,'0000')),0,2)|| ':'||  SUBSTR(TRIM(TO_CHAR(CROSS_TIME,'0000')),3,4), ':') crossingTime,
+     CTRL_PT_CODE controlPtCode,
+     UNLDG_PT unldgPt,
+     FLT.CAPACITY truckCapacity,
+     FLT.UNLDG_PT1||'/'||FLT.UNLDG_PT2||'/'||FLT.UNLDG_PT3  route,
+     HD.TRK_MANF_PCS truckManfPcs,
+     HD.TRK_MANF_WT truckManfWt,
+     ACCS.VER_NO  lastAccsSubm,
+     ACCS.ACK_STATUS submStatus,
+     DECODE(ACK_REC_TYPE,'CLR','Y','N') fltClear,
+     HD.STATUS status,
+     HD.BU_COMPL_DATE buDate,
+     HD.POST_DATE postDate
+     FROM ITM_TRK_MANF_HD HD
+     JOIN ITM_TRK_FLT FLT ON HD.TRUCK_FLT_NO = FLT.TRUCK_FLT_NO AND HD.TRUCK_FLT_DATE = FLT.TRUCK_FLT_DATE
+     LEFT JOIN ( SELECT T.* FROM (SELECT FLT_KEY,FLT_DATE,FLT_TYPE,VER_NO,ACK_STATUS,ACK_REC_TYPE FROM CST_ACK 
+                             WHERE FLT_KEY = #truckFltKey#  AND  FLT_DATE = to_date(#truckFltDate#,'DDMONYY')  ORDER BY VER_NO DESC) T  WHERE ROWNUM = 1)ACCS
+                             ON HD.TRUCK_FLT_NO = ACCS.FLT_KEY AND HD.TRUCK_FLT_DATE = ACCS.FLT_DATE AND ACCS.FLT_TYPE = 'T' 
+     WHERE HD.TRUCK_FLT_NO = #truckFltKey#  AND HD.TRUCK_FLT_DATE = TO_DATE(#truckFltDate#,'DDMONYY') and HD.status not in  ('VOID')
+    </select>       
+    
+     <select id="sqlGetPostTruckAwbDetails" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO" resultClass="cargo.cms.itm.bo.TruckBuildUpBO">
+       SELECT  SHP.TR_NO trNo, SHP.TRUCK_FLT_NO truckFltKey,
+           TO_CHAR(SHP.TRUCK_FLT_DATE,'DDMONYY') truckFltDate,
+           SHP.DOC_LINE_NO docLineNo,
+           SHP.AWB_NO awbNo,
+           SUBSTR(SHP.AWB_NO,1,3)||'-'||SUBSTR(SHP.AWB_NO,4) awbNoDisp, 
+           to_char(SHP.AWB_DATE,'DDMONYY') awbDate,
+           SHP.IMP_FLT_KEY inbFltKey,
+           TO_CHAR(SHP.IMP_FLT_DATE,'DDMONYY') inbFltDate,
+           ltrim(SUBSTR(TRIM(TO_CHAR(SHP.ATA,'0000')),0,2)|| ':'||  SUBSTR(TRIM(TO_CHAR(SHP.ATA,'0000')),3,4), ':') ata,
+           SHP.ORIG orig,
+           SHP.DEST dest,
+           SHP.IMP_CC ccCode,
+           SHP.CNSL_IND console,
+           SHP.MANF_PCS manfPc,
+           SHP.MANF_WT manfWt,
+           SHP.TRK_MANF_PCS truckManfPcs,
+           SHP.TRK_MANF_WT  truckManfWt
+      FROM ITM_TRK_MANF_SHP SHP
+      JOIN  ITM_TRK_MANF_HD HD on HD.TR_NO = SHP.TR_NO and  HD.TRUCK_FLT_NO = SHP.TRUCK_FLT_NO AND HD.TRUCK_FLT_DATE = SHP.TRUCK_FLT_DATE and HD.status not in  ('VOID')
+      WHERE SHP.TR_NO = #trNo# and SHP.TRUCK_FLT_NO = #truckFltKey#  AND SHP.TRUCK_FLT_DATE = TO_DATE(#truckFltDate#,'DDMONYY') 
+    </select>           
+    
+         
+    <select id="sqlGetPostTruckHawbDetails" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO" resultClass="cargo.cms.itm.bo.TruckBuildUpBO">
+     SELECT  HAWB.TR_NO trNo, HAWB.TRUCK_FLT_NO truckFltKey,
+          HAWB.TRUCK_FLT_DATE truckFltDate,
+          HAWB.DTL_DOC_LINE_NO docLineNo,
+          HAWB.HAWB_NO hawbNo,
+          HAWB.DEST dest,
+          HAWB.IMP_CC ccCode,
+          HAWB.HAWB_PCS hawbPc,
+          HAWB.HAWB_WT hawbWt,
+          HAWB.TRK_MANF_PCS truckManfPcs,
+          HAWB.TRK_MANF_WT truckManfWt
+    FROM ITM_TRK_MANF_SHP_HAWB HAWB
+    WHERE  HAWB.TR_NO = #trNo# and HAWB.TRUCK_FLT_NO = #truckFltKey#
+    AND HAWB.TRUCK_FLT_DATE = TO_DATE(#truckFltDate#,'DDMONYY')
+    AND HAWB.DTL_DOC_LINE_NO =#docLineNo#                                                  
+	</select>
+     
+     
+     <update id="sqlUpdatePostTruckFlt" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO">
+	      <![CDATA[
+		      	UPDATE ITM_TRK_MANF_HD
+				SET POST_USER_ID = #userID#,
+				POST_DATE = sysdate,
+				STATUS = 'POSTED',
+				TR_TYPE = 'IM',
+				TR_EVENT = 'ITMPTM',
+				LM_USER_ID = #userID#,
+				LM_DATE = sysdate
+				WHERE TR_NO = #trNo# and TRUCK_FLT_NO= #truckFltKey# AND TRUCK_FLT_DATE = to_date(#truckFltDate#,'DDMONYY') AND TRUCK_NO= #truckNo# and status not in ('VOID')
+    	 ]]>
+	</update>
+	
+     
+    <delete id="sqlDeletePostTruckFltInv" parameterClass="cargo.cms.itm.bo.TruckBuildUpBO">
+		DELETE FROM AWB_INVENTORY 	WHERE FLT_KEY= #truckFltKey# AND FLT_DATE = to_date(#truckFltDate#,'DDMONYY') AND NVL(FLT_TYPE,'*')='T'
+	</delete>
+	
+	<select id="chkForFwbAndFhlInd" parameterClass="map" resultClass="cargo.cms.itm.bo.TruckBuildUpBO">
+		SELECT  AWB_NO as awbNo, TO_CHAR(AWB_DATE,'DDMONYY') as awbDate, 
+   		(SELECT DECODE(AWB_NO,NULL,'N','Y') FROM EDI_FWB WHERE AWB_NO = A.AWB_NO AND AWB_DATE = A.AWB_DATE AND ROWNUM = 1) as fwbFlag, 
+   		(SELECT DECODE(AWB_NO,NULL,'N','Y') FROM EDI_FHL WHERE AWB_NO = A.AWB_NO AND AWB_DATE = A.AWB_DATE AND ROWNUM = 1) as fhlFlag
+		FROM itm_trk_manf_awb A
+    	WHERE TR_NO = #TR_NO# and A.AWB_NO = #AWB_NO#
+		AND A.AWB_DATE = TO_DATE(#AWB_DATE#,'DDMONYY')
+		AND A.TRUCK_FLT_NO = #FLT_KEY#
+		AND A.TRUCK_FLT_DATE = TO_DATE(#FLT_DATE#,'DDMONYY')
+	</select>
+     
+     <!-- removed -->
+
+	  <update id="updateItmTrkFltEvents" parameterClass="map">
+       <![CDATA[
+	       UPDATE ITM_TRK_MANF_HD
+	    	 SET TR_TYPE = 'IM',
+	     		 TR_EVENT = #TR_EVENT#,
+	     		 LM_USER_ID = #LM_USER_ID#,
+	     		 LM_DATE = sysdate
+	    	 WHERE TR_NO = #trNo# and TRUCK_FLT_NO = #TRUCK_FLT_NO# AND TRUCK_FLT_DATE = #TRUCK_FLT_DATE#  and status not in ('VOID')
+    	 ]]>
+     </update>
+	<!-- TRUCK BUILDUP :: RANJITH :: ENDS  -->
+	
+	<!-- SUBMIT DISCREPANCY (BAS) :: RANJITH :: STARTS -->
+	
+	
+	<select id="sqlGetBasTruckManfCount" parameterClass="cargo.cms.itm.bo.SubmitDiscrepencyBO" resultClass="cargo.cms.itm.bo.SubmitDiscrepencyBO">
+	<![CDATA[
+	SELECT  distinct ltrim(SUBSTR(TRIM(TO_CHAR(SCH_TIME,'0000')),0,2)|| ':'||  SUBSTR(TRIM(TO_CHAR(SCH_TIME,'0000')),3,4), ':') schTime 
+	FROM ITM_TRK_MANF_HD
+	WHERE   status not in ('VOID') and TRUCK_FLT_DATE = TO_DATE(#truckFltDate#,'DDMONYY')
+	]]>
+	<isNotEmpty property="truckFltKey" >
+	 AND TRUCK_FLT_NO = #truckFltKey#
+	</isNotEmpty>
+	<isNotEmpty property="truckNo" > 
+	 AND TRUCK_NO = #truckNo#
+	</isNotEmpty>
+	<isNotEmpty property="schTime" > 
+	 AND  AND SCH_TIME= trim(replace(#schTime#,':',''))
+    </isNotEmpty>
+   
+    
+    </select>
+     
+     <select id="sqlGetBasTruckManfHD" parameterClass="cargo.cms.itm.bo.SubmitDiscrepencyBO" resultClass="cargo.cms.itm.bo.SubmitDiscrepencyBO">
+      <![CDATA[
+       SELECT TR_NO trNo ,
+       TRUCK_FLT_NO truckFltKey ,
+       to_char(TRUCK_FLT_DATE,'DDMONYY') truckFltDate,
+       TRUCK_NO truckNo ,
+       ltrim(SUBSTR(TRIM(TO_CHAR(SCH_TIME,'0000')),0,2)|| ':'||  SUBSTR(TRIM(TO_CHAR(SCH_TIME,'0000')),3,4), ':') schTime,
+       nvl((select max(VER_NO) from cst_subm where REC_TYPE = 'BAS'  AND flt_type = 'T' and  truck_no = ITM_TRK_MANF_HD.TRUCK_NO AND sch_DATE = ITM_TRK_MANF_HD.TRUCK_FLT_DATE AND sch_time = ITM_TRK_MANF_HD.sch_time),0) oldVerNo,
+       DECODE((SELECT COUNT(1) FROM CST_ACK WHERE truck_no = ITM_TRK_MANF_HD.TRUCK_NO AND sch_DATE = ITM_TRK_MANF_HD.TRUCK_FLT_DATE AND sch_time = ITM_TRK_MANF_HD.sch_time AND ACK_REC_TYPE='CLR'),0,'N','Y') fltClear,
+       (select max(send_status) from cst_subm where REC_TYPE = 'BAS'  AND flt_type = 'T' and  truck_no = ITM_TRK_MANF_HD.TRUCK_NO AND sch_DATE = ITM_TRK_MANF_HD.TRUCK_FLT_DATE AND sch_time = ITM_TRK_MANF_HD.sch_time) accsSendStatus,
+       UNLDG_PT unldgPt
+       FROM ITM_TRK_MANF_HD
+		WHERE status not in ('VOID') and TRUCK_FLT_DATE = TO_DATE(#truckFltDate#,'DDMONYY')
+		]]>
+		<isNotEmpty property="truckFltKey" >
+		 AND TRUCK_FLT_NO = #truckFltKey#
+		</isNotEmpty>
+		<isNotEmpty property="truckNo" > 
+	 	AND TRUCK_NO = #truckNo#
+		</isNotEmpty>
+		<isNotEmpty property="schTime" > 
+		 AND  SCH_TIME= trim(replace(#schTime#,':',''))
+   		</isNotEmpty>		
+     </select>
+     
+     <select id="sqlGetBasTruckManfDTL" parameterClass="cargo.cms.itm.bo.SubmitDiscrepencyBO" resultClass="cargo.cms.itm.bo.SubmitDiscrepencyBO">
+     <![CDATA[
+     select a.* , shpDiscPcs - nvl(subm_pcs, 0) discPcs, shpDiscWt - nvl(subm_wt, 0) discWt
+     from
+          (SELECT trkHd.TR_NO  ,
+                trkHd.truck_no truck_no, 
+                trkHd.TRUCK_FLT_DATE SCH_DATE,
+                trkHd.sch_time sch_time,
+      		A.TRUCK_FLT_NO truckFltKey,               
+            to_char(A.TRUCK_FLT_DATE,'DDMONYY') truckFltDate,
+                 A.AWB_NO ,
+           	A.AWB_DATE ,
+       		A.AWB_NO awbNo,
+           	to_char(A.AWB_DATE,'DDMONYY') awbDate,
+          	LPAD('0',18,'0') hawbNo,
+           	NVL(A.TRK_MANF_PCS,0) manfPcs,
+           	NVL(A.TRK_MANF_WT,0) manfWt,
+           	NVL(A.BU_PCS,0) loadPcs,
+           	NVL(A.BU_WT,0) loadWt,
+                NVL(A.BU_PCS,0) - NVL(A.TRK_MANF_PCS,0) shpDiscPcs,
+           	NVL(A.BU_WT,0) - NVL(A.TRK_MANF_WT,0) shpDiscWt, 
+           	(SELECT V.CC_CODE FROM V_CST_TRUCK_CC_CODE V
+				WHERE nvl(V.truck_no,'*') = NVL(trkHd.truck_no,'*') AND nvl( V.sch_DATE,'31AUG2000') = NVL(trkHd.TRUCK_FLT_DATE,'31AUG2000')
+				AND nvl( V.sch_time,'0') = NVL(trkHd.sch_time,'0')
+				AND V.AWB_NO =  A.AWB_NO  AND NVL(V.HAWB_NO, '000000000000000000') =  '000000000000000000' AND ROWNUM = 1)  ccCode,
+            (SELECT V.REF_NO FROM V_CST_TRUCK_CC_CODE V
+				WHERE nvl(V.truck_no,'*') = NVL(trkHd.truck_no,'*') AND nvl( V.sch_DATE,'31AUG2000') = NVL(trkHd.TRUCK_FLT_DATE,'31AUG2000')
+				AND nvl( V.sch_time,'0') = NVL(trkHd.sch_time,'0')
+				AND V.AWB_NO =  A.AWB_NO  AND NVL(V.HAWB_NO, '000000000000000000') =  '000000000000000000' AND ROWNUM = 1)ctmRefNo,   
+           	'' discType
+            FROM ITM_TRK_MANF_AWB A 
+            join ITM_TRK_MANF_HD trkHd ON A.TR_NO = trkHd.TR_NO AND A.TRUCK_FLT_NO = trkHd.TRUCK_FLT_NO AND A.TRUCK_FLT_DATE = trkHd.TRUCK_FLT_DATE and trkHd.status not in ('VOID')
+            JOIN 	ITM_TRK_MANF_SHP P ON A.TR_NO = P.TR_NO AND A.TRUCK_FLT_NO = P.TRUCK_FLT_NO AND A.TRUCK_FLT_DATE = P.TRUCK_FLT_DATE AND A.AWB_NO = P.AWB_NO AND A.AWB_DATE = P.AWB_DATE
+            WHERE         (NVL(A.BU_PCS,0) - NVL(A.TRK_MANF_PCS,0)) <> 0 or 	(NVL(A.BU_WT,0) - NVL(A.TRK_MANF_WT,0)) <> 0
+      UNION ALL      
+      SELECT trkHd.TR_NO  ,
+            trkHd.truck_no truck_no, 
+                trkHd.TRUCK_FLT_DATE SCH_DATE,
+                trkHd.sch_time sch_time,
+      		A.TRUCK_FLT_NO truckFltKey,
+       		to_char(A.TRUCK_FLT_DATE,'DDMONYY') truckFltDate, 
+                  A.AWB_NO ,
+           	A.AWB_DATE ,
+      	  	A.AWB_NO awbNo,
+            to_char(A.AWB_DATE,'DDMONYY') awbDate,
+            H.HAWB_NO hawbNo,
+            NVL(H.TRK_MANF_PCS,0) manfPcs,
+            NVL(H.TRK_MANF_WT,0) manfWt,
+            NVL(H.BU_PCS,0) loadPcs,
+            NVL(H.BU_WT,0) loadWt,
+            NVL(H.BU_PCS,0) - NVL(H.TRK_MANF_PCS,0) shpDiscPcs,
+            NVL(H.BU_WT,0) - NVL(H.TRK_MANF_WT,0) shpDiscWt,
+           (SELECT V.CC_CODE FROM V_CST_TRUCK_CC_CODE V
+				WHERE nvl(V.truck_no,'*') = NVL(trkHd.truck_no,'*') AND nvl( V.sch_DATE,'31AUG2000') = NVL(trkHd.TRUCK_FLT_DATE,'31AUG2000')
+				AND nvl( V.sch_time,'0') = NVL(trkHd.sch_time,'0')
+				AND V.AWB_NO =  A.AWB_NO  AND NVL(V.HAWB_NO, '000000000000000000') =  NVL(H.HAWB_NO, '000000000000000000') AND ROWNUM = 1) ccCode,
+            (SELECT V.REF_NO FROM V_CST_TRUCK_CC_CODE V
+				WHERE nvl(V.truck_no,'*') = NVL(trkHd.truck_no,'*') AND nvl( V.sch_DATE,'31AUG2000') = NVL(trkHd.TRUCK_FLT_DATE,'31AUG2000')
+				AND nvl( V.sch_time,'0') = NVL(trkHd.sch_time,'0')
+				AND V.AWB_NO =  A.AWB_NO  AND NVL(V.HAWB_NO, '000000000000000000') =  NVL(H.HAWB_NO, '000000000000000000') AND ROWNUM = 1) ctmRefNo,
+            '' discType
+            FROM ITM_TRK_MANF_AWB A  
+            JOIN ITM_TRK_MANF_AWB_HAWB H ON  A.TR_NO =  H.TR_NO and A.TRUCK_FLT_NO =  H.TRUCK_FLT_NO
+            AND A.TRUCK_FLT_DATE = A.TRUCK_FLT_DATE 
+            AND A.DOC_LINE_NO = H.DTL_DOC_LINE_NO
+            JOIN ITM_TRK_MANF_SHP P ON A.TR_NO = P.TR_NO AND A.TRUCK_FLT_NO = P.TRUCK_FLT_NO AND A.TRUCK_FLT_DATE = P.TRUCK_FLT_DATE AND A.AWB_NO = P.AWB_NO AND A.AWB_DATE = P.AWB_DATE
+            JOIN ITM_TRK_MANF_SHP_HAWB S ON S.TR_NO = P.TR_NO AND S.TRUCK_FLT_NO = P.TRUCK_FLT_NO AND S.TRUCK_FLT_DATE = P.TRUCK_FLT_DATE AND S.DTL_DOC_LINE_NO = P.DOC_LINE_NO
+            join ITM_TRK_MANF_HD trkHd ON A.TR_NO = trkHd.TR_NO AND A.TRUCK_FLT_NO = trkHd.TRUCK_FLT_NO AND A.TRUCK_FLT_DATE = trkHd.TRUCK_FLT_DATE and trkHd.status not in ('VOID')
+           WHERE         NVL(H.BU_PCS,0) - NVL(H.TRK_MANF_PCS,0) <> 0 or 	NVL(H.BU_WT,0) - NVL(H.TRK_MANF_WT,0) <> 0) a
+           left JOIN (select b.TRUCK_NO, b.SCH_DATE, b.SCH_TIME, b.awb_no , b.awb_date, b.HAWB_NO, sum(OT_BKDWN_PCS)  subm_PCS , sum(OT_BKDWN_WT)   subm_WT
+                       from cst_bd_disc b
+                       join cst_ack a on  b.TRUCK_NO = a.TRUCK_NO and  b.SCH_DATE =  a.SCH_DATE
+                                and  b.SCH_TIME = a.SCH_TIME and ACK_REC_TYPE = 'BAS' and a.ver_no = b.ver_no  and ack_status = 'A'
+                       group by b.TRUCK_NO, b.SCH_DATE, b.SCH_TIME, b.awb_no , b.awb_date, b.HAWB_NO) bdDisc 
+                       on bdDisc.TRUCK_NO = a.TRUCK_NO  and bdDisc.SCH_DATE = a.SCH_DATE and bdDisc.SCH_TIME = a.SCH_TIME 
+                       and bdDisc.awb_no = a.awb_no and bdDisc.awb_Date = a.awb_Date 
+           where A.TR_NO = #trNo# and  a.truckFltKey = #truckFltKey# AND a.truckFltDate=TO_DATE(#truckFltDate#,'DDMONYY')
+           and  (shpDiscPcs - nvl(subm_pcs, 0) <> 0 or  shpDiscWt - nvl(subm_wt, 0) <> 0)
+        ]]>  
+     </select>
+     
+      <select id="versionNoCheckTruckFlt"  parameterClass="cargo.cms.itm.bo.SubmitDiscrepencyBO" resultClass="java.lang.Integer">
+			select COUNT(1) from cst_subm where REC_TYPE = 'BAS'  AND flt_type = 'T' and  truck_no = #truckNo# 
+								AND sch_DATE = to_Date(#truckFltDate#,'DDMONYY') and SCH_TIME = trim(replace(#schTime#,':','')) AND VER_NO = #verNo#
+	</select>
+	
+	<insert id="saveDiscrepancyDataCstSubm"  parameterClass="cargo.cms.itm.bo.SubmitDiscrepencyBO"> 
+	INSERT INTO CST_SUBM( VER_NO, REC_TYPE, SUBM_DATE, LM_USER_ID, LM_DATE, 
+		LM_VER, SEND_STATUS, FLT_TYPE,TRUCK_NO,SCH_DATE,SCH_TIME) 
+		VALUES(#verNo#, 'BAS', SYSDATE, #userID#, SYSDATE,'2', 'P', 
+		'T',#truckNo#,to_date(#truckFltDate#,'DDMONYY'),trim(replace(#schTime#,':','')))               
+	</insert>	
+	
+	<insert id="saveDiscrepancyDataCstBdDisc"  parameterClass="cargo.cms.itm.bo.SubmitDiscrepencyBO"> 
+		INSERT INTO CST_BD_DISC( 
+			   TR_NO,VER_NO, AWB_NO, AWB_DATE, HAWB_NO,
+			    OT_MAN_PCS, OT_MAN_WT, OT_BKDWN_PCS, OT_BKDWN_WT,OT_SPE_PCS,OT_SPE_WT,
+			     MSG_TYPE,    LM_USER_ID, LM_DATE, LM_VER,
+			   FLT_TYPE,BRKDN_CODE, TRUCK_NO,SCH_DATE, SCH_TIME, 
+			   OT_CTM_REF_N, HANDLR,FLT_KEY,FLT_DATE) 
+			VALUES( 
+			CST_BD_DISC_SEQ.nextval,#verNo#,#awbNo#, to_date(#awbDate#,'DDMONYY'), #hawbNo#	,
+			#manfPcs#,#manfWt#,#discPcs#,#discWt#, #loadPcs#,#loadWt#,
+			'B',#userID#, sysdate,'1',
+			'T',#discType#,#truckNo#,to_date(#truckFltDate#,'DDMONYY'),trim(replace(#schTime#,':','')),
+			#ctmRefNo#,#handler#,#truckFltKey#,to_date(#truckFltDate#,'DDMONYY'))
+
+	</insert>	
+	
+	<!--<insert id="saveDiscrepancyDataCstBdDisc"  parameterClass="cargo.cms.itm.bo.SubmitDiscrepencyBO"> 
+		INSERT INTO CST_BD_DISC( 
+			   TR_NO,VER_NO,
+			   AWB_NO, 
+			   AWB_DATE,
+			   HAWB_NO,
+			   OT_MAN_PCS,
+			   MSG_TYPE,
+			   LM_USER_ID,
+			   LM_DATE,
+			   LM_VER,
+			   OT_BKDWN_PCS,
+			   OT_BKDWN_WT,
+			   FLT_KEY,
+			   FLT_DATE,
+			   FLT_TYPE,
+			   BRKDN_CODE,
+			   OT_MAN_WT 
+				  ) 
+			VALUES( 
+			CST_BD_DISC_SEQ.nextval,
+			#verNo#,
+			#awbNo#, 
+			to_date(#awbDate#,'DDMONYY'),
+			#hawbNo#,
+			#manfPcs#,
+			'B',
+			#userID#,
+			sysdate,
+			'1',
+			#discPcs#,
+			#discWt#,
+			#truckFltKey#,
+			#truckFltDate#,
+			'T',
+			#discType#,
+			#manfWt#
+			)
+	</insert>	
+	
+	-->
+	<insert id="saveDiscrepancyCompleteCstSubm"  parameterClass="cargo.cms.itm.bo.SubmitDiscrepencyBO">    
+   			INSERT INTO CST_SUBM( VER_NO, REC_TYPE, SUBM_DATE,SEND_DATE, LM_USER_ID, LM_DATE,BD_COMPLETE, 
+			LM_VER, SEND_STATUS, FLT_KEY,  FLT_DATE,FLT_TYPE,TRUCK_NO,SCH_DATE,SCH_TIME) 
+			VALUES(#verNo#, 'BAS', SYSDATE,SYSDATE,#userID#, 
+			SYSDATE,'Y','2', 'P', #truckFltKey#, #truckFltDate#,'T',
+			#truckNo#,to_date(#truckFltDate#,'DDMONYY'),trim(replace(#schTime#,':','')))	
+	</insert>
+   
+   <insert id="saveDiscrepancyCompleteCstBdDisc"  parameterClass="cargo.cms.itm.bo.SubmitDiscrepencyBO"> 
+		INSERT INTO CST_BD_DISC( TR_NO,VER_NO,
+			   MSG_TYPE,
+			   LM_USER_ID,
+			   LM_DATE,
+			   LM_VER,
+			   FLT_KEY,
+			   FLT_DATE,
+			   FLT_TYPE,
+			   TRUCK_NO,
+			   SCH_DATE,
+			   SCH_TIME
+				  ) 
+			VALUES( CST_BD_DISC_SEQ.nextval,
+			#verNo#,
+			'C',
+			#userID#,
+			sysdate,
+			'1',
+			#truckFltKey#,
+			#truckFltDate#,
+			'T',
+			#truckNo#,
+			to_date(#truckFltDate#,'DDMONYY'),
+			trim(replace(#schTime#,':',''))
+			)
+	</insert>   
+	
+	<!-- Count the record before insertion wheather it exists or not ends-->
+	 <parameterMap id="submitbasMap" class="map" >
+		<parameter property="TRUCK_NO" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="SCH_DATE" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="SCH_TIME" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="TRUCK_FLT_KEY" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="TRUCK_FLT_DATE" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="VER_NO" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="MSG_TYPE" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="USER_ID" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>	
+   </parameterMap>
+	<procedure id="sub_bas_disc_proc" parameterMap="submitbasMap" >
+		{  call pkg_sub_bd_disc.sub_bas_disc(?,?,?,?,?,?,?,?)  }
+	</procedure>
+	
+	<select id="getBasVersionList"  parameterClass="cargo.cms.itm.bo.SubmitDiscrepencyBO" resultClass="cargo.cms.itm.bo.SubmitDiscrepencyBO"> 
+		 	select VER_NO historyVer from cst_subm where REC_TYPE = 'BAS'  AND flt_type = 'T' and  truck_no = #truckNo# AND sch_DATE = to_Date(#truckFltDate#,'DDMONYY') AND sch_time = trim(replace(#schTime#,':','')) ORDER BY VER_NO ASC
+	</select> 
+	
+	<select id="getBasHistoryHeader"  parameterClass="cargo.cms.itm.bo.SubmitDiscrepencyBO" resultClass="cargo.cms.itm.bo.SubmitDiscrepencyBO"> 
+			select to_char(SUBM_DATE,'DDMONYY HH24:MI') submDate,
+            to_char(SEND_DATE,'DDMONYY HH24:MI') sendDate,
+            SEND_STATUS sendStaus
+            FROM CST_SUBM 
+            where REC_TYPE = 'BAS'  
+            AND flt_type = 'T' 
+            and truck_no = #truckNo# AND sch_DATE = to_Date(#truckFltDate#,'DDMONYY') AND sch_time = trim(replace(#schTime#,':',''))
+            AND VER_NO = #historyVer#
+	</select>
+	
+	<select id="getBasHistoryDetails"  parameterClass="cargo.cms.itm.bo.SubmitDiscrepencyBO" resultClass="cargo.cms.itm.bo.SubmitDiscrepencyBO"> 
+			 SELECT AWB_NO awbNo,
+                   to_char(AWB_DATE,'DDMONYY') awbDate,
+                   HAWB_NO hawbNo,
+                   NVL(OT_MAN_PCS,0) manfPcs,
+                   NVL(OT_MAN_WT,0) manfWt,
+                   NVL(OT_BKDWN_PCS,0) loadPcs,
+                   NVL(OT_BKDWN_WT,0) loadWt,
+                   (NVL(OT_BKDWN_PCS,0)-NVL(OT_MAN_PCS,0)) discPcs,
+                   (NVL(OT_BKDWN_WT,0)-NVL(OT_MAN_WT,0)) discWt,
+                   BRKDN_CODE discType
+                   FROM CST_BD_DISC
+                   WHERE flt_type = 'T' 
+           		   and truck_no = #truckNo# AND sch_DATE = to_Date(#truckFltDate#,'DDMONYY') AND sch_time = trim(replace(#schTime#,':',''))  
+            	   AND VER_NO = #historyVer#
+	</select>
+	
+	
+	
+   	<!-- SUBMIT DISCREPANCY (BAS) :: RANJITH :: ENDS -->
+   	
+   	<!-- OFFLOAD INT TRUCK :: RANJITH :: STARTS -->
+   	
+   <select id="sqlGetTruckFlightCloseStatus" parameterClass="map" resultClass="java.lang.Integer">
+   			SELECT COUNT(1) FROM ITM_TRK_MANF_HD WHERE TRUCK_FLT_NO = #TRUCK_FLT_NO# AND TRUCK_FLT_DATE = TO_DATE(#TRUCK_FLT_DATE#,'DDMONYY') AND NVL(STATUS,'*') = 'CLOSED'
+   </select>
+   	
+   
+	<select id="sqlGetOffloadTruckManfCount" parameterClass="cargo.cms.itm.bo.OffloadIntTruckBO" resultClass="cargo.cms.itm.bo.OffloadIntTruckBO">
+	<![CDATA[
+	SELECT  distinct ltrim(SUBSTR(TRIM(TO_CHAR(SCH_TIME,'0000')),0,2)|| ':'||  SUBSTR(TRIM(TO_CHAR(SCH_TIME,'0000')),3,4), ':') schTime 
+	FROM ITM_TRK_MANF_HD
+	WHERE
+	TRUCK_FLT_DATE = TO_DATE(#truckFltDate#,'DDMONYY')
+	AND NVL(STATUS,'*') = 'CLOSED'
+	]]>
+	<isNotEmpty property="truckFltKey" >
+	 AND TRUCK_FLT_NO = #truckFltKey#
+	</isNotEmpty>
+	<isNotEmpty property="truckNo" > 
+	 AND TRUCK_NO = #truckNo#
+	</isNotEmpty>
+	<isNotEmpty property="schTime" > 
+	 AND SCH_TIME= trim(replace(#schTime#,':',''))
+    </isNotEmpty> 
+    </select>
+   	
+   	 <select id="sqlGetOffloadTruckHeader" parameterClass="cargo.cms.itm.bo.OffloadIntTruckBO" resultClass="cargo.cms.itm.bo.OffloadIntTruckBO">
+       SELECT TRUCK_FLT_NO truckFltKey ,
+       to_char(TRUCK_FLT_DATE,'DDMONYY') truckFltDate,
+       TRUCK_NO truckNo , TR_NO trNo ,
+       ltrim(SUBSTR(TRIM(TO_CHAR(SCH_TIME,'0000')),0,2)|| ':'||  SUBSTR(TRIM(TO_CHAR(SCH_TIME,'0000')),3,4), ':') schTime,
+       UNLDG_PT unldgPt
+       FROM ITM_TRK_MANF_HD
+		WHERE 
+		TRUCK_FLT_DATE = TO_DATE(#truckFltDate#,'DDMONYY')
+			AND NVL(STATUS,'*') = 'CLOSED'
+		<isNotEmpty property="truckFltKey" >
+		 AND TRUCK_FLT_NO = #truckFltKey#
+		</isNotEmpty>
+		<isNotEmpty property="truckNo" > 
+	 	AND TRUCK_NO = #truckNo#
+		</isNotEmpty>
+		<isNotEmpty property="schTime" > 
+		 AND  SCH_TIME= trim(replace(#schTime#,':',''))
+   		</isNotEmpty>
+     </select>
+   	
+   	<select id="sqlGetOffloadTruckAwbDetails" parameterClass="cargo.cms.itm.bo.OffloadIntTruckBO" resultClass="cargo.cms.itm.bo.OffloadIntTruckBO">
+   	<![CDATA[
+	SELECT HD.TR_NO trNo ,
+			TRK.AWB_NO awbNo, 
+   		   SUBSTR(TRK.AWB_NO,1,3)||'-'||SUBSTR(TRK.AWB_NO,4) awbNoDisp, 
+	   	   to_char(TRK.AWB_DATE,'DDMONYY') awbDate,
+     	   TRK.IMP_FLT_KEY  inbFltKey,
+     	   to_char(TRK.IMP_FLT_DATE,'DDMONYY') inbFltDate,
+     	   pkg_common.get_flt_ata(TRK.IMP_FLT_KEY,TRK.IMP_FLT_DATE,'A') ata,
+     	   TRK.TRUCK_FLT_NO truckFltKey,
+	   	   to_char(TRK.TRUCK_FLT_DATE,'DDMONYY') truckFltDate,
+	 	   NVL(TRK_AWB.BU_PCS,0) manfPcs,
+	   	   NVL(TRK_AWB.BU_WT,0) manfWt,
+	       TRK.DOC_LINE_NO docLineNo,
+	   	   #userID# userID
+   FROM ITM_TRK_MANF_SHP TRK 
+   JOIN  ITM_TRK_MANF_HD HD on HD.TR_NO = TRK.TR_NO AND HD.TRUCK_FLT_NO = TRK.TRUCK_FLT_NO AND HD.TRUCK_FLT_DATE = TRK.TRUCK_FLT_DATE and HD.status not in  ('VOID')
+   JOIN ITM_TRK_MANF_AWB TRK_AWB ON  TRK.TR_NO = TRK_AWB.TR_NO AND TRK.TRUCK_FLT_NO = TRK_AWB.TRUCK_FLT_NO AND TRK.TRUCK_FLT_DATE = TRK_AWB.TRUCK_FLT_DATE 
+   		AND TRK.AWB_NO = TRK_AWB.AWB_NO AND TRK.AWB_DATE = TRK_AWB.AWB_DATE
+   WHERE TRK.TRUCK_FLT_NO = #truckFltKey# AND TRK.TRUCK_FLT_DATE = to_date(#truckFltDate#,'DDMONYY') AND  NVL(TRK.TRK_MANF_PCS,0) > 0 AND  NVL(TRK.TRK_MANF_WT,0) > 0
+   ]]>
+  	</select>
+	
+	<select id="sqlGetOffloadTruckHawbDetails" parameterClass="cargo.cms.itm.bo.OffloadIntTruckBO" resultClass="cargo.cms.itm.bo.OffloadIntTruckBO">
+	  SELECT TRK.TR_NO trNo ,
+	 		TRK.TRUCK_FLT_NO truckFltKey,
+	        to_char(TRK.TRUCK_FLT_DATE,'DDMONYY') truckFltDate,
+	        TRK.DTL_DOC_LINE_NO docLineNo,
+	        TRK.HAWB_NO  hawbNo,
+            NVL(TRK_AWB.BU_PCS,0) manfPcs,
+            NVL(TRK_AWB.BU_WT,0) manfWt,
+            #userID# userID
+    	FROM ITM_TRK_MANF_SHP_HAWB TRK JOIN ITM_TRK_MANF_AWB_HAWB TRK_AWB ON  TRK.TR_NO = TRK_AWB.TR_NO AND TRK.TRUCK_FLT_NO = TRK_AWB.TRUCK_FLT_NO AND TRK.TRUCK_FLT_DATE = TRK_AWB.TRUCK_FLT_DATE
+    		AND TRK.DTL_DOC_LINE_NO = TRK_AWB.DTL_DOC_LINE_NO AND TRK.HAWB_NO = TRK_AWB.HAWB_NO
+        WHERE TRK.TR_NO = #trNo# and TRK.TRUCK_FLT_NO = #truckFltKey# and TRK.TRUCK_FLT_DATE = to_date(#truckFltDate#,'DDMONYY') and TRK.DTL_DOC_LINE_NO = #docLineNo#
+     </select>
+	
+	
+	 <update id="updateOffloadAwbInfo" parameterClass="cargo.cms.itm.bo.OffloadIntTruckBO">
+	 UPDATE ITM_TRK_MANF_SHP
+     SET	OFFLD_PCS = NVL(OFFLD_PCS,0)+NVL(#offloadPcs#,0),
+     		OFFLD_WT = NVL(OFFLD_WT,0)+NVL(#offloadWt#,0),
+     		LM_USER_ID = #userID#,
+     		LM_DATE = sysdate,
+     		TR_TYPE = #trtype#
+     WHERE TR_NO = #trNo# and TRUCK_FLT_NO = #truckFltKey# AND TRUCK_FLT_DATE = #truckFltDate# AND AWB_NO = #awbNo# AND AWB_DATE = to_date(#awbDate#,'DDMONYY')
+     
+     </update>
+     
+      <update id="updateOffloadAwbBuInfo" parameterClass="cargo.cms.itm.bo.OffloadIntTruckBO">
+	 UPDATE ITM_TRK_MANF_AWB
+     SET	BU_PCS =  NVL(BU_PCS,0)- NVL(#offloadPcs#,0),
+     		BU_WT = NVL(BU_WT,0)-NVL(#offloadWt#,0),
+     		LM_USER_ID = #userID#,
+     		LM_DATE = sysdate,
+     		TR_TYPE = #trtype#
+     WHERE TR_NO = #trNo# and TRUCK_FLT_NO = #truckFltKey# AND TRUCK_FLT_DATE = #truckFltDate# AND AWB_NO = #awbNo# AND AWB_DATE = to_date(#awbDate#,'DDMONYY')
+     
+     </update>
+     
+     <update id="updateOffloadHawbInfo" parameterClass="cargo.cms.itm.bo.OffloadIntTruckBO">
+     UPDATE ITM_TRK_MANF_SHP_HAWB
+     SET	OFFLD_PCS = (NVL(OFFLD_PCS,0)+NVL(#offloadPcs#,0)),
+     		OFFLD_WT = (NVL(OFFLD_WT,0)+NVL(#offloadWt#,0)),
+     		LM_USER_ID = #userID#,
+     		LM_DATE = sysdate
+     WHERE TR_NO = #trNo# and TRUCK_FLT_NO = #truckFltKey# AND TRUCK_FLT_DATE = #truckFltDate# AND  DTL_DOC_LINE_NO = #docLineNo# AND HAWB_NO = #hawbNo#
+     </update>
+     
+     <update id="updateOffloadHawbBuInfo" parameterClass="cargo.cms.itm.bo.OffloadIntTruckBO">
+     UPDATE ITM_TRK_MANF_AWB_HAWB
+     SET	BU_PCS =  NVL(BU_PCS,0)- NVL(#offloadPcs#,0),
+     		BU_WT = NVL(BU_WT,0)-NVL(#offloadWt#,0),
+     		LM_USER_ID = #userID#,
+     		LM_DATE = sysdate
+     WHERE TR_NO = #trNo# and TRUCK_FLT_NO = #truckFltKey# AND TRUCK_FLT_DATE = #truckFltDate# AND  DTL_DOC_LINE_NO = #docLineNo# AND HAWB_NO = #hawbNo#
+     </update>
+     
+     
+     <update id="updateOffloadAwbInventory" parameterClass="cargo.cms.itm.bo.OffloadIntTruckBO">
+     UPDATE AWB_INVENTORY
+     SET  LOCN_PCS = NVL(LOCN_PCS,0)+NVL(#offloadPcs#,0),
+     	  LOCN_WT = NVL(LOCN_WT,0)+NVL(#offloadWt#,0),
+     	  LM_USER_ID = #userID#,
+     	  LM_DATE = sysdate
+     WHERE FLT_KEY is NULL 
+       AND FLT_DATE is NULL
+       AND NVL(LSP_NO,'*') = NVL(#lspNo#,'*')
+       AND NVL(ULD_KEY,'*') = NVL(#uldKey#,'*')
+       AND NVL(AWB_NO,'*') = NVL(#awbNo#,'*')
+       AND NVL(AWB_DATE,'12AUG01') = to_date(#awbDate#,'DDMONYY')
+     </update>
+     
+     <update id="insertOffloadAwbInventory" parameterClass="cargo.cms.itm.bo.OffloadIntTruckBO">
+     INSERT INTO AWB_INVENTORY
+	 (AWB_NO, AWB_DATE,LOC_CODE,LSP_NO,ULD_KEY,
+	 LOCN_PCS, LOCN_WT,STRG_DATE,CR_USER_ID, CR_DATE,BUP_WT,BULK_WT,
+	 LM_USER_ID, LM_DATE,SEQ_NO)
+	 VALUES
+	 (#awbNo#,#awbDate#,DECODE(#uldKey#,null,(SELECT LOC_CODE FROM LSP_INVENTORY WHERE LSP_NO=#lspNo#),(SELECT LOC_CODE FROM ULD_INVENTORY WHERE ULD_KEY=#uldKey#)),#lspNo#,#uldKey#,
+	 #offloadPcs#,#offloadWt#,sysdate, #userID#, sysdate,0,0,
+	 #userID#, sysdate,AWB_INV_SEQ.NEXTVAL)
+     </update>
+     
+     
+     <update id="updateOffloadTrEvent" parameterClass="cargo.cms.itm.bo.OffloadIntTruckBO">
+      <![CDATA[
+      UPDATE ITM_TRK_MANF_HD
+    	 SET TR_TYPE = 'IM',
+     		 TR_EVENT = 'ITMOFLD' ,
+     		 LM_USER_ID = #userID#,
+     		 LM_DATE = sysdate
+    	 WHERE TR_NO = #trNo# and TRUCK_FLT_NO = #truckFltKey# AND TRUCK_FLT_DATE = #truckFltDate# and status not in ('VOID')
+    	 ]]>
+     </update>
+	   	
+   <select id="sqlGetOffloadLspLocation" parameterClass="java.lang.String" resultClass="java.lang.String">
+   			SELECT LOC_CODE FROM LSP_INVENTORY WHERE LSP_NO = #lspNo#
+   </select>
+   
+   <select id="sqlGetOffloadUldLocation" parameterClass="java.lang.String" resultClass="java.lang.String">
+   			SELECT LOC_CODE FROM ULD_INVENTORY WHERE ULD_KEY = #uldKey#
+   </select>
+     
+	<!-- OFFLOAD INT TRUCK :: RANJITH :: ENDS -->
+	
+	<!-- TRUCK FLIGHT EVENT :: RANJITH :: STARTS -->
+	<select id="sqlGetTruckFlightEventHeader" parameterClass="cargo.cms.itm.bo.TruckFlightEventBO" resultClass="cargo.cms.itm.bo.TruckFlightEventBO">
+	 SELECT FLT.TRUCK_FLT_NO truckFltKey ,
+     to_char(FLT.TRUCK_FLT_DATE,'DDMONYY') truckFltDate,
+     HD.TRUCK_NO truckNo ,
+     ltrim(SUBSTR(TRIM(TO_CHAR(FLT.SCH_TIME,'0000')),0,2)|| ':'||  SUBSTR(TRIM(TO_CHAR(FLT.SCH_TIME,'0000')),3,4), ':') schTime,
+     FLT.RESTRICTIONS restriction,
+     HD.CLS_RD_PERMIT roadPermitNo,
+     to_char(HD.CROSS_DATE,'DDMONYY') crossingDate,
+     ltrim(SUBSTR(TRIM(TO_CHAR(HD.CROSS_TIME,'0000')),0,2)|| ':'||  SUBSTR(TRIM(TO_CHAR(HD.CROSS_TIME,'0000')),3,4), ':') crossingTime,
+     HD.CTRL_PT_CODE controlPtCode,
+     HD.UNLDG_PT unldgPt,
+     FLT.CAPACITY truckCapacity,
+     FLT.UNLDG_PT1||'/'||FLT.UNLDG_PT2||'/'||FLT.UNLDG_PT3  route,
+     HD.TRK_MANF_PCS truckManfPcs,
+     HD.TRK_MANF_WT truckManfWt,
+     HD.STATUS status,
+     HD.BU_COMPL_DATE buDate,
+     HD.POST_DATE postDate,
+     HD.TR_NO trNo
+     FROM ITM_TRK_FLT FLT
+   JOIN ( select a.* from (
+          Select  TR_NO ,TRUCK_FLT_NO ,to_char(TRUCK_FLT_DATE,'DDMONYY') TRUCK_FLT_DATE, TRUCK_NO, CLS_RD_PERMIT, CTRL_PT_CODE, UNLDG_PT, TRK_MANF_PCS, TRK_MANF_WT,
+            STATUS, BU_COMPL_DATE, POST_DATE, CROSS_DATE, CROSS_TIME
+            from ITM_TRK_MANF_HD 
+            where TRUCK_FLT_NO = #truckFltKey# AND TRUCK_FLT_DATE = #truckFltDate# order by lm_date desc)a where rownum = 1) 
+            HD ON HD.TRUCK_FLT_NO = FLT.TRUCK_FLT_NO AND HD.TRUCK_FLT_DATE = FLT.TRUCK_FLT_DATE
+     WHERE FLT.TRUCK_FLT_NO =  #truckFltKey#  AND FLT.TRUCK_FLT_DATE = TO_DATE(#truckFltDate#,'DDMONYY') 
+	</select>
+	
+	<select id="getAccsSubmStatForEvents" parameterClass="cargo.cms.itm.bo.TruckFlightEventBO" resultClass="cargo.cms.itm.bo.TruckFlightEventBO" >
+	 <![CDATA[
+		select a.* from (SELECT 
+			decode(A.REC_TYPE,'BAS','Breakdown version no ' || A.VER_NO,decode(A.REC_TYPE,'AMA','Amended version no ' || A.VER_NO,decode(A.REC_TYPE,'INA','Initial version no' || A.VER_NO)))  as lastAccsSubm,
+			DECODE(A.SEND_STATUS,'A','ACCEPTED','R','REJECTED','P','IN PROGRESS','W','PENDING','REJECTED') as submStatus
+		FROM CST_SUBM  A  
+		WHERE A.REC_TYPE = decode(A.REC_TYPE,'BAS','BAS',decode(A.REC_TYPE,'AMA','AMA','INA')) and   TO_CHAR(A.SCH_DATE,'ddMONYY') =  TO_DATE(#truckFltDate#,'ddMONYY')
+			AND A.sch_time =  trim(replace(#schTime#,':','')) AND A.TRUCK_NO =  #truckNo#AND   A.FLT_TYPE = 'T' 
+			AND A.VER_NO = (SELECT MAX(VER_NO) FROM CST_SUBM WHERE
+							REC_TYPE = decode(REC_TYPE,'BAS','BAS',decode(REC_TYPE,'AMA','AMA','INA'))  
+							and   TO_CHAR(SCH_DATE,'ddMONYY') =  TO_DATE(#truckFltDate#,'ddMONYY') AND sch_time = trim(replace(#schTime#,':',''))
+							AND TRUCK_NO = #truckNo# AND   FLT_TYPE = 'T') ) a where rownum = 1
+		 ]]>
+	</select>
+	
+	<select id="getAccsFlightClearForEvents" parameterClass="cargo.cms.itm.bo.TruckFlightEventBO" resultClass="java.lang.String" >
+		 <![CDATA[
+			select NVL(decode(ACK_REC_TYPE,'CCA','Y','N'),'N') as fltClear 
+			FROM CST_ACK WHERE TRUCK_NO = #truckNo#
+			AND sch_DATE =#truckFltDate# AND sch_time =  trim(replace(#schTime#,':','')) AND FLT_TYPE = 'T'   AND ACK_REC_TYPE ='CCA' AND ROWNUM=1
+		 ]]>
+	</select>     
+     
+     <select id="sqlGetTruckFlightEventList" parameterClass="cargo.cms.itm.bo.TruckFlightEventBO" resultClass="cargo.cms.itm.bo.TruckFlightEventBO">
+	SELECT	TO_CHAR(EVNT.CR_DATE,'DDMONYY HH24:MI') eventDate,
+			EVNT.CR_USER_ID as eventUser,
+			(SELECT EVENT_DESC FROM REGISTER_TR_NO_EVENTS RT WHERE RT.TR_TYPE='IM' AND RT.EVENT_ID = EVNT.EVENT_ID) eventDesc
+			FROM ITM_TRK_FLT_EVENT EVNT
+			WHERE TRUCK_FLT_NO = #truckFltKey#
+			AND TRUCK_FLT_DATE = to_date(#truckFltDate#,'DDMONYY') order by EVNT.CR_DATE ASC
+  </select>
+  
+ <select id="sqlGetTruckBUStatus" parameterClass="map" resultClass="java.lang.Integer">
+	SELECT	COUNT(1) FROM ITM_TRK_MANF_HD WHERE TRUCK_FLT_NO = #TRUCK_FLT_NO# AND TRUCK_FLT_DATE = TO_DATE(#TRUCK_FLT_DATE#) AND BU_COMPL_DATE IS NOT NULL and status not in ('VOID')
+  </select>	
+  
+   <select id="sqlGetTrNoForHHTTruckBUStatus" parameterClass="map" resultClass="java.lang.String">
+	SELECT	tr_no  FROM ITM_TRK_MANF_HD WHERE TRUCK_FLT_NO = #TRUCK_FLT_NO# AND TRUCK_FLT_DATE = TO_DATE(#TRUCK_FLT_DATE#) AND status not in ('VOID') and rownum = 1
+  </select>	
+	<!-- TRUCK FLIGHT EVENT :: RANJITH :: ENDS -->
+
+	<!-- GENERATE ROCAS FILE :: RANJITH :: STARTS -->
+	 <select id="sqlGetRoCarsTruckManfHeader" parameterClass="cargo.cms.itm.bo.GenerateROCARSBO" resultClass="cargo.cms.itm.bo.GenerateROCARSBO">
+	 <![CDATA[
+    SELECT  HD.TR_NO trNo, HD.TRUCK_FLT_NO truckFltKey ,
+     to_char(HD.TRUCK_FLT_DATE,'DDMONYY') truckFltDate,
+     HD.TRUCK_NO truckNo ,
+     ltrim(SUBSTR(TRIM(TO_CHAR(HD.SCH_TIME,'0000')),0,2)|| ':'||  SUBSTR(TRIM(TO_CHAR(HD.SCH_TIME,'0000')),3,4), ':') schTime,
+     FLT.RESTRICTIONS restriction,
+     HD.CLS_RD_PERMIT roadPermitNo,
+     to_char(CROSS_DATE,'CCYY-MM-DD') crossingDate, 
+     TRIM(TO_CHAR(CROSS_TIME,'0000')) crossingTime,
+     CTRL_PT_CODE controlPtCode,
+     UNLDG_PT unldgPt,
+     FLT.CAPACITY truckCapacity,
+     FLT.UNLDG_PT1||'/'||FLT.UNLDG_PT2||'/'||FLT.UNLDG_PT3  route,
+     HD.TRK_MANF_PCS truckManfPcs,
+     HD.TRK_MANF_WT truckManfWt,
+     ACCS.VER_NO  lastAccsSubm,
+     ACCS.ACK_STATUS submStatus,
+     DECODE(ACK_REC_TYPE,'CLR','Y','N') fltClear,
+     HD.STATUS status,
+     HD.BU_COMPL_DATE buDate,
+     HD.POST_DATE postDate
+     FROM ITM_TRK_MANF_HD HD
+     JOIN ITM_TRK_FLT FLT ON HD.TRUCK_FLT_NO = FLT.TRUCK_FLT_NO AND HD.TRUCK_FLT_DATE = FLT.TRUCK_FLT_DATE
+     LEFT JOIN ( SELECT T.* FROM (SELECT FLT_KEY,FLT_DATE,FLT_TYPE,VER_NO,ACK_STATUS,ACK_REC_TYPE FROM CST_ACK 
+                             WHERE FLT_KEY = #truckFltKey#  AND  FLT_DATE = to_date(#truckFltDate#,'DDMONYY')  ORDER BY VER_NO DESC) T  WHERE ROWNUM = 1)ACCS
+                             ON HD.TRUCK_FLT_NO = ACCS.FLT_KEY AND HD.TRUCK_FLT_DATE = ACCS.FLT_DATE AND ACCS.FLT_TYPE = 'T' 
+     WHERE HD.TRUCK_FLT_NO = #truckFltKey#  AND HD.TRUCK_FLT_DATE = TO_DATE(#truckFltDate#,'DDMONYY') and HD.status not in ('VOID')
+     ]]>
+    </select>       
+    
+     <select id="sqlGetRoCarsTruckManfAwbList" parameterClass="cargo.cms.itm.bo.GenerateROCARSBO" resultClass="cargo.cms.itm.bo.GenerateROCARSBO">
+      SELECT HD.TR_NO trNo, SHP.TRUCK_FLT_NO truckFltKey,
+           TO_CHAR(SHP.TRUCK_FLT_DATE,'DDMONYY') truckFltDate,
+           SHP.DOC_LINE_NO docLineNo,
+           SHP.AWB_NO awbNo,
+           SUBSTR(SHP.AWB_NO,1,3)||'-'||SUBSTR(SHP.AWB_NO,4) awbNoDisp, 
+           to_char(SHP.AWB_DATE,'DDMONYY') awbDate,
+           SHP.IMP_FLT_KEY inbFltKey,
+           TO_CHAR(SHP.IMP_FLT_DATE,'DDMONYY') inbFltDate,
+           ltrim(SUBSTR(TRIM(TO_CHAR(SHP.ATA,'0000')),0,2)|| ':'||  SUBSTR(TRIM(TO_CHAR(SHP.ATA,'0000')),3,4), ':') ata,
+           SHP.ORIG orig,
+           SHP.DEST dest,
+           SHP.IMP_CC ccCode,
+           SHP.CNSL_IND console,
+           SHP.MANF_PCS manfPc,
+           SHP.MANF_WT manfWt,
+           SHP.TRK_MANF_PCS truckManfPcs,
+           SHP.TRK_MANF_WT  truckManfWt
+      FROM ITM_TRK_MANF_SHP SHP 
+      JOIN ITM_TRK_MANF_HD HD on HD.TR_NO = SHP.TR_NO and HD.TRUCK_FLT_NO = SHP.TRUCK_FLT_NO AND HD.TRUCK_FLT_DATE = SHP.TRUCK_FLT_DATE and HD.status not in ('VOID')
+      WHERE SHP.TRUCK_FLT_NO = #truckFltKey#  AND SHP.TRUCK_FLT_DATE = TO_DATE(#truckFltDate#,'DDMONYY') 
+    </select>           
+    
+         
+    <select id="sqlGetRoCarsTruckManfHawbList" parameterClass="cargo.cms.itm.bo.GenerateROCARSBO" resultClass="cargo.cms.itm.bo.GenerateROCARSBO">
+     SELECT HAWB.TR_NO trNo, HAWB.TRUCK_FLT_NO truckFltKey,
+          HAWB.TRUCK_FLT_DATE truckFltDate,
+          HAWB.DTL_DOC_LINE_NO docLineNo,
+          HAWB.HAWB_NO hawbNo,
+          HAWB.DEST dest,
+          HAWB.IMP_CC ccCode,
+          HAWB.HAWB_PCS hawbPcs,
+          HAWB.HAWB_WT hawbWt,
+          HAWB.TRK_MANF_PCS truckManfPcs,
+          HAWB.TRK_MANF_WT truckManfWt
+    FROM ITM_TRK_MANF_SHP_HAWB HAWB
+    WHERE  HAWB.TR_NO = #trNo# and HAWB.TRUCK_FLT_NO = #truckFltKey#
+    AND HAWB.TRUCK_FLT_DATE = TO_DATE(#truckFltDate#,'DDMONYY')
+    AND HAWB.DTL_DOC_LINE_NO =#docLineNo#                                                       
+	</select>
+	
+	<select id="sqlGetRoCarsTruckManfHeader_XML_FILE" parameterClass="cargo.cms.itm.bo.GenerateROCARSBO" resultClass="cargo.cms.itm.bo.GenerateROCARSBO">
+	 <![CDATA[
+    SELECT  HD.TR_NO trNo, HD.TRUCK_FLT_NO truckFltKey ,
+     to_char(HD.TRUCK_FLT_DATE,'DDMONYY') truckFltDate,
+     HD.TRUCK_NO truckNo ,
+     ltrim(SUBSTR(TRIM(TO_CHAR(HD.SCH_TIME,'0000')),0,2)|| ':'||  SUBSTR(TRIM(TO_CHAR(HD.SCH_TIME,'0000')),3,4), ':') schTime,
+     FLT.RESTRICTIONS restriction,
+     HD.CLS_RD_PERMIT roadPermitNo,
+     to_char(CROSS_DATE,'CCYY-MM-DD') crossingDate, 
+     TRIM(TO_CHAR(CROSS_TIME,'0000')) crossingTime,
+     CTRL_PT_CODE controlPtCode,
+     UNLDG_PT unldgPt,
+     FLT.CAPACITY truckCapacity,
+     FLT.UNLDG_PT1||'/'||FLT.UNLDG_PT2||'/'||FLT.UNLDG_PT3  route,
+     HD.TRK_MANF_PCS truckManfPcs,
+     HD.TRK_MANF_WT truckManfWt,
+     ACCS.VER_NO  lastAccsSubm,
+     ACCS.ACK_STATUS submStatus,
+     DECODE(ACK_REC_TYPE,'CLR','Y','N') fltClear,
+     HD.STATUS status,
+     HD.BU_COMPL_DATE buDate,
+     HD.POST_DATE postDate
+     FROM ITM_TRK_MANF_HD HD
+     JOIN ITM_TRK_FLT FLT ON HD.TRUCK_FLT_NO = FLT.TRUCK_FLT_NO AND HD.TRUCK_FLT_DATE = FLT.TRUCK_FLT_DATE
+     LEFT JOIN ( SELECT T.* FROM (SELECT FLT_KEY,FLT_DATE,FLT_TYPE,VER_NO,ACK_STATUS,ACK_REC_TYPE FROM CST_ACK 
+                             WHERE FLT_KEY = #truckFltKey#  AND  FLT_DATE = to_date(#truckFltDate#,'DDMONYY')  ORDER BY VER_NO DESC) T  WHERE ROWNUM = 1)ACCS
+                             ON HD.TRUCK_FLT_NO = ACCS.FLT_KEY AND HD.TRUCK_FLT_DATE = ACCS.FLT_DATE AND ACCS.FLT_TYPE = 'T' 
+     WHERE HD.TRUCK_FLT_NO = #truckFltKey#  AND HD.TRUCK_FLT_DATE = TO_DATE(#truckFltDate#,'DDMONYY') and HD.status in ('POSTED')
+     ]]>
+    </select>   
+	
+	<select id="getTrkFltListForGenerateRocarsTruckManifest" parameterClass="cargo.cms.itm.bo.GenerateROCARSBO" resultClass="cargo.cms.itm.bo.GenerateROCARSBO" >
+	 SELECT  trkHd.TR_NO trNo,  trkHd.TRUCK_FLT_NO truckFltKey, 
+        to_char(trkHd.TRUCK_FLT_DATE, 'DDMONYY') truckFltDate, 
+        SUBSTR(TRIM(TO_CHAR(NVL(trkHd.SCH_TIME,0),'0000')),0,2) || ':' || SUBSTR(TRIM(TO_CHAR(NVL(trkHd.SCH_TIME,0),'0000')),3,4) schTime, 
+        trkHd.truck_No truckNo, 
+        trkHd.UNLDG_PT unldgPt,  
+        trkFlt.CAPACITY capacity, 
+        trkFlt.OPERATOR operator,       
+        trkHd.TRK_MANF_PCS trkMnfPcs , 
+        trkHd.TRK_MANF_WT trkMnfWt,
+        DTL.loadedPcs loadedPcs,
+        DTL.loadedWt loadedWt,
+        DTL.ofldPcs ofldPcs,
+        DTL.ofldWt ofldWt,
+        T.bkgPc bkgPcs,
+        T.bkgWt bkgWt,
+        STATUS status,
+		trkFlt.UNLDG_PT1 unldgPtOne, 
+        trkFlt.UNLDG_PT2 unldgPtTwo, 
+        trkFlt.UNLDG_PT3  unldgPtThree,
+        trkFlt.RESTRICTIONS restriction, trkHd.CLS_RD_PERMIT clsRdPermit, to_char(trkHd.CROSS_DATE,'DDMONYY') crossDate,trkHd.CTRL_PT_CODE ctrlPtCode,
+        SUBSTR(TRIM(TO_CHAR(NVL(trkHd.CROSS_TIME,0),'0000')),0,2) || ':' || SUBSTR(TRIM(TO_CHAR(NVL(trkHd.CROSS_TIME,0),'0000')),3,4) crossTime,
+        SUBSTR(TRIM(TO_CHAR(NVL(trkHd.CROSS_TIME,0),'0000')),0,2) crossTimeHH, SUBSTR(TRIM(TO_CHAR(NVL(trkHd.CROSS_TIME,0),'0000')),3,4) crossTimeMI,
+        (select send_status as submitedStatus from cst_subm   where truck_no = trkHd.TRUCK_NO and sch_DATE  = trkHd.TRUCK_FLT_DATE and sch_time = trkHd.SCH_TIME  and flt_type='T' and rec_type='INA'
+         	            AND VER_NO = (SELECT MAX(VER_NO)  FROM CST_SUBM  WHERE TRUCK_NO = trkHd.TRUCK_NO 
+		                          AND SCH_DATE  = trkHd.TRUCK_FLT_DATE and sch_time = trkHd.SCH_TIME AND FLT_TYPE = 'T' AND rec_type='INA')) accsStatus,
+		nvl(CONFIRM_IND,'N') confirmInd
+ 	from ITM_TRK_MANF_HD  trkHd  
+ 	JOIN ITM_TRK_FLT trkFlt ON trkHd.TRUCK_FLT_NO = trkFlt.TRUCK_FLT_NO and trkHd.TRUCK_FLT_DATE	= trkFlt.TRUCK_FLT_DATE
+ 	JOIN ( SELECT SUM(A.OFFLD_PCS) ofldPcs,SUM(A.OFFLD_WT) ofldWt,sum(B.BU_PCS) loadedPcs,sum(B.BU_WT) loadedWt ,  A.TR_NO
+	        FROM ITM_TRK_MANF_SHP A 
+	        JOIN ITM_TRK_MANF_HD HD ON A.TR_NO = HD.TR_NO and HD.status not in ('VOID')
+	        JOIN ITM_TRK_MANF_AWB B ON A.TR_NO = B.TR_NO and A.AWB_NO = B.AWB_NO AND A.AWB_DATE = B.AWB_DATE       
+	        <isNotEmpty property="awbNo"> 
+				WHERE  NVL(A.AWB_NO,'*') = #awbNo#
+			</isNotEmpty>
+	        GROUP BY A.TR_NO) DTL ON trkHd.TR_NO = DTL.TR_NO 
+ 	LEFT JOIN (SELECT  SUM(FBL.PC) bkgPc ,SUM(FBL.WT)  bkgWt,TRK.TRUCK_FLT_NO TRUCK_FLT_NO,TRK.TRUCK_FLT_DATE TRUCK_FLT_DATE FROM  (SELECT SUM(fblShp.PCS) PC,SUM(fblShp.NET_WT) WT,fblShp.awb_no AWB_NO,fblShp.awb_date AWB_DATE,fblHd.flt_key FLT_KEY,fblHd.flt_date FLT_DATE
+ 	FROM EDI_FBL fblHd , EDI_FBL_SHP fblShp 
+  	where fblShp.TR_NO = fblHd.TR_NO GROUP BY fblShp.awb_no, fblShp.awb_date, fblHd.flt_key, fblHd.flt_date)FBL 
+  	JOIN ITM_TRK_MANF_SHP TRK  ON FBL.AWB_NO = TRK.AWB_NO AND FBL.AWB_DATE = TRK.AWB_DATE AND FBL.FLT_KEY = TRK.IMP_FLT_KEY AND FBL.FLT_DATE = TRK.IMP_FLT_DATE
+  	 <isNotEmpty property="awbNo"> 
+		WHERE  NVL(FBL.AWB_NO,'*') = #awbNo#
+	</isNotEmpty>
+  	 GROUP BY TRK.TRUCK_FLT_NO, TRK.TRUCK_FLT_DATE) T 
+  	ON trkHd.TRUCK_FLT_NO = T.TRUCK_FLT_NO and trkHd.TRUCK_FLT_DATE	= T.TRUCK_FLT_DATE
+  	where 1 = 1
+  			<isNotEmpty property="status"> 
+	      			and trkHd.status = #status#
+			</isNotEmpty>
+
+			<isNotEmpty property="truckFltKey"> 
+					 and trkHd.TRUCK_FLT_NO = #truckFltKey#
+			</isNotEmpty>
+			<isNotEmpty property="truckFltDate"> 
+					 and trkHd.TRUCK_FLT_Date = #truckFltDate#
+			</isNotEmpty>
+			<isNotEmpty property="truckNo"> 
+					 and trkHd.truck_No = #truckNo#
+			</isNotEmpty>
+
+			<isNotEmpty property="trkDateTimeFrom"> 
+	           	<isNotEmpty property="trkDateTimeTo"> 
+	           		and to_DATE(to_char(trkHd.TRUCK_FLT_DATE,'DDMONYY') || ' ' || TO_CHAR(NVL(trkHd.SCH_TIME,0),'0000'),'DDMONYY HH24MI')  
+	           			between TO_DATE(#trkDateTimeFrom#,'DDMONYY HH24MI') and TO_DATE(#trkDateTimeTo#,'DDMONYY HH24MI') 
+				</isNotEmpty>
+		</isNotEmpty>
+</select>
+
+<select id="getAccsSubmStatForGenerateRocars" parameterClass="cargo.cms.itm.bo.GenerateROCARSBO" resultClass="cargo.cms.itm.bo.GenerateROCARSBO" >
+	 <![CDATA[
+select a.* from (SELECT 
+	decode(A.REC_TYPE,'BAS','Breakdown',decode(A.REC_TYPE,'AMA','Amended',decode(A.REC_TYPE,'INA','Initial')))  as accsRecTypeName,
+        decode(A.REC_TYPE,'BAS',3,decode(A.REC_TYPE,'AMA',2,decode(A.REC_TYPE,'INA',1)))  as num,
+	A.REC_TYPE as accsRecType,
+	A.VER_NO as accsVerNo, A.LM_VER as accsLmVerNo,
+	DECODE(A.SEND_STATUS,'A','ACCEPTED','R','REJECTED','P','IN PROGRESS','W','PENDING','REJECTED') as accsStatusCode,
+	A.SEND_STATUS as accsStatus
+FROM CST_SUBM  A  
+WHERE A.REC_TYPE = decode(A.REC_TYPE,'BAS','BAS',decode(A.REC_TYPE,'AMA','AMA','INA'))  
+	and   TO_CHAR(A.SCH_DATE,'ddMONYY') =  TO_DATE(#truckFltDate#,'ddMONYY')
+	AND A.sch_time =  trim(replace(#schTime#,':',''))
+	AND A.TRUCK_NO =  #truckNo#
+	AND   A.FLT_TYPE = 'T' 
+	AND A.VER_NO = (SELECT MAX(VER_NO) FROM CST_SUBM WHERE
+			REC_TYPE = decode(REC_TYPE,'BAS','BAS',decode(REC_TYPE,'AMA','AMA','INA'))  
+			and   TO_CHAR(SCH_DATE,'ddMONYY') =  TO_DATE(#truckFltDate#,'ddMONYY')
+			AND sch_time = trim(replace(#schTime#,':',''))
+			AND TRUCK_NO = #truckNo#
+			AND   FLT_TYPE = 'T') order by num desc ) a where rownum = 1
+	 ]]>
+</select>
+
+<select id="getAccsFlightClearForGenerateRocars" parameterClass="cargo.cms.itm.bo.GenerateROCARSBO" resultClass="java.lang.String" >
+	 <![CDATA[
+		select NVL(decode(ACK_REC_TYPE,'CCA','Y','N'),'N') as accsFlightClear 
+		FROM CST_ACK WHERE TRUCK_NO = #truckNo#
+		AND sch_DATE =#truckFltDate# AND sch_time =  trim(replace(#schTime#,':','')) AND FLT_TYPE = 'T'   AND ACK_REC_TYPE ='CCA' AND ROWNUM=1
+	 ]]>
+</select>
+
+<select id="getAccsflightRejectForGenerateRocars" parameterClass="cargo.cms.itm.bo.GenerateROCARSBO" resultClass="java.lang.String" >
+	 <![CDATA[
+		select NVL(decode(ACK_REC_TYPE,'TRJ','Y','N'),'N') as accsflightReject 
+		FROM CST_ACK WHERE   TRUCK_NO = #truckNo#
+		AND sch_DATE =#truckFltDate# AND sch_time =  trim(replace(#schTime#,':','')) AND FLT_TYPE = 'T'   AND ACK_REC_TYPE ='TRJ'  AND ROWNUM=1
+	 ]]>
+</select>
+	 
+<select id="getViewAwbTrkDtlListForGenerateRocars" parameterClass="cargo.cms.itm.bo.GenerateROCARSBO" resultClass="cargo.cms.itm.bo.GenerateROCARSBO" >
+	 <![CDATA[
+SELECT	 'Y' newOldShp, trkMnf.TR_NO trNo, trkMnf.DOC_LINE_NO awbDocLineNo, ROWNUM rnum, trkMnf.TRUCK_FLT_NO truckFltKey, to_char(trkMnf.TRUCK_FLT_DATE,'DDMONYY') truckFltDate, CAR_SHP.AWB_NO AS  awbNo,
+		TO_CHAR(CAR_SHP.AWB_DATE,'DDMONYY') AS awbDate,
+		substr(CAR_SHP.AWB_NO,1,3)||'-'||substr(CAR_SHP.AWB_NO,4,8) AS  awbNoDisp,	
+		CAR_SHP.FLT_KEY AS fltKey,TO_CHAR(CAR_SHP.FLT_DATE,'DDMONYY') AS fltDate, 
+		PKG_COMMON.GET_FLT_ATA(CAR_SHP.FLT_KEY,CAR_SHP.FLT_DATE,'A') AS ata,
+		awb.ORIG AS awbOrigin, awb.DEST AS awbDest,  NVL(AWB.PCS,0) awbPcs,NVL(AWB.WT,0) awbWt,
+		CAR_SHP.MANIFEST_PCS AS manfPcs,CAR_SHP.MANIFEST_WT AS manfWt, nvl(INVNT.LOCNPC,0) AS invPcs,
+		nvl(INVNT.LOCNWT,0) AS invWt, nvl(awb.CNSL_IND,'N') consol,
+		(SELECT V.CC_CODE FROM V_CST_IMP_CC_CODE_AWB V
+				WHERE nvl(V.FLT_KEY,'*') = NVL(CAR_SHP.FLT_KEY,'*') AND nvl( V.FLT_DATE,'31AUG2000') = NVL(CAR_SHP.FLT_DATE,'31AUG2000')
+				AND V.AWB_NO =  CAR_SHP.AWB_NO  AND NVL(V.HAWB_NO, '000000000000000000') =  '000000000000000000' AND ROWNUM = 1)  AS ccCode,                 
+		nvl(trkMnf.TRK_MANF_PCS,0) trkMnfPcs , nvl(trkMnf.TRK_MANF_WT,0) trkMnfWt,
+		nvl(trkMnf.TRK_MANF_PCS,0) newTrkMnfPcs , nvl(trkMnf.TRK_MANF_WT,0) newTrkMnfWt,
+		(CAR_SHP.MANIFEST_PCS - nvl(trkAWB.TRK_MANF_PCS,0)) AS avlPcs, 
+		(CAR_SHP.MANIFEST_WT - nvl(trkAWB.TRK_MANF_WT,0)) AS avlWt,
+		nvl(bkgPcs,0) bkgPcs, nvl(bkgWt,0) bkgWt,
+		(SELECT V.CC_CODE FROM V_CST_TRUCK_CC_CODE V
+				WHERE nvl(V.truck_no,'*') = NVL(trkMnf.truck_no,'*') AND nvl( V.sch_DATE,'31AUG2000') = NVL(trkMnf.TRUCK_FLT_DATE,'31AUG2000')
+				AND nvl( V.sch_time,'0') = NVL(trkMnf.sch_time,'0')
+				AND V.AWB_NO =  trkMnf.AWB_NO  AND NVL(V.HAWB_NO, '000000000000000000') =  '000000000000000000' AND ROWNUM = 1)  AS trkFltCcCode
+FROM 
+(select  trkHd.TR_NO , trkHd.truck_no, trkHd.sch_time , trkHd.TRUCK_FLT_NO, trkHd.TRUCK_FLT_DATE , trkShp.TRK_MANF_PCS , trkShp.TRK_MANF_WT, trkShp.DOC_LINE_NO DOC_LINE_NO,
+		trkShp.AWB_NO , trkShp.AWB_DATE, trkShp.IMP_FLT_KEY FLT_KEY, trkShp.IMP_FLT_DATE FLT_DATE
+		from ITM_TRK_MANF_HD  trkHd , ITM_TRK_MANF_SHP  trkShp    
+		where trkHd.TR_NO = trkShp.TR_NO and trkHd.TRUCK_FLT_NO = trkShp.TRUCK_FLT_NO and trkHd.TRUCK_FLT_DATE	= trkShp.TRUCK_FLT_DATE and trkHd.status in  ('POSTED') ) trkMnf
+join (select  sum(trkShp.TRK_MANF_PCS) TRK_MANF_PCS,  sum(trkShp.TRK_MANF_WT) TRK_MANF_WT, 
+		trkShp.AWB_NO , trkShp.AWB_DATE
+		from ITM_TRK_MANF_HD  trkHd , ITM_TRK_MANF_AWB  trkShp    
+		where trkHd.TR_NO = trkShp.TR_NO and trkHd.TRUCK_FLT_NO = trkShp.TRUCK_FLT_NO  and  trkHd.TRUCK_FLT_DATE = trkShp.TRUCK_FLT_DATE and trkHd.status in  ('POSTED') group by  trkShp.AWB_NO , trkShp.AWB_DATE) trkAWB    
+                on trkAWB.AWB_NO   = trkMnf.AWB_NO AND trkMnf.AWB_DATE  = trkAWB.AWB_DATE                   
+		
+join (select carshp.AWB_NO,	carshp.AWB_DATE, carshp.FLT_KEY, carshp.FLT_DATE, carshp.MANIFEST_PCS, carshp.MANIFEST_WT 
+		from IMP_CAR_SHP carshp 
+		join awb  on carshp.AWB_NO   = awb.AWB_NO AND carshp.AWB_DATE  = awb.AWB_DATE and awb_type = 'T' and AWB_CLOSED_YN = 'N'
+		union
+		select AWB_NO,	AWB_DATE, null FLT_KEY, null FLT_DATE, PCS MANIFEST_PCS, WT MANIFEST_WT from EXP_CAR where ACCEPT_MODE = 'TIT') CAR_SHP
+		on CAR_SHP.AWB_NO=trkMnf.AWB_NO AND CAR_SHP.AWB_DATE=trkMnf.AWB_DATE 
+		AND nvl(trkMnf.FLT_KEY , '*') = nvl(CAR_SHP.FLT_KEY, '*') AND nvl(CAR_SHP.FLT_DATE , '31AUG2000') =nvl(trkMnf.FLT_DATE, '31AUG2000')             
+
+join awb  on trkMnf.AWB_NO   = awb.AWB_NO AND trkMnf.AWB_DATE  = awb.AWB_DATE         
+
+left OUTER JOIN ( SELECT AWB_NO,AWB_DATE,FLT_KEY,FLT_DATE,SUM(LOCN_PCS) LOCNPC,SUM(LOCN_WT) LOCNWT FROM AWB_INVENTORY 
+					WHERE LOCN_PCS > 0 AND LOCN_WT > 0 GROUP BY AWB_NO, AWB_DATE, FLT_KEY, FLT_DATE ) INVNT 
+					ON trkMnf.AWB_NO=INVNT.AWB_NO AND trkMnf.AWB_DATE=INVNT.AWB_DATE
+					AND nvl(INVNT.FLT_KEY, '*') = nvl(trkMnf.FLT_KEY, '*') AND nvl( trkMnf.FLT_DATE, '31AUG2000')= nvl(INVNT.FLT_DATE, '31AUG2000')         
+left join (select  sum(fblShp.PCS) bkgPcs , sum(fblShp.NET_WT) bkgWt, 
+				fblShp.AWB_NO , fblShp.AWB_DATE , fblHd.FLT_KEY ,		fblHd.FLT_DATE
+				from EDI_FBL fblHd, EDI_FBL_SHP fblShp where fblShp.TR_NO = fblHd.TR_NO 
+				group by  fblHd.FLT_KEY , fblHd.FLT_DATE, fblShp.AWB_NO , fblShp.AWB_DATE ) fbl
+				on fbl.awb_no = trkMnf.AWB_NO and fbl.AWB_DATE = trkMnf.AWB_DATE 
+				AND nvl(fbl.FLT_KEY, '*') = nvl(trkMnf.FLT_KEY, '*') 
+				AND nvl( trkMnf.FLT_DATE, '31AUG2000')= nvl(fbl.FLT_DATE, '31AUG2000')
+]]>
+where	TR_NO = #trNo# and  trkMnf.TRUCK_FLT_NO = #truckFltKey# and trkMnf.TRUCK_FLT_Date = #truckFltDate#
+order by trkMnf.TRUCK_FLT_DATE 
+</select>
+
+
+
+<select id="getAllViewAwbTrkDtlListForGenerateRocars" parameterClass="cargo.cms.itm.bo.GenerateROCARSBO" resultClass="cargo.cms.itm.bo.GenerateROCARSBO" >
+	 <![CDATA[
+SELECT	 'Y' newOldShp,  trkMnf.TR_NO trNo, trkMnf.DOC_LINE_NO awbDocLineNo, ROWNUM rnum, trkMnf.TRUCK_FLT_NO truckFltKey, to_char(trkMnf.TRUCK_FLT_DATE,'DDMONYY') truckFltDate, CAR_SHP.AWB_NO AS  awbNo,
+		TO_CHAR(CAR_SHP.AWB_DATE,'DDMONYY') AS awbDate,
+		substr(CAR_SHP.AWB_NO,1,3)||'-'||substr(CAR_SHP.AWB_NO,4,8) AS  awbNoDisp,	
+		CAR_SHP.FLT_KEY AS fltKey,TO_CHAR(CAR_SHP.FLT_DATE,'DDMONYY') AS fltDate, 
+		PKG_COMMON.GET_FLT_ATA(CAR_SHP.FLT_KEY,CAR_SHP.FLT_DATE,'A') AS ata,
+		awb.ORIG AS awbOrigin, awb.DEST AS awbDest,  NVL(AWB.PCS,0) awbPcs,NVL(AWB.WT,0) awbWt,
+		CAR_SHP.MANIFEST_PCS AS manfPcs,CAR_SHP.MANIFEST_WT AS manfWt, nvl(INVNT.LOCNPC,0) AS invPcs,
+		nvl(INVNT.LOCNWT,0) AS invWt, nvl(awb.CNSL_IND,'N') consol,
+		(SELECT V.CC_CODE FROM V_CST_IMP_CC_CODE_AWB V
+				WHERE nvl(V.FLT_KEY,'*') = NVL(CAR_SHP.FLT_KEY,'*') AND nvl( V.FLT_DATE,'31AUG2000') = NVL(CAR_SHP.FLT_DATE,'31AUG2000')
+				AND V.AWB_NO =  CAR_SHP.AWB_NO  AND NVL(V.HAWB_NO, '000000000000000000') =  '000000000000000000' AND ROWNUM = 1)  AS ccCode,                 
+		nvl(trkMnf.TRK_MANF_PCS,0) trkMnfPcs , nvl(trkMnf.TRK_MANF_WT,0) trkMnfWt,
+		nvl(trkMnf.TRK_MANF_PCS,0) newTrkMnfPcs , nvl(trkMnf.TRK_MANF_WT,0) newTrkMnfWt,
+		(CAR_SHP.MANIFEST_PCS - nvl(trkAWB.TRK_MANF_PCS,0)) AS avlPcs, 
+		(CAR_SHP.MANIFEST_WT - nvl(trkAWB.TRK_MANF_WT,0)) AS avlWt,
+		nvl(bkgPcs,0) bkgPcs, nvl(bkgWt,0) bkgWt,
+		(SELECT V.CC_CODE FROM V_CST_TRUCK_CC_CODE V
+				WHERE nvl(V.truck_no,'*') = NVL(trkMnf.truck_no,'*') AND nvl( V.sch_DATE,'31AUG2000') = NVL(trkMnf.TRUCK_FLT_DATE,'31AUG2000')
+				AND nvl( V.sch_time,'0') = NVL(trkMnf.sch_time,'0')
+				AND V.AWB_NO =  trkMnf.AWB_NO  AND NVL(V.HAWB_NO, '000000000000000000') =  '000000000000000000' AND ROWNUM = 1)  AS trkFltCcCode
+FROM 
+(select a.* from (select  trkHd.TR_NO , trkHd.truck_no, trkHd.sch_time , trkHd.TRUCK_FLT_NO, trkHd.TRUCK_FLT_DATE , trkShp.TRK_MANF_PCS , trkShp.TRK_MANF_WT, trkShp.DOC_LINE_NO DOC_LINE_NO,
+		trkShp.AWB_NO , trkShp.AWB_DATE, trkShp.IMP_FLT_KEY FLT_KEY, trkShp.IMP_FLT_DATE FLT_DATE
+		from ITM_TRK_MANF_HD  trkHd , ITM_TRK_MANF_SHP  trkShp    
+		where trkHd.TR_NO = trkShp.TR_NO and trkHd.TRUCK_FLT_NO = trkShp.TRUCK_FLT_NO and trkHd.TRUCK_FLT_DATE	= trkShp.TRUCK_FLT_DATE and trkHd.status in (#status#) 
+		order by trkHd.lm_date desc) a where a.TR_NO = #trNo# and rownum = 1 ) trkMnf
+join (select  sum(trkShp.TRK_MANF_PCS) TRK_MANF_PCS,  sum(trkShp.TRK_MANF_WT) TRK_MANF_WT, 
+		trkShp.AWB_NO , trkShp.AWB_DATE
+		from ITM_TRK_MANF_HD  trkHd , ITM_TRK_MANF_AWB  trkShp    
+		where trkHd.TR_NO = trkShp.TR_NO and trkHd.TRUCK_FLT_NO = trkShp.TRUCK_FLT_NO  and  trkHd.TRUCK_FLT_DATE = trkShp.TRUCK_FLT_DATE and trkHd.status in (#status#) 
+		group by  trkShp.AWB_NO , trkShp.AWB_DATE) trkAWB    
+                on trkAWB.AWB_NO   = trkMnf.AWB_NO AND trkMnf.AWB_DATE  = trkAWB.AWB_DATE  
+join (select carshp.AWB_NO,	carshp.AWB_DATE, carshp.FLT_KEY, carshp.FLT_DATE, carshp.MANIFEST_PCS, carshp.MANIFEST_WT 
+		from IMP_CAR_SHP carshp 
+		join awb  on carshp.AWB_NO   = awb.AWB_NO AND carshp.AWB_DATE  = awb.AWB_DATE and awb_type = 'T' and AWB_CLOSED_YN = 'N'
+		union
+		select AWB_NO,	AWB_DATE, null FLT_KEY, null FLT_DATE, PCS MANIFEST_PCS, WT MANIFEST_WT from EXP_CAR where ACCEPT_MODE = 'TIT') CAR_SHP
+		on CAR_SHP.AWB_NO=trkMnf.AWB_NO AND CAR_SHP.AWB_DATE=trkMnf.AWB_DATE 
+		AND nvl(trkMnf.FLT_KEY , '*') = nvl(CAR_SHP.FLT_KEY, '*') AND nvl(CAR_SHP.FLT_DATE , '31AUG2000') =nvl(trkMnf.FLT_DATE, '31AUG2000')             
+
+join awb  on trkMnf.AWB_NO   = awb.AWB_NO AND trkMnf.AWB_DATE  = awb.AWB_DATE         
+
+left OUTER JOIN ( SELECT AWB_NO,AWB_DATE,FLT_KEY,FLT_DATE,SUM(LOCN_PCS) LOCNPC,SUM(LOCN_WT) LOCNWT FROM AWB_INVENTORY 
+					WHERE LOCN_PCS > 0 AND LOCN_WT > 0 GROUP BY AWB_NO, AWB_DATE, FLT_KEY, FLT_DATE ) INVNT 
+					ON trkMnf.AWB_NO=INVNT.AWB_NO AND trkMnf.AWB_DATE=INVNT.AWB_DATE
+					AND nvl(INVNT.FLT_KEY, '*') = nvl(trkMnf.FLT_KEY, '*') AND nvl( trkMnf.FLT_DATE, '31AUG2000')= nvl(INVNT.FLT_DATE, '31AUG2000')         
+left join (select  sum(fblShp.PCS) bkgPcs , sum(fblShp.NET_WT) bkgWt, 
+				fblShp.AWB_NO , fblShp.AWB_DATE , fblHd.FLT_KEY ,		fblHd.FLT_DATE
+				from EDI_FBL fblHd, EDI_FBL_SHP fblShp where fblShp.TR_NO = fblHd.TR_NO 
+				group by  fblHd.FLT_KEY , fblHd.FLT_DATE, fblShp.AWB_NO , fblShp.AWB_DATE ) fbl
+				on fbl.awb_no = trkMnf.AWB_NO and fbl.AWB_DATE = trkMnf.AWB_DATE 
+				AND nvl(fbl.FLT_KEY, '*') = nvl(trkMnf.FLT_KEY, '*') 
+				AND nvl( trkMnf.FLT_DATE, '31AUG2000')= nvl(fbl.FLT_DATE, '31AUG2000')
+]]>
+where trkMnf.TR_NO = #trNo# and trkMnf.TRUCK_FLT_NO = #truckFltKey# and trkMnf.TRUCK_FLT_Date = #truckFltDate#
+order by trkMnf.TRUCK_FLT_DATE 
+</select>
+<select id="getViewAwbHawbTrkDtlListForGenerateRocars" parameterClass="cargo.cms.itm.bo.GenerateROCARSBO" resultClass="cargo.cms.itm.bo.GenerateROCARSBO" >
+	 <![CDATA[
+		select   'Y' newOldShp, trkMnf.TR_NO trNo, trkMnf.DTL_DOC_LINE_NO awbDocLineNo, ROWNUM rnum, trkMnf.TRUCK_FLT_NO truckFltKey, to_char(trkMnf.TRUCK_FLT_DATE,'DDMONYY') truckFltDate, 
+		fhlHd.AWB_NO AS  awbNo,substr(fhlHd.AWB_NO,1,3)||'-'||substr(fhlHd.AWB_NO,4,8) AS  awbNoDisp,	
+		TO_CHAR(fhlHd.AWB_DATE,'DDMONYY') AS awbDate,
+		fhlHd.FLT_CARR||fhlHd.FLT_NO AS fltKey,TO_CHAR(fhlHd.FLT_DATE,'DDMONYY') AS fltDate,
+		fhlHawb.HAWB_NO hawbNo, fhlHawb.HAWB_ORG hawbOrig, fhlHawb.HAWB_DEST hawbDest, 
+		fhlHawb.HAWB_PCS hawbPcs, fhlHawb.HAWB_NET_WT hawbWt,
+		(fhlHawb.HAWB_PCS - nvl(trkMnfHawb.TRK_HAWB_MANF_PCS,0)) AS avlHawbPcs,
+		(fhlHawb.HAWB_NET_WT - nvl(trkMnfHawb.TRK_HAWB_MANF_WT,0)) AS avlHawbWt,
+		nvl(trkMnf.TRK_HAWB_MANF_PCS,0) trkMnfPcs , nvl(trkMnf.TRK_HAWB_MANF_WT,0) trkMnfWt,
+		nvl(trkMnf.TRK_HAWB_MANF_PCS,0) newTrkMnfPcs , nvl(trkMnf.TRK_HAWB_MANF_WT,0) newTrkMnfWt,
+		(SELECT V.CC_CODE FROM V_CST_IMP_CC_CODE_AWB V
+				WHERE nvl(V.FLT_KEY,'*') = NVL(fhlHd.FLT_CARR||fhlHd.FLT_NO,'*') AND nvl( V.FLT_DATE,'31AUG2000') = NVL(fhlHd.FLT_DATE,'31AUG2000')
+				AND V.AWB_NO =  fhlHd.AWB_NO  AND V.HAWB_NO =  fhlHawb.HAWB_NO AND ROWNUM = 1)  AS ccCode, 
+		(SELECT V.CC_CODE FROM V_CST_TRUCK_CC_CODE V
+				WHERE nvl(V.truck_no,'*') = NVL(trkMnf.truck_no,'*') AND nvl( V.sch_DATE,'31AUG2000') = NVL(trkMnf.TRUCK_FLT_DATE,'31AUG2000')
+				AND nvl( V.sch_time,'0') = NVL(trkMnf.sch_time,'0')
+				AND V.AWB_NO =  fhlHd.AWB_NO  AND V.HAWB_NO =  fhlHawb.HAWB_NO AND ROWNUM = 1)  AS trkFltCcCode 
+				
+		from (select  trkHd.TR_NO , trkHd.truck_no, trkHd.sch_time , trkHd.TRUCK_FLT_NO, trkHd.TRUCK_FLT_DATE , trkShp.AWB_NO , trkShp.AWB_DATE,  trkHawb.HAWB_NO , trkShp.IMP_FLT_KEY, trkShp.IMP_FLT_DATE,
+				trkShp.TRK_MANF_PCS , trkShp.TRK_MANF_WT, trkHawb.TRK_MANF_PCS TRK_HAWB_MANF_PCS, trkHawb.TRK_MANF_WT TRK_HAWB_MANF_WT,
+				trkHawb.DTL_DOC_LINE_NO DTL_DOC_LINE_NO
+				from ITM_TRK_MANF_HD  trkHd 
+		        join ITM_TRK_MANF_SHP trkShp on trkHd.TR_NO = trkShp.TR_NO
+		        join itm_trk_manf_shp_hawb   trkHawb on trkHd.TR_NO = trkHawb.TR_NO and trkShp.doc_line_no = trkHawb.DTL_DOC_LINE_NO) trkMnf
+			        
+		left join  (select trkHawb.HAWB_NO HAWB_NO,  sum(trkHawb.TRK_MANF_PCS) TRK_HAWB_MANF_PCS, sum(trkHawb.TRK_MANF_WT) TRK_HAWB_MANF_WT
+						        from ITM_TRK_MANF_HD  trkHd 
+						        join ITM_TRK_MANF_SHP trkShp on trkHd.TR_NO = trkShp.TR_NO
+						        join itm_trk_manf_shp_hawb   trkHawb on trkHd.TR_NO = trkHawb.TR_NO and trkShp.doc_line_no = trkHawb.DTL_DOC_LINE_NO
+						        where trkHd.status not in ('VOID')  GROUP BY  trkHawb.HAWB_NO) trkMnfHawb 
+        on  trkMnfHawb.HAWB_NO = trkMnf.HAWB_NO 
+        			        
+        join  EDI_FHL fhlHd  on fhlHd.AWB_NO=trkMnf.AWB_NO AND fhlHd.AWB_DATE=trkMnf.AWB_DATE and trkMnf.HAWB_NO = trkMnf.HAWB_NO
+		join EDI_FHL_HAWB fhlHawb on fhlHd.TR_NO = fhlHawb.TR_NO and trkMnf.HAWB_NO = fhlHawb.HAWB_NO
+		]]>
+                where trkmnf.tr_no = #trNo# and trkMnf.DTL_DOC_LINE_NO = #awbDocLineNo#
+			 
+</select>
+
+<select id="getAwbAdressDtlInfoForGenerateRocars" parameterClass="cargo.cms.itm.bo.GenerateROCARSBO" resultClass="cargo.cms.itm.bo.GenerateROCARSBO" >
+	 <![CDATA[
+		SELECT awb_origin awbOrigin,
+		      content content,
+		      shpr_name shipperName,
+		      shpr_add1 shipperAddrOne,
+		      shpr_add2 shipperAddrTwo,
+		      shpr_add3 shipperAddrThree,
+		      shpr_add4 shipperAddrFour,
+		      shpr_add5 shipperAddrFive,
+		      shpr_place shipperCity,
+		      shpr_ctry_code shipperCountry,
+		      shpr_pin_code shipperPostalCode,
+		      shpr_state_province shipperStateProvince  ,
+		      csgne_name consigneeName,
+		      csgne_addr1 consigneeAddrOne,
+		      csgne_addr2 consigneeAddrTwo,
+		      csgne_addr3 consigneeAddrThree,
+		      csgne_addr4 consigneeAddrFour,
+		      csgne_addr5 consigneeAddrFive,
+		      csgne_place consigneeCity,
+		      csgne_ctry_code consigneeCountry,
+		      csgne_pin_code consigneePostalCode,
+		      csgne_state_province consigneeStateProvince,
+		      APPNTD_AGENT importerName,
+		      AGENT_CUST_NO importer,
+		      AGENT_addr1 importerAddrOne,
+		      AGENT_addr2 importerAddrTwo,
+		      AGENT_addr3 importerAddrThree,
+		      AGENT_addr4 importerAddrFour,
+		      AGENT_addr5 importerAddrFive,
+		      AGENT_place importerCity,
+		      AGENT_ctry_code importerCountry,
+		      AGENT_pin_code importerPostalCode                          
+		      FROM imp_car_awb carawb,
+		        imp_car_shp carshp
+		      WHERE carawb.awb_no = carshp.awb_no
+		       AND carawb.awb_date = carshp.awb_date
+		       AND carshp.flt_key = #fltKey#
+		       AND carshp.flt_date = #fltDate#
+		       AND carawb.awb_no = #awbNo#
+		       AND carawb.awb_date = #awbDate#
+       	]]>
+</select>	
+
+<select id="getHawbAdressDtlInfoForGenerateRocars" parameterClass="cargo.cms.itm.bo.GenerateROCARSBO" resultClass="cargo.cms.itm.bo.GenerateROCARSBO" >
+	 <![CDATA[
+		SELECT hawb_org orig,
+               manifest_desc content,
+               shpr_name shipperName,
+               shpr_add1 shipperAddrOne,
+               shpr_add2 shipperAddrTwo,
+               shpr_add3 shipperAddrThree,
+               shpr_add4 shipperAddrFour,
+               shpr_add5 shipperAddrFive,
+               shpr_place shipperCity,
+               shpr_ctry_code shipperCountry,
+               shpr_pin_code shipperPostalCode,
+               shpr_state_province shipperStateProvince,
+               csgne_name consigneeName,
+               csgne_add1 consigneeAddrOne,
+               csgne_add2 consigneeAddrTwo,
+               csgne_add3 consigneeAddrThree,
+               csgne_add4 consigneeAddrFour,
+               csgne_add5 consigneeAddrFive,
+               csgne_place consigneeCity,
+               csgne_ctry_code consigneeCountry,
+               csgne_pin_code consigneePostalCode,
+               csgne_state_province consigneeStateProvince,
+               nfy_name notifyName,
+               nfy_add1 notifyAddrOne,
+               nfy_add2 notifyAddrTwo,
+               nfy_add3 notifyAddrThree,
+               nfy_add4 notifyAddrFour,
+               nfy_add5 notifyAddrFive,
+               nfy_place notifyCity,
+               nfy_ctry_code notifyCountry,
+               nfy_pin_code notifyPostalCode
+             FROM edi_fhl hd, edi_fhl_hawb dtl
+             WHERE  hd.tr_no = dtl.tr_no AND awb_no = #awbNo# AND awb_date = #awbDate# AND hawb_no = #hawbNo# AND rownum = 1
+       	]]>
+</select>	
+	
+	<select id="get_CUST_COMPANY_CO_IATA_CODE"  parameterClass="java.lang.String" resultClass="java.lang.String">	
+		select CO_IATA_CODE from CUST_COMPANY where code = #param#
+	</select>
+	<!-- GENERATE ROCAS FILE :: RANJITH :: ENDS -->
+	
+	<select id="check_ACCS_RUN_VALUE"  parameterClass="map" resultClass="java.lang.String">	
+		SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE like #ACCS_RUN_PARAM# and RULE_VALUE = #ACCS_RUN_VALUE# and rownum = 1
+	</select>
+
+	<parameterMap id="submitAmaMap" class="map" >
+		<parameter property="TRUCK_NO" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="TRUCK_FLT_KEY" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="SCH_DATE" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="SCH_TIME" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="VER_NO" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="OUT"/>
+		<parameter property="USER_ID" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>	
+   </parameterMap>
+	<procedure id="pkg_sub_ins_cst_itm_awb_hawb" parameterMap="submitAmaMap" >
+		{  call PKG_CST_TRUCK_INIT.sub_ins_cst_itm_awb_hawb(?,?,?,?,?,?)  }
+	</procedure>
+
+ 	
+ 	<!-- Query to get Sch Time List for the truck flight :: Ranjith -->
+ 	<select id="getTruckSchTimeList" parameterClass="map" resultClass="cargo.cms.afw.bo.MasterBO">
+	SELECT  distinct ltrim(SUBSTR(TRIM(TO_CHAR(SCH_TIME,'0000')),0,2)|| ':'||  SUBSTR(TRIM(TO_CHAR(SCH_TIME,'0000')),3,4), ':') codeId 
+	FROM ITM_TRK_MANF_HD
+	WHERE TRUCK_FLT_DATE = TO_DATE(#TRUCK_FLT_DATE#,'DDMONYY')
+	<isNotEmpty property="STATUS" >
+	AND NVL(STATUS,'*') = #STATUS#
+	</isNotEmpty>
+	<isNotEmpty property="TRUCK_FLT_KEY" >
+	 AND TRUCK_FLT_NO = #TRUCK_FLT_KEY#
+	</isNotEmpty>
+	<isNotEmpty property="TRUCK_NO" > 
+	 AND TRUCK_NO = #TRUCK_NO#
+	</isNotEmpty>
+	<isNotEmpty property="SCH_TIME" > 
+	 AND SCH_TIME= trim(replace(#SCH_TIME#,':',''))
+    </isNotEmpty>
+    </select>
+ 	<!-- Query to get Sch Time List for the truck flight :: Ranjith -->
+ 	
+ 	<select id="getReadyDispBuYnInd" parameterClass="java.lang.String" resultClass="java.lang.String">
+	select BLDUP_COMPLETE from exp_pmanifest_uld where ULD_BT_NO=#PARAM# and rownum=1
+	</select>
+	<select id="getReadyDispAWBList" parameterClass="java.lang.String" resultClass="cargo.cms.afw.bo.MasterBO">
+	SELECT AWB_NO AS codeId,to_char(AWB_DATE,'DDMONYY') AS codeDesc FROM EXP_PMANIFEST_ULD_AWB WHERE ULD_BT_NO=#PARAM#
+	</select>
+	<select id="getRespDocAccpYnCode" parameterClass="map" resultClass="java.lang.String">
+	SELECT DECODE((SELECT A1.AWB_TYPE FROM AWB A1 WHERE A1.AWB_NO = #AWB_NO# AND A1.AWB_DATE = TO_DATE(#AWB_DATE#,'DDMONYY')  AND A1.DOCACC_USER IS NOT NULL AND ROWNUM=1),NULL,'N','T','NA','Y') FROM DUAL
+	</select>
+	<select id="getRestrictedTransitTypeForULD" parameterClass="java.lang.String" resultClass="java.lang.String">
+	select transit_type from uld_inventory where uld_key=#PARAM# and rownum=1
+	</select>
+	<select id="getRestrictedTarmacForULD" parameterClass="java.lang.String" resultClass="java.lang.Integer">
+	select count(1) from exp_pman_tarmac_uld where uld_bt_no=#PARAM# and rownum=1
+	</select>
+	
+</sqlMap>
+

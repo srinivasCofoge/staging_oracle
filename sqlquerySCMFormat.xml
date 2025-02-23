@@ -1,0 +1,438 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<!-- The SQL in these maps files has purposely been typed with more verbosity than is actually required.
+ For example, many of the selects could have just used SELECT * FROM... instead of listing all of the columns.
+ This is to demonstrate that even complex SQL can be handled and coded and formatted the way SQL was meant
+ to be (i.e. not a bunch of concatenated strings in a Java class). -->
+
+<sqlMap namespace="SCMFormat">
+
+	
+
+	<insert id="insertIntoSCMFormat" parameterClass="cargo.cms.uld.bo.ScmFormatBO" >
+	<![CDATA[
+		INSERT INTO SCM_FORMAT (
+			CARR_CODE, CARR_FLG, ROW_TTL_FLG, ULD_PER_ROW, INDENTING, EXCL_F_ULD, MSG_SAMPLE, PREFIX_DOT, 
+			ULD_NO_SEP, CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE, ULD_TYPE_PREFIX
+		) 
+		VALUES (
+			#carrierCode#, #carrierCodeReq#, #rowTotal#, #noOfULDsInRow#, 
+			#indent#, #excludeForeignULDs#, #messageSample#, #startWith#, 
+			#seperator#, #createdBy#, SYSDATE, #createdBy#, SYSDATE, #prefixULDType#
+		)
+	]]>
+	</insert>
+
+	<select id="getAATCarrierList"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_CARRIER
+			WHERE 
+				OWNED_CARR = 'Y'
+				ORDER BY CODE
+	</select>
+	
+	<select id="getCathayCarrierList"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_CARRIER			WHERE OWNED_CARR = 'Y'	AND CODE NOT IN (SELECT CARR_CODE FROM SCM_FORMAT)			ORDER BY CODE	  
+	</select>
+	
+	
+		<select id="checkPrinterId"  parameterClass="map" resultClass="java.lang.String">
+	<![CDATA[
+		SELECT TO_CHAR(COUNT(*)) FROM MAST_PRT_DTL WHERE PRT_TYPE = 'GEN_SCM_PRINTER' AND UPPER(CODE) = UPPER(#CODE#)
+		]]>
+   	</select>
+
+	<select id ="getCopyFrom" resultClass="cargo.cms.uld.bo.ScmFormatBO">
+		SELECT 
+			CARR_CODE as carrierCode, CARR_FLG as carrierCodeReq, ROW_TTL_FLG as rowTotal, 
+			ULD_PER_ROW as noOfULDsInRow, INDENTING as indent, EXCL_F_ULD as excludeForeignULDs, 
+			MSG_SAMPLE as messageSample, PREFIX_DOT as startWith, ULD_NO_SEP as seperator,
+			ULD_TYPE_PREFIX as prefixULDType
+		FROM SCM_FORMAT ORDER BY CARR_CODE
+	</select>
+
+		<select id ="getScmFormatByCarrierCode" parameterClass="map" resultClass="cargo.cms.uld.bo.ScmFormatBO">
+			SELECT  
+				CARR_FLG as carrierCodeReq, ROW_TTL_FLG as rowTotal, ULD_PER_ROW as noOfULDsInRow, 
+				INDENTING as indent, EXCL_F_ULD as excludeForeignULDs, MSG_SAMPLE as messageSample, 
+				PREFIX_DOT as startWith, ULD_NO_SEP as seperator, ULD_TYPE_PREFIX as prefixULDType,TO_CHAR(LM_DATE , 'DDMMYY HH24:MI:SS') AS lastModifiedDate
+			FROM SCM_FORMAT
+				WHERE 
+				CARR_CODE = #carrierCode#	
+			<!-- 		
+			<isNotEmpty prepend="AND" property="loginCarrier">
+				CARR_CODE = #loginCarrier#
+			</isNotEmpty> -->
+		</select>
+
+		<select id="getExistingCarrierCode"  parameterClass="map" resultClass="java.lang.String">
+			SELECT COUNT(*) FROM SCM_FORMAT WHERE CARR_CODE = #carrierCode#
+		</select>
+		<!--Added by Syed on 10JUN10-->
+		
+		<select id="SCM_CheckDate"  parameterClass="cargo.cms.uld.bo.UpdateResendScmBO" resultClass="java.lang.String" >
+			SELECT TO_CHAR(TO_DATE(#creationDateTo#,'DDMONYY') - TO_DATE(#creationDate#,'DD-MON-YY')) DAYDIFF FROM DUAL
+	</select>
+	<!--Added by Syed on 10JUN10-->
+		
+		<select id="SCM_CheckSysDate"  parameterClass="cargo.cms.uld.bo.UpdateResendScmBO" resultClass="java.lang.String" >
+			SELECT TO_CHAR(TO_DATE(#creationDateTo#,'DDMONYY') - TO_DATE(SYSDATE,'DD-MON-YY')) DAYDIFF FROM DUAL
+	</select>
+	<!--Added by Syed on 10JUN10-->
+	<select id="fetchOrigAdd"  parameterClass="cargo.cms.uld.bo.GenerateScmBO" resultClass="cargo.cms.uld.bo.GenerateScmBO" >
+		SELECT EDI_ORI_ADD as originAddress FROM SYS_PARAM where rownum=1
+	</select>
+	
+<select id="getCPSLMail"  parameterClass="cargo.cms.uld.bo.GenerateScmBO" resultClass="java.lang.String" >
+		select rule_value from cmsrules where rule_code = 'COM_NOTF_SENDER' and rownum=1
+	</select>
+	
+	<!--  SELECT 
+				ULD_TYPE AS uldType, ULD_NO AS uldNo, ULD_CARR AS uldCarr, CARR_CODE AS carrCode,  
+				WH_DEST AS whDest, OWNER_ID AS ownerId, AGENT_INV AS agentInv -->
+		
+
+	<select id="getUldInventoryByCarrier"  parameterClass="map"  resultClass="cargo.cms.uld.bo.ULDEICBO">
+             <![CDATA[                                      
+                  SELECT 
+                        ULD_TYPE AS uldType, ULD_NO AS uldNo, ULD_CARR AS uldCarr, CARR_CODE AS carrCode,  
+                        LOC_CODE AS whDest, OWNER_ID AS ownerId, AGENT_INV AS agentInv
+                  FROM 
+                        ULD_INVENTORY 
+                  WHERE 
+                        OWNER_ID = #carrierCode# 
+                        and nvl(dam_ind,'N') = 'N' and rownum <= 50 
+                        and exists (select null from mast_uld_type where code = ULD_INVENTORY.ULD_TYPE and nvl(EXCLUDE_FROM_SCM,'N') = 'N'
+                        							and nvl(H_CONT_IND ,'N') = 'N'  and nvl(DUMMY_H_CONT_IND ,'N') = 'N'  and nvl(BT_IND ,'N') = 'N'  )
+                  ORDER BY ULD_CARR, ULD_TYPE , ULD_NO
+                  	]]>
+            </select>
+            
+    <select id="getUldInventoryByCarrier_only_dmg"  parameterClass="map"  resultClass="cargo.cms.uld.bo.ULDEICBO">
+             <![CDATA[                                      
+                  SELECT 
+                        ULD_TYPE AS uldType, ULD_NO AS uldNo, ULD_CARR AS uldCarr, CARR_CODE AS carrCode,  
+                        LOC_CODE AS whDest, OWNER_ID AS ownerId, AGENT_INV AS agentInv
+                  FROM 
+                        ULD_INVENTORY 
+                  WHERE 
+                        OWNER_ID = #carrierCode# 
+                        and nvl(dam_ind,'N') = 'Y' and rownum <= 50
+                        and exists (select null from mast_uld_type where code = ULD_INVENTORY.ULD_TYPE and nvl(EXCLUDE_FROM_SCM,'N') = 'N'
+                        							and nvl(H_CONT_IND ,'N') = 'N'  and nvl(DUMMY_H_CONT_IND ,'N') = 'N'  and nvl(BT_IND ,'N') = 'N'  )  
+                  ORDER BY ULD_CARR, ULD_TYPE , ULD_NO
+                  	]]>
+            </select> 
+
+<!-- Changed on 24 FEB 2007 by mayank for add parameter  'ALL'  Starts here    -->
+		<select id="getUldInventoryForGenerate"  parameterClass="map"     
+                                                                     resultClass="cargo.cms.uld.bo.ULDEICBO">
+                  SELECT 
+                        ULD_TYPE AS uldType, ULD_NO AS uldNo, ULD_CARR AS uldCarr, CARR_CODE AS carrCode, 
+                        LOC_CODE AS whDest, OWNER_ID AS ownerId, AGENT_INV AS agentInv
+                  FROM 
+                        ULD_INVENTORY 
+                  WHERE 
+                        OWNER_ID = #carrierCode# and nvl(dam_ind,'N') = 'N'
+                        and exists (select null from mast_uld_type where code = ULD_INVENTORY.ULD_TYPE and nvl(EXCLUDE_FROM_SCM,'N') = 'N'
+                        							and nvl(H_CONT_IND ,'N') = 'N'  and nvl(DUMMY_H_CONT_IND ,'N') = 'N'  and nvl(BT_IND ,'N') = 'N'  )
+                        <isEqual property="foreignULDs" compareValue="Y">
+                              AND ULD_CARR = #carrierCode# 
+                        </isEqual>
+                      <isEqual property="criteria" compareValue="CPCT">
+                              AND  LOC_CODE IS NOT NULL AND AGENT_INV = 'N'
+                        </isEqual>
+                        <isEqual property="criteria" compareValue="AGNI">
+                              AND AGENT_INV = 'Y' AND LOC_CODE IS NULL
+                        </isEqual>
+                        <isEqual property="criteria" compareValue="All">
+                              AND   (AGENT_INV = 'Y' or (LOC_CODE IS NOT NULL AND AGENT_INV = 'N'))
+                        </isEqual>
+                  ORDER BY ULD_CARR, ULD_TYPE , ULD_NO
+            </select>
+            
+            <select id="getUldInventoryForGenerate_only_dmg"  parameterClass="map"     
+                                                                     resultClass="cargo.cms.uld.bo.ULDEICBO">
+                  SELECT 
+                        ULD_TYPE AS uldType, ULD_NO AS uldNo, ULD_CARR AS uldCarr, CARR_CODE AS carrCode, 
+                        LOC_CODE AS whDest, OWNER_ID AS ownerId, AGENT_INV AS agentInv
+                  FROM 
+                        ULD_INVENTORY 
+                  WHERE                         
+                        OWNER_ID = #carrierCode# and nvl(dam_ind,'N') = 'Y'
+                         and exists (select null from mast_uld_type where code = ULD_INVENTORY.ULD_TYPE and nvl(EXCLUDE_FROM_SCM,'N') = 'N'
+                        							and nvl(H_CONT_IND ,'N') = 'N'  and nvl(DUMMY_H_CONT_IND ,'N') = 'N'  and nvl(BT_IND ,'N') = 'N'  )
+                        <isEqual property="foreignULDs" compareValue="Y">
+                              AND ULD_CARR = #carrierCode# 
+                        </isEqual>
+                      <isEqual property="criteria" compareValue="CPCT">
+                              AND  LOC_CODE IS NOT NULL AND AGENT_INV = 'N'
+                        </isEqual>
+                        <isEqual property="criteria" compareValue="AGNI">
+                              AND AGENT_INV = 'Y' AND LOC_CODE IS NULL
+                        </isEqual>
+                        <isEqual property="criteria" compareValue="All">
+                              AND   (AGENT_INV = 'Y' or (LOC_CODE IS NOT NULL AND AGENT_INV = 'N'))
+                        </isEqual>
+                  ORDER BY ULD_CARR, ULD_TYPE , ULD_NO
+            </select>
+
+
+<!-- Changed on 24 FEB 2007 by mayank for add parameter  'ALL' Ends here  -->
+		<select id ="getScmFormats" parameterClass="cargo.cms.uld.bo.ScmFormatBO" resultClass="cargo.cms.uld.bo.ScmFormatBO">
+                  SELECT CARR_CODE as carrierCode, CARR_FLG as carrierCodeReq, ROW_TTL_FLG as rowTotal, 
+                        ULD_PER_ROW as noOfULDsInRow, INDENTING as indent, EXCL_F_ULD as excludeForeignULDs, 
+                        MSG_SAMPLE as messageSample, PREFIX_DOT as startWith, ULD_NO_SEP as seperator,
+                        ULD_TYPE_PREFIX as prefixULDType,TO_CHAR(LM_DATE , 'DDMONYY HH24:MI:SS') AS lastModifiedDate1
+                  FROM 
+                        SCM_FORMAT 
+                  <dynamic prepend="WHERE">
+                        <isNotEmpty prepend="AND" property="carrierCodeRet">                    
+                                    CARR_CODE = #carrierCodeRet#
+                        </isNotEmpty>
+                        <isNotEmpty prepend="AND" property="loginCarrier">
+                                    CARR_CODE = #loginCarrier#
+                        </isNotEmpty>
+                  </dynamic>
+                  ORDER BY CARR_CODE
+      </select>
+	<update id ="updateSCMFormat" parameterClass="cargo.cms.uld.bo.ScmFormatBO">
+			UPDATE SCM_FORMAT SET
+				CARR_FLG = #carrierCodeReq#, ROW_TTL_FLG = #rowTotal#, 
+				ULD_PER_ROW = #noOfULDsInRow#, INDENTING = #indent#, 
+				EXCL_F_ULD = #excludeForeignULDs#, MSG_SAMPLE = #messageSample#, 
+				PREFIX_DOT = #startWith#, ULD_NO_SEP = #seperator#,
+				ULD_TYPE_PREFIX = #prefixULDType#, LM_USER_ID = #createdBy#,
+				LM_DATE = SYSDATE
+			WHERE  
+				CARR_CODE = #carrierCode# and to_char(LM_DATE, 'ddMMYY hh24:mi:ss') = #lastModifiedDate# 
+	</update>
+
+	<delete id ="deleteSCMFormat" parameterClass="cargo.cms.uld.bo.ScmFormatBO">
+			DELETE FROM SCM_FORMAT 
+			
+			WHERE
+			  
+				CARR_CODE = #carrierCode# and to_char(LM_DATE, 'DDMONYY HH24:MI:SS') = #lastModifiedDate1#
+	</delete>
+
+	<select id="populateFormatCarrierList"  resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CARR_CODE AS codeId, CARR_CODE AS codeDesc FROM SCM_FORMAT
+		ORDER BY CARR_CODE
+	</select>
+
+	<select id="getSitaAddressForCreateScmFormat"  parameterClass="map" resultClass="cargo.cms.uld.bo.GenerateScmBO">
+		SELECT SITA_ADDR AS sitaAddress FROM CUST_AIRL_SITA_GRPDTL
+		WHERE
+			CUST_NO = #customerId# AND
+			UPPER(ADDR_GROUP) = UPPER(#addressGroup#)
+		ORDER BY SITA_ADDR
+	</select>
+	
+	<select id="getEmailAddressForCreateScmFormat"  parameterClass="map" resultClass="cargo.cms.uld.bo.GenerateScmBO">
+		SELECT EMAIL1 AS emailAddress1, EMAIL2 AS emailAddress2, EMAIL3 AS emailAddress3, 
+			EMAIL4 AS emailAddress4, EMAIL5 AS emailAddress5, FAX1 AS faxNumber1, 
+			FAX2 AS faxNumber2, FAX3 AS faxNumber3, FAX4 AS faxNumber4, FAX5 AS faxNumber5 
+		FROM CUST_CONTACT
+		WHERE
+			CUST_NO = #customerId# AND
+			CONTACT_TYPE = 'SCM'
+	</select>
+	
+	<select id="getFaxAddressForCreateScmFormat"  parameterClass="map" resultClass="cargo.cms.uld.bo.GenerateScmBO">
+		SELECT FROM CUST_CONTACT
+		WHERE
+			CUST_NO = #customerId# 
+	</select>
+	<!-- Onsite Changed on 20 May 2006 by mayank Starts here -->
+	<select id="validateAddressGroup"  parameterClass="map" resultClass="java.lang.String">
+		SELECT A.CUST_NO AS CUST_NO FROM CUST_AIRL_SITA_GRP A, CUST_COMPANY B
+			WHERE
+				UPPER(A.ADDR_GROUP) = UPPER(#addressGroup#) AND
+				A.CUST_NO = B.CODE 
+				<isNotEmpty prepend="AND" property="carrierCode">
+					B.CARR_CODE = #carrierCode#
+				</isNotEmpty>			
+	</select>
+	<select id="validateAddressGroupCount"  parameterClass="java.lang.String" resultClass="java.lang.Integer">
+		SELECT count(1) FROM CUST_AIRL_SITA_GRP 
+		WHERE	UPPER(ADDR_GROUP) = UPPER(#addressGroup#) 
+	</select>
+	
+	<select id="chkOriginIsValid"  parameterClass="java.lang.String" resultClass="java.lang.Integer">
+		SELECT count(1) FROM MAST_SITA_ADDRESS WHERE UPPER(CODE) = UPPER(#origin#) 
+	</select>
+	
+	<!-- Onsite Changed on 20 May 2006 by mayank Ends here -->
+	<!-- here originAddress parameter added by Syed on 10JUN10 -->
+	
+	<insert id="insertIntoSCM" parameterClass="cargo.cms.uld.bo.GenerateScmBO" >
+		<isEqual property="scmSend" compareValue="Y">
+			<![CDATA[
+			 INSERT INTO SCM (TR_NO, CARR_CODE, CRITERIA, MSG_BLOB, RMK, FREE_TEXT, 
+				PRT_CODE, SCM_SEND, SEND_USER_ID, SEND_DATE, CR_USER_ID, 
+				CR_DATE, LM_USER_ID, LM_DATE,ORIGIN_ADDR
+			)
+			VALUES(
+				#transactionNo#, #carrierCode#, #criteria#, #scmPayload,handler=cargo.cms.afw.ei.dao.ObjectToBlobTypeHandler#,'',
+				#freeText#, #printerId#, #scmSend#, #createdBy#, SYSDATE,
+				#createdBy#, SYSDATE, #createdBy#, SYSDATE, #originAddress#
+			)
+			]]>
+		</isEqual>
+
+		<isEqual property="scmSend" compareValue="N">
+			<![CDATA[
+			 INSERT INTO SCM (TR_NO, CARR_CODE, CRITERIA, MSG_BLOB, RMK, FREE_TEXT, 
+				PRT_CODE, SCM_SEND, CR_USER_ID, 
+				CR_DATE, LM_USER_ID, LM_DATE, ORIGIN_ADDR
+			)
+			VALUES(
+				#transactionNo#, #carrierCode#, #criteria#, #scmPayload,handler=cargo.cms.afw.ei.dao.ObjectToBlobTypeHandler#, '',
+				#freeText#, #printerId#, #scmSend#, #createdBy#, SYSDATE, 
+				#createdBy#, SYSDATE, #originAddress#
+			)
+			
+			]]>
+		</isEqual>
+	</insert>
+
+			
+	<insert id="insertSCMAddressDetails" parameterClass="cargo.cms.uld.bo.GenerateScmBO" >
+		<![CDATA[
+		 INSERT INTO SCM_ADDR (TR_NO, ADDR_TYPE, MSG_ADDR, CR_USER_ID, CR_DATE, LM_USER_ID, 
+			LM_DATE
+		)
+		VALUES(
+			#transactionNo#, #addressType#, #sitaAddress#,
+			#createdBy#, SYSDATE, #createdBy#, SYSDATE
+		)
+		]]>
+	</insert>
+	
+	<select id="fetchScmFormatForUpdateResend"  parameterClass="map" resultClass="cargo.cms.uld.bo.UpdateResendScmBO">
+		<![CDATA[
+			SELECT 
+				TR_NO AS transactionNo, CARR_CODE carrierCode, CRITERIA AS status, SCM_SEND AS scmSend, 
+				SEND_USER_ID AS sendUserId, TO_CHAR(SEND_DATE, 'DDMONYY HH24:MI') AS sendDate, 
+				CR_USER_ID AS createUserId, TO_CHAR(CR_DATE, 'DDMONYY HH24:MI') AS createdDate ,
+				TO_CHAR(LM_DATE , 'DDMMYY HH24:MI:SS') AS lastModifiedDate 
+			FROM SCM  
+			WHERE 
+				CARR_CODE = #carrierCode# AND 
+				CR_DATE >= TO_DATE(#creationDate#, 'DD-MON-YY') AND
+				CR_DATE <= TO_DATE(#creationDateTo#, 'DD-MON-YY') + 1 
+			]]>
+			<isEqual property="scmSend" compareValue="Y">
+				AND SCM_SEND = 'Y' AND SEND_DATE IS NOT NULL
+			</isEqual>
+			<isEqual property="scmSend" compareValue="N">
+				AND SCM_SEND = 'N' AND SEND_DATE IS NULL
+			</isEqual>
+			<isNotEmpty prepend="AND" property="loginCarrier">
+				CARR_CODE = #loginCarrier#
+			</isNotEmpty>
+			order by CR_DATE desc,SEND_DATE desc 
+	</select>
+
+	<select id="getSitaAddressForScmFormat" parameterClass="map" 
+		resultClass="cargo.cms.uld.bo.GenerateScmBO" >
+		<![CDATA[
+			SELECT MSG_ADDR AS sitaAddress, MSG_ADDR AS oldSitaAddress
+			FROM SCM_ADDR 
+			WHERE TR_NO = #txnNo# AND ADDR_TYPE = '1'
+		]]>
+	</select>
+	<!-- here originAddress parameter added by Syed on 10JUN10 -->
+	<select id="getScmFormatByTransationNo" parameterClass="map" 
+		resultClass="cargo.cms.uld.bo.GenerateScmBO" >
+		<![CDATA[
+			SELECT TR_NO AS transactionNo, '' scm, 
+			FREE_TEXT AS freeText, PRT_CODE AS printerId,ORIGIN_ADDR AS originAddress,TO_CHAR(LM_DATE , 'DDMMYY HH24:MI:SS') AS lastModifiedDate
+			FROM SCM 
+			WHERE TR_NO = #txnNo#
+		]]>
+	</select>
+	
+	
+	<resultMap class="cargo.cms.afw.ei.core.OutboundMessage" id="fetchOBMessage-result">
+		<result property="payload" column="payload" typeHandler="cargo.cms.afw.ei.dao.ObjectToBlobTypeHandler"/>		
+	</resultMap>	
+	<select id="getScmMsgFromBlobObj" parameterClass="map"  resultMap="fetchOBMessage-result">
+		SELECT MSG_BLOB payload FROM SCM WHERE TR_NO = #txnNo#
+	</select>
+	
+	
+	<select id="getEmailFaxAddressForScmFormat" parameterClass="map" 
+		resultClass="cargo.cms.uld.bo.GenerateScmBO" >
+		<![CDATA[
+			SELECT MSG_ADDR address , ADDR_TYPE AS addressType 
+			FROM SCM_ADDR 
+			WHERE 
+				TR_NO = #txnNo# AND 
+				ADDR_TYPE IN ('2', '3') 
+			ORDER BY ADDR_TYPE
+		]]>
+	</select>
+	<!-- here originAddress parameter added by Syed on 10JUN10 and to_char(LM_DATE, 'ddMMYY hh24:mi:ss') = #lastModifiedDate#  -->
+	<update id ="updateGeneratedScmFormat" parameterClass="cargo.cms.uld.bo.GenerateScmBO">
+		<isEqual property="scmSend" compareValue="Y">
+			UPDATE SCM SET
+				MSG_BLOB = #scmPayload,handler=cargo.cms.afw.ei.dao.ObjectToBlobTypeHandler#, 
+				FREE_TEXT = #freeText#,
+				PRT_CODE = #printerId#, 
+				SCM_SEND = #scmSend#, 
+				SEND_USER_ID = #createdBy#, 
+				SEND_DATE = SYSDATE, 
+				LM_USER_ID = #createdBy#,  
+				LM_DATE = SYSDATE,
+				ORIGIN_ADDR = #originAddress#				
+			WHERE  
+				TR_NO = #transactionNo# 
+		</isEqual>
+		
+		<isEqual property="scmSend" compareValue="N">
+			UPDATE SCM SET
+				MSG_BLOB = #scmPayload,handler=cargo.cms.afw.ei.dao.ObjectToBlobTypeHandler#, 
+				FREE_TEXT = #freeText#, 
+				PRT_CODE = #printerId#, 
+				SCM_SEND = #scmSend#, 
+				LM_USER_ID = #createdBy#,  
+				LM_DATE = SYSDATE,
+				ORIGIN_ADDR = #originAddress#
+			WHERE  
+				TR_NO = #transactionNo# and to_char(LM_DATE, 'ddMMYY hh24:mi:ss') = #lastModifiedDate#
+		</isEqual>
+	</update>
+
+	<update id ="updateScmAddressDetails" parameterClass="cargo.cms.uld.bo.GenerateScmBO">
+		UPDATE SCM_ADDR SET
+			MSG_ADDR = #sitaAddress#, 
+			LM_USER_ID = #createdBy#,  
+			LM_DATE = SYSDATE
+		WHERE  
+			TR_NO = #transactionNo# AND
+			ADDR_TYPE = #addressType# AND
+			UPPER(MSG_ADDR) = UPPER(#oldSitaAddress#)
+	</update>
+
+	<delete id ="deleteScmFormatAddress" parameterClass="cargo.cms.uld.bo.GenerateScmBO">
+		DELETE FROM SCM_ADDR
+		WHERE  
+			TR_NO = #transactionNo# AND
+			ADDR_TYPE = #addressType# AND
+			MSG_ADDR = #oldSitaAddress#
+	</delete>
+
+	<select id="getEmailFaxAddressForCreateScmFormatOnLoad"  parameterClass="map" resultClass="cargo.cms.uld.bo.GenerateScmBO">
+		SELECT B.EMAIL1 AS emailAddress1, B.EMAIL2 AS emailAddress2, B.EMAIL3 AS emailAddress3, 
+			B.EMAIL4 AS emailAddress4, B.EMAIL5 AS emailAddress5, B.FAX1 AS faxNumber1, 
+			B.FAX2 AS faxNumber2, B.FAX3 AS faxNumber3, B.FAX4 AS faxNumber4, B.FAX5 AS faxNumber5 
+		FROM CUST_COMPANY A, CUST_CONTACT  B 
+		WHERE
+			A.CODE = B.CUST_NO AND
+			A.CARR_CODE = #carrierCode# AND
+			B.CONTACT_TYPE = 'SCM'
+	</select>
+
+</sqlMap>

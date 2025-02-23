@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<!-- The SQL in these maps files has purposely been typed with more verbosity than is actually required.
+ For example, many of the selects could have just used SELECT * FROM... instead of listing all of the columns.
+ This is to demonstrate that even complex SQL can be handled and coded and formatted the way SQL was meant
+ to be (i.e. not a bunch of concatenated strings in a Java class). -->
+<sqlMap namespace="SCMFormat">
+
+	<insert id="createMaintainAliasNames" parameterClass="cargo.cms.admin.bo.MaintainAliasNamesBO" >
+	<![CDATA[
+		INSERT INTO CUST_AGENT_ALIAS (
+			CUST_NO, ALIAS_NAME, CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE
+		) 
+		VALUES (
+			#customerNo#, #aliasName#, #createdBy#, SYSDATE, 
+			#createdBy#, SYSDATE
+		)
+	]]>
+	</insert>
+
+	<select id="retrieveMaintainAliasNames"  parameterClass="map" resultClass="cargo.cms.admin.bo.MaintainAliasNamesBO">
+		SELECT 
+			B.CUST_NO AS customerNo, B.ALIAS_NAME as aliasName, B.ALIAS_NAME as oldAliasName, 
+			A.CO_IATA_CODE AS iataCode, B.CR_USER_ID AS createdBy, TO_CHAR(B.LM_DATE,'DDMONYY HH24:MI:SS') AS lastModDate 
+		FROM CUST_AGENT_ALIAS B, CUST_COMPANY A
+		WHERE 
+			UPPER(a.CODE_DESC) = UPPER(#companyName#)
+						<isNotEmpty property="customerNo">
+							AND a.CODE  = #customerNo#
+						</isNotEmpty>
+			AND	B.CUST_NO = A.CODE
+			ORDER BY  B.ALIAS_NAME
+	</select>
+
+	<update id ="updateMaintainAliasNames" parameterClass="cargo.cms.admin.bo.MaintainAliasNamesBO">
+			UPDATE CUST_AGENT_ALIAS SET
+				ALIAS_NAME = #aliasName#, 
+				LM_USER_ID = #createdBy#,
+				LM_DATE = SYSDATE
+			WHERE  
+				CUST_NO = #customerNo# AND
+				ALIAS_NAME = #oldAliasName# AND
+				TO_CHAR(LM_DATE,'DDMONYY HH24:MI:SS') = #lastModDate#
+	</update>
+	<delete id ="deleteAliasName" parameterClass="java.lang.String">
+			DELETE FROM CUST_AGENT_ALIAS WHERE CUST_NO = #customerNo# 
+	</delete>
+	<delete id ="deleteMaintainAliasNames" parameterClass="cargo.cms.admin.bo.MaintainAliasNamesBO">
+			DELETE FROM CUST_AGENT_ALIAS 
+			WHERE  
+				CUST_NO = #customerNo# AND
+				ALIAS_NAME = #aliasName# AND
+				TO_CHAR(LM_DATE,'DDMONYY HH24:MI:SS') = #lastModDate#
+	</delete>
+
+	<select id="validateAliasName"  parameterClass="map" resultClass="java.lang.String">
+		SELECT COUNT(*) FROM CUST_AGENT_ALIAS WHERE UPPER(ALIAS_NAME) = UPPER(#aliasName#)
+	</select>
+	
+	<select id="retrieveAliasNamesForUpdate"  parameterClass="map" resultClass="cargo.cms.admin.bo.MaintainAliasNamesBO">
+		SELECT 
+			A.CODE_DESC AS companyName, B.CUST_NO AS customerNo, B.ALIAS_NAME as aliasName, B.ALIAS_NAME as oldAliasName, 
+			A.CO_IATA_CODE AS iataCode, TO_CHAR(B.LM_DATE,'DDMONYY HH24:MI:SS') AS lastModDate
+		FROM CUST_AGENT_ALIAS B, CUST_COMPANY A
+		WHERE 
+			UPPER(B.ALIAS_NAME) = UPPER(#aliasName#) 
+			AND	B.CUST_NO = A.CODE
+			AND B.CUST_NO = #custNo#
+	</select>
+	
+	<select id="validateCompanyName"  parameterClass="map" resultClass="java.lang.String">
+		SELECT CODE FROM CUST_COMPANY 
+		WHERE 
+			UPPER(CODE_DESC) = UPPER(#companyName#) AND
+			CONS_YN = 'Y'
+	</select>
+	
+	<select id="fetchCompanyNames"  parameterClass="cargo.cms.admin.bo.MaintainAliasNamesBO" resultClass="cargo.cms.admin.bo.MaintainAliasNamesBO">
+		SELECT CODE as customerNo, CODE_DESC as aliasCompanyName FROM CUST_COMPANY WHERE UPPER(CODE_DESC) = UPPER(#aliasName#) and rownum=1
+	</select>
+	
+	<select id="fetchAliasCompNameForAjax" parameterClass="java.util.HashMap" resultClass="java.util.HashMap">
+	 	select code_desc as companyName from CUST_COMPANY where UPPER(code_desc) like UPPER(#keySearchStr# ||'%') and ROWNUM &lt;= #maxRecFetch# and CONS_YN = 'Y' AND ACTIVE = 'Y' AND BLACKLISTED='N' ORDER BY code_desc    
+	</select>
+</sqlMap>

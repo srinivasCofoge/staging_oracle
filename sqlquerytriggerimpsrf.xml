@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="TriggerCode">
+	<!-- Trigger TRG_IMP_SRF on table IMP_SRF >>This Will be called after PostSRF, VoidSRF and ReissueSRF -->
+	
+	<!-- if trgEvent = postSRF -->
+	<delete id="deleteAwbInvOnPost" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" >
+			DELETE FROM AWB_INVENTORY WHERE SRF_NO=#srfNo#
+	</delete>
+	
+	<select id="isReturnCargoExists" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" resultClass="java.lang.Integer">
+	     select count(1) from exp_rtn_hd where srf_no=#srfNo#
+	</select>
+	
+	<update id="updateAWBInv" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" >
+		  update AWB_INVENTORY set 
+		    locn_pcs=locn_pcs-(select srf_pcs from imp_srf where srf_no=#srfNo#),
+		    locn_wt=locn_wt-(select srf_wt from imp_srf where srf_no=#srfNo#)
+		    WHERE SRF_NO=#srfNo# 
+	</update>
+	
+	<delete id="deleteAwbInvOnPostReturn" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" >
+			DELETE FROM AWB_INVENTORY WHERE SRF_NO=#srfNo# AND LOCN_PCS=0
+	</delete>
+	
+	<update id="updateAWBInvReturn" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" >
+		  update AWB_INVENTORY set SRF_NO = NULL, RTN_NO = NULL WHERE SRF_NO=#srfNo# 
+	</update>
+	
+	<update id="updateDlvReturnSRFonPost" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" >
+		 UPDATE IMP_SRF_FLT 
+		 	SET DLV_PCS = NVL((select srf_pcs from imp_srf where srf_no=#srfNo#), 0) , 
+		 		DLV_WT = NVL((select srf_wt from imp_srf where srf_no=#srfNo#), 0), 
+		 		LM_USER_ID=#userId#, 
+		 		LM_DATE=SYSDATE    
+			WHERE  SRF_NO=#srfNo# 
+	</update>
+	
+	<update id="updateCollSlotOnPost" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" >
+		 UPDATE IMP_SCH_COLL S
+		 SET STATUS = 'COLLECTED',
+		 COLL_DATE = TO_CHAR(SYSDATE, 'DDMONYY'),
+		 COLL_TIME = TO_CHAR(SYSDATE, 'HH24MI')
+		 WHERE STATUS IN ('APPROVED', 'ISSUED')
+		 AND EXISTS (SELECT 1 FROM IMP_SRF_FLT F
+		 WHERE F.SRF_NO = #srfNo#
+		 AND F.AWB_NO = S.AWB_NO and F.AWB_Date = S.AWB_Date and F.Flt_Key = S.Flt_Key and F.Flt_Date = S.FLT_DATE)
+	</update>
+	
+	<insert id="insertAwbMovonPost" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" >
+	INSERT INTO AWB_MOV
+          (AWB_NO, AWB_DATE, CARR_CODE, SRF_NO, LOC_CODE, LOC_PCS, LOC_WT, STRG_DATE,
+          RETRV_DATE, MOV_DATE, TR_NO, DOC_LINE_NO, TR_TYPE, TR_STATUS, CR_USER_ID, 
+          CR_DATE, LM_USER_ID, LM_DATE, SEQ_NO, EVENT_ID)
+        VALUES
+          (#awbNo#, to_date(#awbDate#, 'DDMONYY') , #carrCode#, #srfNo#, 
+          #locn#, #srfPcs#, #srfWt#, to_date(#crDate#, 'DDMONYY'), to_date(#crDate#, 'DDMONYY'), 
+          sysdate, #srfNo#, #docLineNo#, 'SR', 'A', #userId#, sysdate, #userId#, 
+          sysdate, AWB_MOV_SEQ.NEXTVAL, 'SRP')
+	</insert>
+	<!-- END IF-->
+	<!-- if trgEvent = voidSRF -->
+	<update id="updateAwbInvOnVoid" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" >
+	UPDATE AWB_INVENTORY
+	      SET SRF_NO = NULL,
+	        REF_TR_NO = #srfNo#,
+	        REF_TR_TYPE = 'SR',
+	        REF_TR_DATE = sysdate,
+	        REF_DOC_LINE_NO =#docLineNo# ,
+	        REF_LOC_FROM = null,
+	        REF_TR_EVENT = 'SRV',
+	        REF_RMK = NULL,
+	        REF_MOV_FROM = null ,
+	        DLV_YN= 'N'
+	      WHERE SRF_NO = #srfNo#
+	</update>
+	
+	<update id="updateCdifOnVoid" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" >
+	UPDATE IMP_CDIF SET CDIF_SRF_NO = NULL WHERE CDIF_SRF_NO = #srfNo#
+	</update>	
+	
+	<update id="updateAwbOnVoid" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" >
+	UPDATE AWB SET AWB_CLOSED_YN = 'N' WHERE AWB_NO = #awbNo# AND AWB_DATE = #awbDate# AND AWB_TYPE = 'I'
+	</update>	
+	
+	<update id="updateBillChargeOnVoid" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" >
+	UPDATE BILL_CHARGE_DTL SET VOID_IND = 'Y', STATUS = DECODE(STATUS, 'PAID', 'PAID', 'VOID') WHERE SRF_NO = #srfNo#
+	</update>	
+	<!-- END IF -->
+	<!-- if trgEvent = reissueSRF -->
+	<update id="updateAwbInvOnReissue" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" >
+			 UPDATE AWB_INVENTORY
+	       	 SET SRF_NO = #reIssueSrf#,<!-- Reissue_SRF_NO -->
+	  	     REF_TR_NO = #srfNo#,
+	  	     REF_TR_TYPE = 'SR',
+	  	     REF_TR_DATE = sysdate,
+	  	     REF_DOC_LINE_NO = #docLineNo#,<!-- doc_line_no -->
+	  	     REF_LOC_FROM = null,
+	  	     REF_TR_EVENT = 'SRR',
+	  	     REF_RMK = NULL,
+	  	     REF_MOV_FROM = null
+	  	   WHERE SRF_NO = #srfNo#
+	
+	</update>	
+	
+	<update id="updateCdifOnReissue" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" >
+			UPDATE IMP_CDIF SET CDIF_SRF_NO = #reIssueSrf# WHERE CDIF_SRF_NO = #srfNo#
+	</update>
+	
+	<update id="updateBillChargeOnReissue" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" >
+ 			UPDATE BILL_CHARGE_DTL SET SRF_NO = #reIssueSrf#  WHERE SRF_NO = #srfNo#
+ 	</update>
+ 	
+ 	<select id="selectSrfAwbInvForReissue" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" resultClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO">
+ 			SELECT AWB_NO awbNo,
+ 			TO_CHAR(AWB_DATE,'DDMONYY') awbDate, 
+ 			CARR_CODE carrCode, 
+ 			CATALOG catalog, 
+ 			SCH_COLL_DATE schCollDate, 
+ 			ULD_KEY uld,
+		  	LSP_NO lsp, 
+		  	LOC_CODE locn, 
+		  	LOCN_PCS locnPcs, 
+		  	LOCN_WT locnWt, 
+		  	FLT_DATE fltDate, 
+		  	FLT_KEY fltKey,
+		  	LM_USER_ID userId,
+		  	DAM_IND damInd,
+		  	FLT_KEY flightKey, 
+			To_Char(FLT_DATE,'DDMONYY') flightDate ,
+			DLV_PCS dlvPcs,
+			DLV_WT dlvWt, 
+			DLV_IND dlvInd,
+			DLV_RMK dlvRmk,
+			To_Char(DLV_DATE,'DDMONYY')  dlvDate,
+			SEQ_NO seqNo,
+			REF_CDIF_NO refCdifNum  
+		  	FROM IMP_SRF_AWB_INVENTORY WHERE SRF_NO = #srfNo#
+ 	</select>
+	
+	<parameterMap id="trgImpSRF" class="map" >
+		<parameter property="AWBNO" jdbcType="VARCHAR" javaType="java.lang.String"	mode="IN"/>
+		<parameter property="FLTKEY" jdbcType="VARCHAR" javaType="java.lang.String"	mode="IN"/>
+		<parameter property="FLTDATE" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+		<parameter property="CC" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="OUT"/>
+		<parameter property="REF" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="OUT"/>
+	</parameterMap>
+	<procedure id="imp_prc_get_cc_code" parameterMap="trgImpSRF" >
+		{call prc_get_cc_code(?,?,?,?,?)}
+	</procedure>
+	
+	<insert id="insertSrfAwbInvOnPost" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" >
+	 INSERT INTO IMP_SRF_AWB_INVENTORY(
+  	          SRF_NO, AWB_NO, AWB_DATE, CARR_CODE, CATALOG, CC_CODE, CTM_REF_NO, SCH_COLL_DATE, ULD_KEY,
+  	          LSP_NO,LOC_CODE, LOCN_PCS, LOCN_WT, FLT_DATE, FLT_KEY,
+  	          CR_USER_ID, CR_DATE, DAM_IND,DLV_PCS,DLV_WT,DLV_IND,DLV_RMK,DLV_DATE,SEQ_NO,LM_USER_ID, LM_DATE,REF_CDIF_NO)
+	values (#reIssueSrf#,#awbNo#, to_date(#awbDate#, 'DDMONYY') ,#carrCode#,#catalog#,#ccCode#,#refNo#,#schCollDate#,#uld#,
+		  	          #lsp#,#locn#,#locnPcs#,#locnWt#,to_date(#flightDate#, 'DDMONYY'),#fltKey#,
+		  	          #userId#, SYSDATE,#damInd#,#dlvPcs#,#dlvWt#,#dlvInd#,#dlvRmk#,to_date(#dlvDate#, 'DDMONYY'),#seqNo#,#userId#, SYSDATE, #refCdifNum# ) 
+	</insert>
+	
+	
+	<!-- if trgEvent != null -->
+	<select id="selectFltOrCdifList" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" resultClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO">
+ 	SELECT FLT_KEY fltKey, 
+ 	to_char(FLT_DATE,'DDMONYY') fltDate, 
+ 	INV_PCS invPcs, 
+ 	INV_WT invWt
+	FROM IMP_SRF_FLT
+	WHERE SRF_NO = #srfNo#
+	ORDER BY FLT_DATE, FLT_KEY
+ 	</select>
+
+ 	<select id="selectActualFlight" parameterClass="java.lang.String" resultClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO">
+	SELECT FLT_KEY fltKey, FLT_DATE fltDate 
+	FROM (SELECT FLT_KEY, to_char(FLT_DATE,'DDMONYY') FLT_DATE
+	FROM IMP_SRF_FLT
+	WHERE SRF_NO = (SELECT SRF_NO FROM IMP_CDIF WHERE CDIF_NO =  #fltKey#)
+	ORDER BY FLT_DATE) A
+	WHERE ROWNUM = 1
+ 	</select>
+ 	
+	<insert id="insertAwbEventsImpSRF" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" >
+ 	INSERT INTO AWB_EVENTS(AWB_NO,AWB_DATE,EVENT_ID,EVENT_DESC,FLT_KEY,FLT_DATE,FLT_TYPE,TR_NO,ULD_KEY,PCS,WT,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE)
+ 	VALUES(#awbNo#,#awbDate#,#trgEvent#,(SELECT EVENT_DESC FROM MAST_AWB_EVENTS WHERE EVENT_ID = #trgEvent#),#fltKey#,#fltDate#, 'I',#srfNo#,NULL,#invPcs#,#invWt#,#userId#,sysdate,#userId#,sysdate)
+ 	</insert>
+	<!-- END IF -->
+	<!-- Trigger TRG_IMP_SRF on table IMP_SRF ENDS-->
+		<select id="selectSrfAwbInvForVoid" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" resultClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO">
+ 			SELECT 
+		  	LOC_CODE locn, 
+		  	sum(LOCN_PCS) locnPcs, 
+		  	sum(LOCN_WT) locnWt, 
+			stragg(stringdelim(SEQ_NO ,','  ))seqNo 
+		  	FROM AWB_INVENTORY 
+		  	WHERE 
+	        NVL(LSP_NO,'*')   = NVL(#lsp#,'*')
+		    AND NVL(ULD_KEY,'*')  = NVL(#uld#,'*')		
+	        AND FLT_TYPE  = 'I' 
+		    AND SRF_NO = #srfNo#	
+		     GROUP BY flt_key,flt_date,loc_code	having count(1)>1
+ 	</select>
+ 	<update id="updateAwbInventoryVoid" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" >
+			 UPDATE AWB_INVENTORY
+	       	 SET LOCN_PCS = #locnPcs#,<!-- Reissue_SRF_NO -->
+	  	     LOCN_WT = #locnWt#	  	     
+	  	   WHERE SEQ_NO = #seqNo#
+	
+	</update>	
+	<delete id="deleteAwbInventoryVoid" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" >
+			 delete from AWB_INVENTORY
+	       WHERE SEQ_NO = #seqNo#
+	
+	</delete>
+
+	<update id="updateHouseOnVoidSrf" parameterClass="java.util.HashMap" >
+		update HAWB_INVENTORY
+		set SEQ_NO = #NEW_SEQ#,
+		LM_USER_ID =   #USER#,
+		LM_DATE = SYSDATE
+		WHERE SEQ_NO = #OLD_SEQ#
+	</update>
+	
+	<select id="selectHouseDataToUpdate" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" resultClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO">
+ 			SELECT
+ 			#seqNo# seqNo,
+ 			HAWB_NO hawbNo,
+		  	sum(STRG_PCS) locnPcs, 
+		  	sum(STRG_WT) locnWt 
+		  	FROM HAWB_INVENTORY 
+		  	WHERE 
+			(SEQ_NO = #seqNo#  
+			 <iterate prepend="OR" property="hawbSeqList" open="(" close=")" conjunction="OR" >
+                                SEQ_NO = #hawbSeqList[]#
+             </iterate>)
+		     GROUP BY HAWB_NO	  
+ 	</select>
+	<insert id="insertUpdatedTruckRISRF" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO" >
+		 INSERT INTO IMP_TRUCK_SRF (
+    	 TRIP_ID,SRF_NO,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE)
+    	 values ((select trip_id FROM IMP_TRUCK_SRF  
+    	 WHERE SRF_NO = #srfNo# and rownum=1),
+   		 #reIssueSrf#,
+  		 #userId#,
+    	 sysdate,
+    	 #userId#,
+    	 sysdate)
+	</insert>
+	
+	<delete id="deleteHawbNew" parameterClass="java.lang.String" >
+		delete from hawb_inventory where SEQ_NO = #newHouseSeq#
+	</delete>
+	
+	<delete id="deleteHawbOld" parameterClass="java.lang.String" >
+		delete from hawb_inventory where SEQ_NO = #oldSeq#
+		</delete>
+	
+	<insert id="insertHawbNew" parameterClass="cargo.cms.imprt.bo.IssueConsSrfInfoBO">	
+		Insert into HAWB_INVENTORY 
+		(SEQ_NO,
+		HAWB_NO,
+		STRG_PCS,
+		STRG_WT,
+		CR_USER_ID,
+		CR_DATE,
+		LM_USER_ID,
+		LM_DATE) values 
+		(#seqNo#,
+		#hawbNo#,
+		#locnPcs#,
+		#locnWt#,
+		#userId#,
+		sysdate,
+		#userId#,
+		sysdate) 
+	</insert>	
+	
+	<parameterMap id="srfChargeMap" class="map" >
+		<parameter property="P_SRF_NO" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+	</parameterMap>
+	<procedure id="voidPaidSrfCharges" parameterMap="srfChargeMap" >
+		{call PKG_BILLING.VOID_SRF_PAID_CHARGES(?)}
+	</procedure>
+
+     <parameterMap id="srfrvrtChrgsMap" class="map" >
+		<parameter property="P_SRF_NO" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="P_INV_NO" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="P_USER" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+	</parameterMap>
+	<procedure id="voidRvrtSrfCharges" parameterMap="srfrvrtChrgsMap" >
+		{call PKG_BILLING.VOID_SRF_ADJUSTMENT_CHARGES(?,?,?)}
+	</procedure>
+	
+</sqlMap>

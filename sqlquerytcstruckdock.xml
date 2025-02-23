@@ -1,0 +1,3646 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+<sqlMap namespace="tcstruckdock">
+	<!-- TCS Lock -->
+	<parameterMap id="tcsLockMap" class="map">
+		<parameter property="ID" jdbcType="VARCHAR" javaType="java.lang.String"
+			mode="IN" nullValue="PENDING_TCS_JOBS" />
+		<parameter property="LOCKED" jdbcType="VARCHAR" javaType="java.lang.String"
+			mode="OUT" nullValue="N" />
+	</parameterMap>
+	<procedure id="isTCSPoolLocked" parameterMap="tcsLockMap">
+		<![CDATA[
+			{ call PRC_TCS_IS_LOCKED(?, ?) }
+		]]>
+	</procedure>
+	<select id="sqlTCSLockPool" parameterClass="java.lang.String"
+		resultClass="java.util.HashMap">
+  		<![CDATA[
+			SELECT JOB_ID jobId, LM_DATE lmDate
+			FROM TCS_SCH_JOB_STATUS 
+			WHERE JOB_ID = 'PENDING_TCS_JOBS' FOR UPDATE
+		]]>
+	</select>
+	<select id="sqlTCSLockPoolForFewSeconds" parameterClass="java.lang.String"
+		resultClass="java.util.HashMap">
+  		<![CDATA[
+			SELECT JOB_ID jobId, LM_DATE lmDate
+			FROM TCS_SCH_JOB_STATUS 
+			WHERE JOB_ID = 'PENDING_TCS_JOBS' FOR UPDATE WAIT 60
+		]]>
+	</select>
+	<select id="sqlTCSLockPoolNoWait" parameterClass="java.lang.String"
+		resultClass="java.util.HashMap">
+  		<![CDATA[
+			SELECT JOB_ID jobId, LM_DATE lmDate
+			FROM TCS_SCH_JOB_STATUS 
+			WHERE JOB_ID = 'PENDING_TCS_JOBS' FOR UPDATE NOWAIT
+		]]>
+	</select>
+	<update id="sqlTCSUpdateLockData" parameterClass="java.lang.String">
+		<![CDATA[
+			UPDATE TCS_SCH_JOB_STATUS SET LM_DATE = SYSDATE WHERE JOB_ID = 'PENDING_TCS_JOBS'
+		]]>
+	</update>
+	<!-- Verify whether the Truck has an Valid iPass -->
+	<select id="sqlGetTCSHasValidiPass" parameterClass="java.lang.String"
+		resultClass="java.lang.String">
+    	<![CDATA[
+    		SELECT DECODE(COUNT(1), 0, 'N', 'Y') FROM TCS_IPASS_MASTER WHERE TRUCK_NO = #PARAM#
+    	]]>
+	</select>
+	<!-- Verify whether the Truck is an Armoured Truck -->
+	<select id="sqlGetTCSIsArmored" parameterClass="java.lang.String"
+		resultClass="java.lang.String">
+    	<![CDATA[
+    		SELECT DECODE(TRUCK_CATEGORY, 'ARMORED', 'Y', 'N') FROM TCS_IPASS_MASTER WHERE TRUCK_NO = #PARAM#
+    	]]>
+	</select>
+	<!-- Gets Derived Purpose of Declared Incoming Purpose -->
+	<select id="sqlTcsGetDerivedPurposeForIncomingPurpose"
+		parameterClass="java.lang.String" resultClass="java.lang.String">
+		<![CDATA[ 
+			SELECT NVL(DERIVED_PURPOSE, #CODE#) FROM MAST_TCS_INCOMING_PURPOSE WHERE CODE = #CODE# 
+		]]>
+	</select>
+	<!-- Gets Trip Id of Cargo Truck in Dock -->
+	<select id="sqlTcsGetTripIdOfTruckInDock" parameterClass="java.lang.String"
+		resultClass="java.lang.String">
+  		<![CDATA[
+			SELECT TRIP_ID FROM TRUCK_TRIP WHERE TRUCK_NO = (
+				SELECT TRUCK_NO FROM TCS_DOCK_ALLOCATION WHERE TRUCK_DOCK = #TRUCK_DOCK#
+			) AND CLOSED = 'N'
+	   	]]>
+	</select>
+	<!-- Gets Trip Id of Parked Truck -->
+	<select id="sqlTcsGetTripIdOfParkedTruck" parameterClass="java.lang.String"
+		resultClass="java.lang.String">
+  		<![CDATA[
+			SELECT TRIP_ID FROM TRUCK_TRIP WHERE PARKED_DOCK = #TRUCK_DOCK# AND TRIP_CLOSED = 'N'
+	   	]]>
+	</select>
+	<!-- Verifies whether the Declared Purpose is Auto Enqueue Purpose -->
+	<select id="sqlGetTCSNonAutoEnqueuePurpose" parameterClass="java.lang.String"
+		resultClass="java.lang.String">
+  		<![CDATA[
+	  		SELECT 'Y' FROM MAST_TCS_INCOMING_PURPOSE
+	  		WHERE CODE = #PARAM# AND AUTO_ENQUEUE = 'N' AND (APPLICABLE_AT_ENTRANCE = 'Y' OR APPLICABLE_AT_PARKING = 'Y')
+		]]>
+	</select>
+	<!-- Finds Truck Dock Segment -->
+	<select id="sqlTcsGetDockSegment" parameterClass="java.lang.String"
+		resultClass="java.lang.String">
+  		<![CDATA[
+			SELECT 'L' || DOCK_LEVEL || NVL(SUBSTR(SIDE, 1, 1), '') || DECODE(PURPOSE_1, 'VAL', 'SR', '') SEGMENT 
+			FROM TCS_DOCK_MASTER 
+			WHERE TRUCK_DOCK = #truckDock#
+		]]>
+	</select>
+	<!-- Segment Id of a Sensor -->
+	<select id="sqlTcsGetSegmentForEventPoint" parameterClass="java.lang.String"
+		resultClass="java.lang.String">
+		<![CDATA[
+			SELECT SEGMENT_ID 
+			FROM TCS_TERMINAL_SEGMENT 
+			WHERE ENTRY_LOCATION_CODE = (
+				SELECT	SENSORY_LOCATION_CODE 
+				FROM TCS_SENSORY_LOCATION 
+				WHERE SENSORY_CODE = #SENSORY_CODE# AND ROWNUM = 1
+			)
+		]]>
+	</select>
+	<!-- Sensory Location Code of a Sensor -->
+	<select id="sqlTcsGetEventLocationGroup" parameterClass="java.lang.String"
+		resultClass="java.lang.String">
+  		<![CDATA[
+  			SELECT SENSORY_LOCATION_CODE FROM TCS_SENSORY_LOCATION WHERE SENSORY_CODE = #SENSORY_CODE#
+  		]]>
+	</select>
+	<!-- Way In/Out from an Allocated Segment and Current Location -->
+	<select id="sqlTcsGetInOutWayOnTruckEvent" parameterClass="java.util.Map"
+		resultClass="java.lang.String">
+    	<![CDATA[
+			SELECT ON_WAY_IN_OUT FROM TCS_SEGMENT_PATH
+		    WHERE SEGMENT_ID = DECODE(#DOCK_SEGMENT#,'L1SR','L1',#DOCK_SEGMENT#) AND
+		    SENSORY_LOCATION_CODE = (
+		    	SELECT SENSORY_LOCATION_CODE
+          		FROM TCS_SENSORY_LOCATION 
+          		WHERE SENSORY_CODE = #SENSORY_CODE# AND ROWNUM = 1
+		    )
+	    ]]>
+	</select>
+	<!-- Find Allocation Method -->
+	<select id="sqlTCSGetAllocationMethod" parameterClass="java.lang.String"
+		resultClass="java.lang.String">
+  		<![CDATA[
+			SELECT METHOD FROM MAST_TCS_DOCK_PURPOSE WHERE CODE = #PARAM#
+		]]>
+	</select>
+	<!-- -->
+	<!-- Pool Generation -->
+	<!-- -->
+	<insert id="sqlTcsGenerateDockPools" parameterClass="java.util.Map">
+		<![CDATA[
+			INSERT INTO TCS_DOCK_POOL (
+				POOL_ID, DOCK_LEVEL, ZONE, FROM_DT, TO_DT, TOTALDOCKS,
+				PURPOSE_1, PURPOSE_2, PURPOSE_3, PURPOSE_4, PURPOSE_5,
+				CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE
+			)
+			SELECT 
+				TCS_POOL_SEQ.NEXTVAL POOL_ID, DOCK_LEVEL, ZONE,
+				TO_DATE(TO_CHAR(#SCH_DATE#, 'DDMONYY') || ' ' || TO_CHAR(TIME_FROM_HHMI, '0000'), 'DDMONYY HH24MI') FROM_DT, 
+				TO_DATE(TO_CHAR(#SCH_DATE#, 'DDMONYY') || ' ' || TO_CHAR(TIME_TO_HHMI, '0000'), 'DDMONYY HH24MI') TO_DT, 
+				DOCK_COUNT TOTALDOCKS, 
+				PURPOSE_1, PURPOSE_2, PURPOSE_3, PURPOSE_4, PURPOSE_5,
+				#CR_USER_ID# CR_USER_ID, SYSDATE CR_DATE, #LM_USER_ID# LM_USER_ID, SYSDATE LM_DATE 
+			FROM (
+				SELECT 
+				COUNT (DOC_LINE_NO) DOCK_COUNT, DOCK_LEVEL, ZONE, 
+				TIME_FROM_HHMI, TIME_TO_HHMI, 
+				PURPOSE_1, PURPOSE_2, PURPOSE_3, PURPOSE_4, PURPOSE_5 
+				FROM (
+					SELECT
+					SCHDTL.TR_NO, SCHDTL.DOC_LINE_NO, TMPLTDTL.TEMPLATE_ID, TMPLTDTL.TRUCK_DOCK, 
+					TDMAST.DOCK_LEVEL, TDMAST.ZONE,
+					SCHDTL.TIME_FROM_HHMI, SCHDTL.TIME_TO_HHMI, 
+					TMPLTDTL.PURPOSE_1, TMPLTDTL.PURPOSE_2, TMPLTDTL.PURPOSE_3, TMPLTDTL.PURPOSE_4, TMPLTDTL.PURPOSE_5 
+					FROM TCS_DOCK_TEMPLATE_DTL TMPLTDTL
+					JOIN TCS_DOCK_MASTER TDMAST 
+					ON TMPLTDTL.TRUCK_DOCK = TDMAST.TRUCK_DOCK
+					JOIN TCS_DOCK_TEMPLATE_SCH_DTL SCHDTL 
+					ON TMPLTDTL.TEMPLATE_ID = SCHDTL.TEMPLATE_ID
+					JOIN TCS_DOCK_TEMPLATE_SCH SCH 
+					ON SCHDTL.TR_NO = SCH.TR_NO
+					WHERE 
+		      		#SCH_DATE# BETWEEN SCH.EFF_FROM AND SCH.EFF_TO AND 
+		      		INSTR(SCH.FREQUENCY, DECODE(TO_CHAR(#SCH_DATE#,'D'), 7, 1, TO_CHAR(#SCH_DATE#,'D') + 1)) > 0 AND
+		      		TMPLTDTL.TRUCK_DOCK NOT IN (
+		      			SELECT TRUCK_DOCK FROM TCS_SHA_DOCKS
+		      		) AND 
+		      		TDMAST.PURPOSE_1 NOT IN ('VAL', 'SHC') AND TMPLTDTL.PURPOSE_1 NOT IN ('VAL', 'SHC')
+					GROUP BY
+					SCHDTL.TR_NO, SCHDTL.DOC_LINE_NO, TMPLTDTL.TEMPLATE_ID, 
+					TDMAST.DOCK_LEVEL, TDMAST.ZONE, 
+					SCHDTL.TIME_FROM_HHMI, SCHDTL.TIME_TO_HHMI, 
+					TMPLTDTL.PURPOSE_1, TMPLTDTL.PURPOSE_2, TMPLTDTL.PURPOSE_3, TMPLTDTL.PURPOSE_4, TMPLTDTL.PURPOSE_5, 
+					TMPLTDTL.TRUCK_DOCK
+					ORDER BY TMPLTDTL.PURPOSE_1, TMPLTDTL.PURPOSE_2, TMPLTDTL.PURPOSE_3, TMPLTDTL.PURPOSE_4, TMPLTDTL.PURPOSE_5
+				)
+				GROUP BY 
+				TR_NO, DOC_LINE_NO, TEMPLATE_ID, 
+				DOCK_LEVEL, ZONE, 
+				TIME_FROM_HHMI, TIME_TO_HHMI, 
+				PURPOSE_1, PURPOSE_2, PURPOSE_3, PURPOSE_4, PURPOSE_5
+				ORDER BY TIME_FROM_HHMI, 
+				PURPOSE_1, PURPOSE_2, PURPOSE_3, PURPOSE_4, PURPOSE_5, COUNT(DOC_LINE_NO)
+			)
+		]]>
+	</insert>
+	<!-- Pool Docks Generation -->
+	<insert id="sqlTcsGenerateDockPoolDocks" parameterClass="java.util.Map">
+		<![CDATA[
+			INSERT INTO TCS_DOCK_POOL_DOCK (
+				POOL_ID, TRUCK_DOCK, FROM_DT, TO_DT, CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE
+			)
+	      	SELECT 
+      		POOL.POOL_ID, DOCK.TRUCK_DOCK, DOCK.FROM_DT, DOCK.TO_DT, 
+      		#CR_USER_ID# CR_USER_ID, SYSDATE CR_DATE, #LM_USER_ID# LM_USER_ID, SYSDATE LM_DATE
+	      	FROM (
+		      	SELECT
+	      		TRUCK_DOCK,  
+	      		TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY')||' '||TO_CHAR(TIME_FROM_HHMI,'0000'),'DDMONYY HH24MI') FROM_DT, 
+				TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY')||' '||TO_CHAR(TIME_TO_HHMI,'0000'),'DDMONYY HH24MI') TO_DT, 
+	      		PURPOSE_1, PURPOSE_2, PURPOSE_3, PURPOSE_4, PURPOSE_5, DOCK_LEVEL, ZONE
+		      	FROM (
+					SELECT
+					SCHDTL.TR_NO, SCHDTL.DOC_LINE_NO, TMPLTDTL.TEMPLATE_ID, TMPLTDTL.TRUCK_DOCK, 
+					TDMAST.DOCK_LEVEL, TDMAST.ZONE, SCHDTL.TIME_FROM_HHMI, SCHDTL.TIME_TO_HHMI, 
+					TMPLTDTL.PURPOSE_1, TMPLTDTL.PURPOSE_2, TMPLTDTL.PURPOSE_3, TMPLTDTL.PURPOSE_4, TMPLTDTL.PURPOSE_5 
+					FROM TCS_DOCK_TEMPLATE_DTL TMPLTDTL
+					JOIN TCS_DOCK_MASTER TDMAST 
+					ON TMPLTDTL.TRUCK_DOCK = TDMAST.TRUCK_DOCK
+					JOIN TCS_DOCK_TEMPLATE_SCH_DTL SCHDTL 
+					ON TMPLTDTL.TEMPLATE_ID = SCHDTL.TEMPLATE_ID
+					JOIN TCS_DOCK_TEMPLATE_SCH SCH 
+					ON SCHDTL.TR_NO = SCH.TR_NO
+					WHERE 
+					#SCH_DATE# BETWEEN SCH.EFF_FROM AND SCH.EFF_TO AND
+					INSTR(SCH.FREQUENCY, DECODE(TO_CHAR(#SCH_DATE#,'D'), 7, 1, TO_CHAR(#SCH_DATE#,'D') + 1)) > 0 AND
+					TMPLTDTL.TRUCK_DOCK NOT IN (SELECT TRUCK_DOCK FROM TCS_SHA_DOCKS) AND 
+					TDMAST.PURPOSE_1 NOT IN ('VAL', 'SHC') AND 
+					TMPLTDTL.PURPOSE_1 NOT IN ('VAL', 'SHC')
+					GROUP BY SCHDTL.TR_NO, SCHDTL.DOC_LINE_NO, TMPLTDTL.TEMPLATE_ID, TDMAST.DOCK_LEVEL, TDMAST.ZONE,  
+						SCHDTL.TIME_FROM_HHMI, SCHDTL.TIME_TO_HHMI, TMPLTDTL.PURPOSE_1, TMPLTDTL.PURPOSE_2, TMPLTDTL.PURPOSE_3, 
+						TMPLTDTL.PURPOSE_4, TMPLTDTL.PURPOSE_5, TMPLTDTL.TRUCK_DOCK
+					ORDER BY TMPLTDTL.PURPOSE_1, TMPLTDTL.PURPOSE_2, TMPLTDTL.PURPOSE_3, TMPLTDTL.PURPOSE_4, 
+						TMPLTDTL.PURPOSE_5
+				)
+		      	ORDER BY TIME_FROM_HHMI, PURPOSE_1, PURPOSE_2, PURPOSE_3, PURPOSE_4, PURPOSE_5
+	      	) DOCK
+	      	JOIN TCS_DOCK_POOL POOL
+	      	ON POOL.FROM_DT = DOCK.FROM_DT AND POOL.TO_DT = DOCK.TO_DT AND
+	      	NVL(POOL.PURPOSE_1,'X') = NVL(DOCK.PURPOSE_1,'X') AND 
+	      	NVL(POOL.PURPOSE_2,'X') = NVL(DOCK.PURPOSE_2,'X') AND 
+	      	NVL(POOL.PURPOSE_3,'X') = NVL(DOCK.PURPOSE_3,'X') AND 
+	      	NVL(POOL.PURPOSE_4,'X') = NVL(DOCK.PURPOSE_4,'X') AND 
+	      	NVL(POOL.PURPOSE_5,'X') = NVL(DOCK.PURPOSE_5,'X') AND 
+	      	POOL.DOCK_LEVEL = DOCK.DOCK_LEVEL AND NVL(POOL.ZONE,'X') = NVL(DOCK.ZONE,'X')
+      	]]>
+	</insert>
+	<!-- Pool Time Slot Generation -->
+	<insert id="sqlTcsGenerateDockPoolSlots" parameterClass="java.util.Map">
+		<![CDATA[
+			INSERT INTO TCS_DOCK_POOL_TIMESLOT (
+				TIMESLOT,POOL_ID, UNALLOCATED, BK_UNALLOCATED, ALLOCATED,
+				CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE
+			)
+			SELECT
+			TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY')||' '||TO_CHAR(SLOT.TIMESLOT,'0000'),'DDMONYY HH24MI') TIMESLOT, 
+			POOL.POOL_ID POOL_ID, POOL.TOTALDOCKS UNALLOCATED, 0 BK_UNALLOCATED, 0 ALLOCATED, 
+			#CR_USER_ID# CR_USER_ID, SYSDATE CR_DATE, #LM_USER_ID# LM_USER_ID, SYSDATE LM_DATE
+			FROM (
+				SELECT
+				TO_NUMBER(TRIM(TO_CHAR(CEIL(ROWNUM/4)-1,'00'))||TRIM(TO_CHAR(MOD((ROWNUM-1) * 15,60),'00'))) TIMESLOT
+				FROM DUAL
+				CONNECT BY LEVEL <= 96
+			) SLOT, (
+				SELECT
+				FROM_DT, TO_DT, POOL_ID, TOTALDOCKS, PURPOSE_1, PURPOSE_2, PURPOSE_3, PURPOSE_4, PURPOSE_5 
+				FROM TCS_DOCK_POOL 
+				WHERE TO_CHAR(FROM_DT,'DDMONYY') = TO_CHAR(#SCH_DATE#,'DDMONYY') 
+			) POOL
+			WHERE TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY')||' '||TO_CHAR(SLOT.TIMESLOT,'0000'),'DDMONYY HH24MI') 
+			BETWEEN POOL.FROM_DT AND POOL.TO_DT
+			ORDER BY SLOT.TIMESLOT, POOL.POOL_ID , POOL.PURPOSE_1, POOL.PURPOSE_2, POOL.PURPOSE_3, POOL.PURPOSE_4, POOL.PURPOSE_5
+		]]>
+	</insert>
+	<!-- Pool Purpose Generation -->
+	<insert id="sqlTcsGenerateQuotaSlots" parameterClass="java.util.Map">
+		<![CDATA[
+			INSERT INTO TCS_PURPOSE_QUOTA_TIMESLOT(
+				PURPOSE, TIMESLOT, TOTALDOCKS, WI_ONLY, REST_AVAILABLE, 
+				CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE
+			)
+			SELECT QUOTASLOT.PURPOSE PURPOSE, QUOTASLOT.TIMESLOT TIMESLOT, POOLSLOT.TOTALDOCKS TOTALDOCKS,
+			QUOTASLOT.WI_ONLY WI_ONLY, POOLSLOT.TOTALDOCKS - QUOTASLOT.WI_ONLY REST_AVAILABLE, 
+			#CR_USER_ID# CR_USER_ID, SYSDATE CR_DATE, #LM_USER_ID# LM_USER_ID, SYSDATE LM_DATE
+			FROM (
+				SELECT SUM(SLOT.UNALLOCATED) TOTALDOCKS, SLOT.TIMESLOT TIMESLOT, POOL.PURPOSE_1 PURPOSE 
+				FROM TCS_DOCK_POOL_TIMESLOT SLOT
+				JOIN TCS_DOCK_POOL POOL ON
+				POOL.POOL_ID = SLOT.POOL_ID
+				GROUP BY SLOT.TIMESLOT, POOL.PURPOSE_1, POOL.FROM_DT, POOL.TO_DT
+			) POOLSLOT
+			JOIN (
+				SELECT PURPOSE, TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY')||' '|| TO_CHAR(TIMESLOT,'0000'),'DDMONYY HH24MI') TIMESLOT, 
+				WI_ONLY
+				FROM (
+					SELECT WALKIN.PURPOSE, SLOT.TIMESLOT, WALKIN.TEMPLATE_ID, WALKIN.QUOTA AS WI_ONLY 
+					FROM TCS_DOCK_TEMPLATE_WALKIN WALKIN, (
+						SELECT TO_NUMBER(TRIM(TO_CHAR(CEIL(ROWNUM/4)-1,'00'))||TRIM(TO_CHAR(MOD((ROWNUM-1) * 15,60),'00'))) 
+						TIMESLOT FROM DUAL CONNECT BY LEVEL <= 96
+					) SLOT
+				) QUOTA, (
+					SELECT 
+					TMPLTDTL.PURPOSE_1, TMPLTDTL.TEMPLATE_ID, SCHDTL.TIME_FROM_HHMI, SCHDTL.TIME_TO_HHMI 
+					FROM TCS_DOCK_TEMPLATE_DTL TMPLTDTL
+					JOIN TCS_DOCK_MASTER MASTER 
+					ON TMPLTDTL.TRUCK_DOCK = MASTER.TRUCK_DOCK
+					JOIN TCS_DOCK_TEMPLATE_SCH_DTL SCHDTL 
+					ON TMPLTDTL.TEMPLATE_ID = SCHDTL.TEMPLATE_ID
+					JOIN TCS_DOCK_TEMPLATE_SCH SCH
+					ON SCHDTL.TR_NO = SCH.TR_NO
+					WHERE 
+					#SCH_DATE# BETWEEN SCH.EFF_FROM AND SCH.EFF_TO AND 
+					INSTR(SCH.FREQUENCY, DECODE(TO_CHAR(#SCH_DATE#,'D'), 7, 1, TO_CHAR(#SCH_DATE#,'D') + 1)) > 0
+					GROUP BY TMPLTDTL.TEMPLATE_ID, TMPLTDTL.PURPOSE_1, SCHDTL.TIME_FROM_HHMI, SCHDTL.TIME_TO_HHMI 
+				) TDTMPLT
+				WHERE QUOTA.PURPOSE = TDTMPLT.PURPOSE_1 AND 
+				TDTMPLT.TEMPLATE_ID = QUOTA.TEMPLATE_ID AND 
+				QUOTA.TIMESLOT BETWEEN TDTMPLT.TIME_FROM_HHMI AND TDTMPLT.TIME_TO_HHMI
+			) QUOTASLOT 
+			ON QUOTASLOT.TIMESLOT = POOLSLOT.TIMESLOT AND QUOTASLOT.PURPOSE = POOLSLOT.PURPOSE
+		]]>
+	</insert>
+	<!-- 1/1440 for TO_TIME to make the blocks correct -->
+	<insert id="sqlTcsGenerateSchDockBlocks" parameterClass="java.util.Map">
+		<![CDATA[
+			INSERT INTO TCS_DOCK_BLOCK (
+				DOCK_BLOCK_ID,BLOCK_TYPE,FROM_DT,TO_DT,MAXIMUM_ALLOWED,TRUCKS_IN_TERMINAL,
+				CUST_NO,TR_NO,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE,DOCK_BLOCK_SEGMENT
+			)
+		    SELECT
+		    TCS_DOCK_BLOCK_SEQ.NEXTVAL DOCK_BLOCK_ID, BLOCK_TYPE, 
+		    FROM_DT, TO_DT, 
+		    MAXIMUM_ALLOWED, TRUCKS_IN_TERMINAL, CUST_NO, TR_NO, 
+		    CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE, (
+		    	SELECT 'L'|| DOCK_LEVEL || SIDE FROM TCS_DOCK_MASTER WHERE TRUCK_DOCK = SCH.TRUCK_DOCK
+		    ) DOCK_BLOCK_SEGMENT
+		    FROM (
+		      	SELECT BLOCK_TYPE BLOCK_TYPE, FROM_DT, TO_DT, COUNT(1) MAXIMUM_ALLOWED, TRUCKS_IN_TERMINAL,
+		      	CUST_NO, TR_NO, MIN(TRUCK_DOCK) TRUCK_DOCK,
+		      	#CR_USER_ID# CR_USER_ID,SYSDATE CR_DATE,#LM_USER_ID# LM_USER_ID,SYSDATE LM_DATE 
+		      	FROM (
+		      		SELECT DECODE(SCH.PURPOSE,'ULD','SCU','CRG','SCH') BLOCK_TYPE,
+					TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY') ||' '|| TO_CHAR(SCH.TIME_FROM,'0000'),'DDMONYY HH24MI') FROM_DT,
+					TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY') ||' '|| TO_CHAR(SCH.TIME_TO,'0000'),'DDMONYY HH24MI')-1/1440 TO_DT, 
+					0 TRUCKS_IN_TERMINAL, SCH.CUST_NO, SCH.TR_NO TR_NO, SCHDOCK.TRUCK_DOCK
+				    FROM CUST_AGENT_SCH_COLL_TIME SCH
+				    JOIN CUST_AGENT_SCH_COLL_TRUCK_DOCK SCHDOCK
+				    ON SCH.TR_NO = SCHDOCK.TR_NO
+				    JOIN TCS_DOCK_MASTER MASTER
+				    ON MASTER.TRUCK_DOCK = SCHDOCK.TRUCK_DOCK
+					WHERE #SCH_DATE# BETWEEN SCH.EFF_FROM AND SCH.EFF_TO AND INSTR(SCH.DAY_FRQ, TO_CHAR(#SCH_DATE#,'D')) > 0 AND (
+						SELECT COUNT(1) FROM TCS_DOCK_POOL WHERE #SCH_DATE# BETWEEN FROM_DT AND TO_DT
+					) > 0
+				)
+		    	GROUP BY BLOCK_TYPE, FROM_DT, TO_DT, CUST_NO, TR_NO, TRUCKS_IN_TERMINAL
+	    	) SCH    	
+		]]>
+	</insert>
+	<insert id="sqlTcsGenerateSCHDockBlockDocks" parameterClass="java.util.Map">
+		<![CDATA[
+			INSERT INTO TCS_DOCK_BLOCK_DOCK (
+				DOCK_BLOCK_ID, TRUCK_DOCK, CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE
+			)
+		    SELECT BLOCK.DOCK_BLOCK_ID, DOCK.TRUCK_DOCK,
+		    DOCK.CR_USER_ID, DOCK.CR_DATE, DOCK.LM_USER_ID, DOCK.LM_DATE
+		    FROM (
+		    	SELECT BLOCK_TYPE BLOCK_TYPE, FROM_DT, TO_DT, TRUCK_DOCK TRUCK_DOCK, TRUCKS_IN_TERMINAL,
+		      	CUST_NO, TR_NO,
+		      	#CR_USER_ID# CR_USER_ID,SYSDATE CR_DATE,#LM_USER_ID# LM_USER_ID,SYSDATE LM_DATE 
+		      	FROM (
+			      	SELECT DECODE(SCH.PURPOSE,'ULD','SCU','CRG','SCH') BLOCK_TYPE,
+					TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY')||' '||TO_CHAR(SCH.TIME_FROM,'0000'),'DDMONYY HH24MI') FROM_DT,
+					TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY')||' '||TO_CHAR(SCH.TIME_TO,'0000'),'DDMONYY HH24MI')-1/1440 TO_DT, 
+					0 TRUCKS_IN_TERMINAL, SCH.CUST_NO, SCH.TR_NO TR_NO, MASTER.TRUCK_DOCK
+				    FROM CUST_AGENT_SCH_COLL_TIME SCH
+				    JOIN CUST_AGENT_SCH_COLL_TRUCK_DOCK SCHDOCK
+				    ON SCH.TR_NO = SCHDOCK.TR_NO
+				    JOIN TCS_DOCK_MASTER MASTER
+				    ON MASTER.TRUCK_DOCK = SCHDOCK.TRUCK_DOCK
+					WHERE #SCH_DATE# BETWEEN SCH.EFF_FROM AND SCH.EFF_TO AND INSTR(SCH.DAY_FRQ, TO_CHAR(#SCH_DATE#, 'D')) > 0 AND (
+						SELECT COUNT(1) FROM TCS_DOCK_POOL WHERE #SCH_DATE# BETWEEN FROM_DT AND TO_DT
+					) > 0
+				)
+			) DOCK
+		    JOIN TCS_DOCK_BLOCK BLOCK
+		    ON BLOCK.TR_NO = DOCK.TR_NO AND BLOCK.CUST_NO = DOCK.CUST_NO AND 
+		    	BLOCK.FROM_DT = DOCK.FROM_DT AND BLOCK.TO_DT = DOCK.TO_DT AND BLOCK.BLOCK_TYPE = DOCK.BLOCK_TYPE
+	    ]]>
+	</insert>
+	<insert id="sqlTcsGenerateShaDockBlocks" parameterClass="java.util.Map">
+		<![CDATA[
+			INSERT INTO TCS_DOCK_BLOCK (
+				DOCK_BLOCK_ID,BLOCK_TYPE,FROM_DT,TO_DT,MAXIMUM_ALLOWED,TRUCKS_IN_TERMINAL,
+				CUST_NO,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE,DOCK_BLOCK_SEGMENT
+			)
+		    SELECT TCS_DOCK_BLOCK_SEQ.NEXTVAL DOCK_BLOCK_ID, BLOCK_TYPE, FROM_DT, TO_DT, MAXIMUM_ALLOWED,
+		    TRUCKS_IN_TERMINAL, CUST_NO, CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE, (
+        		SELECT 'L'|| DOCK_LEVEL || SIDE FROM TCS_DOCK_MASTER WHERE TRUCK_DOCK = SHC.TRUCK_DOCK
+        	) DOCK_BLOCK_SEGMENT
+		    FROM (
+			    SELECT 'SHC' BLOCK_TYPE,
+			    TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY')||' '||'0000','DDMONYY HH24MI') FROM_DT,	
+				TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY')||' '||'2359','DDMONYY HH24MI') TO_DT,
+				NVL(SHA.TRUCK_QUOTA, COUNT(DOCK.TRUCK_DOCK)) MAXIMUM_ALLOWED,
+				0 TRUCKS_IN_TERMINAL, SHA.CUST_NO, MIN(DOCK.TRUCK_DOCK) TRUCK_DOCK,
+			    #CR_USER_ID# CR_USER_ID,SYSDATE CR_DATE,#LM_USER_ID# LM_USER_ID,SYSDATE LM_DATE 
+			    FROM TCS_SHA_DOCKS DOCK
+				JOIN TCS_SHA_CONFIG SHA
+				ON SHA.CUST_NO = DOCK.CUST_NO
+				WHERE (
+					SELECT COUNT(1) FROM TCS_DOCK_POOL WHERE #SCH_DATE# BETWEEN FROM_DT AND TO_DT
+				) > 0
+				GROUP BY SHA.CUST_NO, SHA.TRUCK_QUOTA
+			) SHC				
+		]]>
+	</insert>
+	<insert id="sqlTcsGenerateSHCDockBlockDocks" parameterClass="java.util.Map">
+		<![CDATA[
+			INSERT INTO TCS_DOCK_BLOCK_DOCK (
+				DOCK_BLOCK_ID, TRUCK_DOCK, 
+				CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE
+			)
+			SELECT BLOCK.DOCK_BLOCK_ID, DOCK.TRUCK_DOCK,
+			DOCK.CR_USER_ID, DOCK.CR_DATE, DOCK.LM_USER_ID, DOCK.LM_DATE
+			FROM (
+				SELECT 'SHC' BLOCK_TYPE,
+			    TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY')||' '||'0000','DDMONYY HH24MI') FROM_DT,	
+				TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY')||' '||'2359','DDMONYY HH24MI') TO_DT,
+				DOCK.TRUCK_DOCK, 0 TRUCKS_IN_TERMINAL, SHA.CUST_NO,   
+			    #CR_USER_ID# CR_USER_ID,SYSDATE CR_DATE,#LM_USER_ID# LM_USER_ID,SYSDATE LM_DATE 
+			    FROM 			
+				TCS_SHA_DOCKS DOCK
+				JOIN TCS_SHA_CONFIG SHA
+				ON SHA.CUST_NO = DOCK.CUST_NO
+				WHERE (
+					SELECT COUNT(1) FROM TCS_DOCK_POOL WHERE #SCH_DATE# BETWEEN FROM_DT AND TO_DT
+				) > 0
+			) DOCK
+			JOIN TCS_DOCK_BLOCK BLOCK
+			ON BLOCK.BLOCK_TYPE = DOCK.BLOCK_TYPE AND
+				BLOCK.FROM_DT = DOCK.FROM_DT AND BLOCK.TO_DT = DOCK.TO_DT AND 
+				NVL(BLOCK.CUST_NO,0) = NVL(DOCK.CUST_NO,0) AND BLOCK.TR_NO IS NULL
+		]]>
+	</insert>
+	<insert id="sqlTcsGenerateValDockBlocks" parameterClass="java.util.Map">
+		<![CDATA[
+			INSERT INTO TCS_DOCK_BLOCK (
+				DOCK_BLOCK_ID,BLOCK_TYPE,FROM_DT,TO_DT,MAXIMUM_ALLOWED,TRUCKS_IN_TERMINAL,
+				CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE,DOCK_BLOCK_SEGMENT
+			)
+		    SELECT TCS_DOCK_BLOCK_SEQ.NEXTVAL DOCK_BLOCK_ID, BLOCK_TYPE, FROM_DT, TO_DT, 
+		    MAXIMUM_ALLOWED, TRUCKS_IN_TERMINAL, CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE, (
+		    	SELECT 'L'|| DOCK_LEVEL || DECODE(BLOCK_TYPE, 'VAL', 'SR', '') 
+		    	FROM TCS_DOCK_MASTER WHERE TRUCK_DOCK = VAL.TRUCK_DOCK
+		    ) DOCK_BLOCK_SEGMENT
+		    FROM (
+			    SELECT MASTER.PURPOSE_1 BLOCK_TYPE,
+			    TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY')||' '||'0000','DDMONYY HH24MI') FROM_DT,	
+			    TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY')||' '||'2359','DDMONYY HH24MI') TO_DT,
+			    NVL((SELECT TO_NUMBER(RULE_VALUE) FROM CMSRULES WHERE RULE_CODE = 'TCS_STRONG_ROOM_PARK_CAPACITY'),0) MAXIMUM_ALLOWED, 
+			    0 TRUCKS_IN_TERMINAL, 
+			    #CR_USER_ID# CR_USER_ID,SYSDATE CR_DATE,#LM_USER_ID# LM_USER_ID,SYSDATE LM_DATE,
+			    MIN(MASTER.TRUCK_DOCK) TRUCK_DOCK
+			    FROM TCS_DOCK_MASTER MASTER
+			    WHERE MASTER.PURPOSE_1 = 'VAL' AND (
+					SELECT COUNT(1) FROM TCS_DOCK_POOL WHERE #SCH_DATE# BETWEEN FROM_DT AND TO_DT
+				) > 0
+			    GROUP BY MASTER.PURPOSE_1
+		    ) VAL	    
+		]]>
+	</insert>
+	<insert id="sqlTcsGenerateVALDockBlockDocks" parameterClass="java.util.Map">
+		<![CDATA[
+			INSERT INTO TCS_DOCK_BLOCK_DOCK(
+				DOCK_BLOCK_ID, TRUCK_DOCK, 
+		    	CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE
+		    )
+		    SELECT BLOCK.DOCK_BLOCK_ID, DOCK.TRUCK_DOCK, 
+		    DOCK.CR_USER_ID, DOCK.CR_DATE, DOCK.LM_USER_ID, DOCK.LM_DATE
+		    FROM (
+		    	SELECT MASTER.PURPOSE_1 BLOCK_TYPE,
+			    TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY')||' '||'0000','DDMONYY HH24MI') FROM_DT,	
+			    TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY')||' '||'2359','DDMONYY HH24MI') TO_DT,
+			    MASTER.TRUCK_DOCK TRUCK_DOCK, 0 TRUCKS_IN_TERMINAL, 
+			    #CR_USER_ID# CR_USER_ID,SYSDATE CR_DATE,#LM_USER_ID# LM_USER_ID,SYSDATE LM_DATE 
+			    FROM 
+			    TCS_DOCK_MASTER MASTER
+			    WHERE MASTER.PURPOSE_1 = 'VAL' AND (
+					SELECT COUNT(1) FROM TCS_DOCK_POOL WHERE #SCH_DATE# BETWEEN FROM_DT AND TO_DT
+				) > 0
+			) DOCK
+		    JOIN TCS_DOCK_BLOCK BLOCK
+		    ON BLOCK.BLOCK_TYPE = DOCK.BLOCK_TYPE AND
+		    	BLOCK.FROM_DT = DOCK.FROM_DT AND BLOCK.TO_DT = DOCK.TO_DT
+		]]>
+	</insert>
+	<!-- Update Pool for Schedule Collection -->
+	<update id="sqlTcsUpdSchCountsForChart" parameterClass="java.util.Map">
+		<![CDATA[
+			UPDATE TCS_DOCK_POOL_TIMESLOT POOLSLOT
+			SET UNALLOCATED = UNALLOCATED - 
+			CASE 
+				WHEN UNALLOCATED > 0 THEN (
+				    SELECT SUM(POOL.DOCKCOUNT)
+				    FROM TCS_DOCK_POOL_TIMESLOT SLOT
+				    JOIN (
+					    SELECT
+				    	POOLDOCK.POOL_ID, DOCK.FROM_DT, DOCK.TO_DT,
+				    	COUNT(POOLDOCK.TRUCK_DOCK) DOCKCOUNT      
+					    FROM TCS_DOCK_POOL POOL
+					    JOIN TCS_DOCK_POOL_DOCK POOLDOCK
+					    ON POOL.POOL_ID = POOLDOCK.POOL_ID
+					    JOIN TCS_DOCK_MASTER MASTER
+			        	ON MASTER.TRUCK_DOCK = POOLDOCK.TRUCK_DOCK
+					    JOIN (
+						    SELECT
+						    DOCK.TRUCK_DOCK, BLOCK.FROM_DT, BLOCK.TO_DT
+						    FROM TCS_DOCK_BLOCK BLOCK
+						    JOIN TCS_DOCK_BLOCK_DOCK DOCK
+						    ON BLOCK.DOCK_BLOCK_ID = DOCK.DOCK_BLOCK_ID
+						    WHERE
+						    BLOCK.BLOCK_TYPE IN ('SCH','SCU') AND (
+						        FROM_DT BETWEEN 
+						        	TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY') || ' ' || '0000', 'DDMONYY HH24MI') AND TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY') || ' ' || '2359','DDMONYY HH24MI')
+						        OR
+						        TO_DT BETWEEN 
+						        	TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY') || ' ' || '0000', 'DDMONYY HH24MI') AND TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY') || ' ' || '2359','DDMONYY HH24MI')
+						    )
+					    ) DOCK
+					    ON
+					    DOCK.TRUCK_DOCK = POOLDOCK.TRUCK_DOCK
+					    WHERE MASTER.IN_SERVICE = 'Y'
+					    GROUP BY POOLDOCK.POOL_ID,DOCK.FROM_DT, DOCK.TO_DT
+				    ) POOL
+				    ON POOL.POOL_ID = SLOT.POOL_ID
+				    WHERE
+				    SLOT.ROWID = POOLSLOT.ROWID AND 
+				    SLOT.TIMESLOT BETWEEN POOL.FROM_DT AND POOL.TO_DT AND 
+				    SLOT.TIMESLOT BETWEEN TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY')||' '||'0000','DDMONYY HH24MI') AND 
+					TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY')||' '||'2359','DDMONYY HH24MI')
+				)
+				ELSE 0
+			END,
+			LM_USER_ID = #LM_USER_ID#, LM_DATE = SYSDATE 
+    		WHERE POOLSLOT.ROWID IN (
+			    SELECT SLOT.ROWID 
+			    FROM TCS_DOCK_POOL_TIMESLOT SLOT
+			    JOIN (
+				    SELECT
+			    	POOLDOCK.POOL_ID, DOCK.FROM_DT, DOCK.TO_DT,
+			    	COUNT(POOLDOCK.TRUCK_DOCK) DOCKCOUNT      
+				    FROM TCS_DOCK_POOL POOL
+				    JOIN TCS_DOCK_POOL_DOCK POOLDOCK
+				    ON POOL.POOL_ID = POOLDOCK.POOL_ID
+				    JOIN TCS_DOCK_MASTER MASTER
+		        	ON MASTER.TRUCK_DOCK = POOLDOCK.TRUCK_DOCK
+				    JOIN (
+					    SELECT
+					    DOCK.TRUCK_DOCK, BLOCK.FROM_DT, BLOCK.TO_DT
+					    FROM TCS_DOCK_BLOCK BLOCK
+					    JOIN TCS_DOCK_BLOCK_DOCK DOCK
+					    ON BLOCK.DOCK_BLOCK_ID = DOCK.DOCK_BLOCK_ID
+					    WHERE
+					    BLOCK.BLOCK_TYPE IN ('SCH','SCU') AND (
+					        FROM_DT BETWEEN 
+					        	TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY') || ' ' || '0000', 'DDMONYY HH24MI') AND TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY') || ' ' || '2359','DDMONYY HH24MI')
+					        OR
+					        TO_DT BETWEEN 
+					        	TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY') || ' ' || '0000', 'DDMONYY HH24MI') AND TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY') || ' ' || '2359','DDMONYY HH24MI')
+					    )
+				    ) DOCK
+				    ON DOCK.TRUCK_DOCK = POOLDOCK.TRUCK_DOCK
+				    WHERE MASTER.IN_SERVICE = 'Y'
+				    GROUP BY POOLDOCK.POOL_ID,DOCK.FROM_DT, DOCK.TO_DT
+			    ) POOL
+			    ON POOL.POOL_ID = SLOT.POOL_ID
+			    WHERE
+			    SLOT.TIMESLOT BETWEEN POOL.FROM_DT AND POOL.TO_DT AND 
+			    SLOT.TIMESLOT BETWEEN 
+			    	TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY') || ' ' || '0000', 'DDMONYY HH24MI') AND TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY') || ' ' || '2359','DDMONYY HH24MI')
+			)
+		]]>
+	</update>
+	<!-- Update Pool for Unserviceable -->
+	<update id="sqlTcsUpdUnSvcCountsForChart" parameterClass="java.util.Map">
+		<![CDATA[
+			UPDATE TCS_DOCK_POOL_TIMESLOT SLOT
+			SET LM_USER_ID = #LM_USER_ID#, LM_DATE = SYSDATE,
+			BK_NO_SVC = 0, BK_UNALLOCATED = 0,
+			NO_SVC = NO_SVC + (
+			  SELECT COUNT(POOL_ID) FROM TCS_DOCK_POOL_DOCK DOCK
+			  WHERE DOCK.POOL_ID = SLOT.POOL_ID AND
+			  TRUCK_DOCK IN (
+			    SELECT TRUCK_DOCK FROM TCS_DOCK_MASTER WHERE IN_SERVICE = 'N'
+			  ) AND (SYSDATE BETWEEN FROM_DT AND TO_DT OR FROM_DT > SYSDATE)
+			),
+			UNALLOCATED = UNALLOCATED - (
+			  SELECT COUNT(POOL_ID) FROM TCS_DOCK_POOL_DOCK DOCK
+			  WHERE DOCK.POOL_ID = SLOT.POOL_ID AND
+			  TRUCK_DOCK IN (
+			    SELECT TRUCK_DOCK FROM TCS_DOCK_MASTER WHERE IN_SERVICE = 'N'
+			  ) AND (SYSDATE BETWEEN FROM_DT AND TO_DT OR FROM_DT > SYSDATE)
+			)
+			WHERE POOL_ID IN (
+			  SELECT DISTINCT POOL_ID FROM TCS_DOCK_POOL_DOCK DOCK
+			  WHERE TRUCK_DOCK IN (
+			    SELECT TRUCK_DOCK FROM TCS_DOCK_MASTER WHERE IN_SERVICE = 'N'
+			  ) AND (SYSDATE BETWEEN FROM_DT AND TO_DT OR FROM_DT > SYSDATE)
+			) AND 
+			TIMESLOT BETWEEN TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY') || ' ' || '0000', 'DDMONYY HH24MI') AND TO_DATE(TO_CHAR(#SCH_DATE#,'DDMONYY') || ' ' || '2359','DDMONYY HH24MI')
+		]]>
+	</update>
+	<!-- Update Time Slots -->
+	<update id="sqlTcsUpdateBkPoolSlots" parameterClass="java.util.Map">
+		<![CDATA[
+			UPDATE TCS_DOCK_POOL_TIMESLOT SLOT
+			SET SLOT.BK_UNALLOCATED = SLOT.BK_UNALLOCATED + #REQ_DOCK_COUNT#,
+	      	SLOT.UNALLOCATED = SLOT.UNALLOCATED - #REQ_DOCK_COUNT#,
+	    	SLOT.LM_USER_ID = #LM_USER_ID#, SLOT.LM_DATE = SYSDATE
+	    	WHERE 
+	    	SLOT.POOL_ID = #POOL_ID# AND 
+	    	SLOT.TIMESLOT BETWEEN #REQ_TIME# AND #REQ_TIME# + (#REQ_SLOTS#-1)/(24*4) AND SLOT.UNALLOCATED >= #REQ_DOCK_COUNT# AND #REQ_DOCK_COUNT# > 0
+	 	]]>
+	</update>
+	<!-- Cancel Booking Begin -->
+	<update id="sqlTcsUpdateCnclBkPoolSlots" parameterClass="java.util.Map">
+		<![CDATA[
+			UPDATE TCS_DOCK_POOL_TIMESLOT SLOT
+			SET SLOT.BK_UNALLOCATED = SLOT.BK_UNALLOCATED - #REQ_DOCK_COUNT#,
+			SLOT.UNALLOCATED = SLOT.UNALLOCATED + #REQ_DOCK_COUNT#,
+			SLOT.LM_USER_ID = #LM_USER_ID#, SLOT.LM_DATE = SYSDATE
+			WHERE SLOT.POOL_ID = #POOL_ID# AND 
+			SLOT.TIMESLOT BETWEEN #START_TIMESLOT# AND #START_TIMESLOT# + (#REQ_SLOTS#-1)/(24*4) AND #REQ_DOCK_COUNT# > 0
+		]]>
+	</update>
+	<delete id="sqlTcsDeleteBooking" parameterClass="java.util.Map">
+		<![CDATA[
+			DELETE FROM	TCS_DOCK_POOL_BOOKING WHERE	TR_NO = #TR_NO#
+		]]>
+	</delete>
+	<select id="sqlTcsGetBookingForCnclBk" parameterClass="java.util.Map"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockPoolBookingBO">
+		<![CDATA[
+			SELECT TR_NO trNo, POOL_ID poolId, PURPOSE purpose,
+			DURATION duration, START_TIMESLOT startTimeSlot, END_TIMESLOT endTimeSlot,
+			TRUCK_NO_1 truckNo1, TRUCK_NO_2 truckNo2, TRUCK_NO_3 truckNo3, TRUCK_NO_4 truckNo4, TRUCK_NO_5 truckNo5, TRUCK_NO_6 truckNo6,
+			TRUCK_DOCK_1 truckDock1, TRUCK_DOCK_2 truckDock2,
+			DECODE(TRUCK_NO_1,NULL,0,1)+DECODE(TRUCK_NO_2,NULL,0,1)+DECODE(TRUCK_NO_3,NULL,0,1)+DECODE(TRUCK_NO_4,NULL,0,1)+DECODE(TRUCK_NO_5,NULL,0,1)+DECODE(TRUCK_NO_6,NULL,0,1) truckCount,
+			REQ_DOCK_COUNT requiredDockCount, ALLOCATED_DOCK_COUNT allocatedDockCount, BOOKING_TYPE bookingType
+			FROM TCS_DOCK_POOL_BOOKING
+			WHERE TR_NO = #TR_NO#
+		]]>
+	</select>
+	<!-- Cancel Booking Ends -->
+	<select id="sqlTcsGetGenPoolCountForDate" parameterClass="java.util.Map"
+		resultClass="java.lang.Integer">
+		<![CDATA[
+			SELECT COUNT(1) COUNT 
+			FROM TCS_DOCK_POOL POOL
+			JOIN TCS_DOCK_POOL_TIMESLOT SLOT ON
+			POOL.POOL_ID = SLOT.POOL_ID AND
+			SLOT.TIMESLOT BETWEEN POOL.FROM_DT AND POOL.TO_DT
+			WHERE SLOT.TIMESLOT BETWEEN #START_DATE_TIME# AND #END_DATE_TIME#
+		]]>
+	</select>
+	<insert id="sqlTcsInsPoolBookingInfo" parameterClass="java.util.Map">
+		<![CDATA[
+			INSERT INTO TCS_DOCK_POOL_BOOKING(
+				TR_NO,POOL_ID,PURPOSE,TRUCK_NO_1,TRUCK_NO_2,TRUCK_NO_3,TRUCK_NO_4,TRUCK_NO_5,TRUCK_NO_6,DURATION,START_TIMESLOT,
+				END_TIMESLOT,REQ_DOCK_COUNT,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE,BOOKING_TYPE
+			)
+			VALUES (
+				TCS_POOL_BK_SEQ.NEXTVAL, #POOL_ID#, #BK_PURPOSE#, #TRUCK_NO_1#, #TRUCK_NO_2#,#TRUCK_NO_3#,#TRUCK_NO_4#,#TRUCK_NO_5#,#TRUCK_NO_6#, #DURATION#, 
+				#START_TIMESLOT#, #START_TIMESLOT# + (#DURATION#/24/60),#REQ_DOCK_COUNT#,#CR_USER_ID#,SYSDATE,#LM_USER_ID#,SYSDATE,#BOOKING_TYPE#
+			)
+		]]>
+	</insert>
+	<select id="sqlTcsGetLastBookingTrNo" resultClass="java.lang.String">
+		<![CDATA[ SELECT TCS_POOL_BK_SEQ.CURRVAL FROM DUAL ]]>
+	</select>
+	<update id="sqlTcsUpdTimeSlotsForAlloc" parameterClass="cargo.cms.tcs.truckdock.bo.DockPoolSlotBO">
+		<![CDATA[
+			UPDATE TCS_DOCK_POOL_TIMESLOT
+			SET ALLOCATED = #allocated#, UNALLOCATED = #unAllocated#, 
+			BK_ALLOCATED = NVL(#bkAllocated#, 0), WI_ALLOCATED = NVL(#wiAllocated#, 0),
+			LM_USER_ID = #modifiedUserId#, LM_DATE = SYSDATE
+			WHERE TIMESLOT = #timeSlot# AND POOL_ID = #poolId#
+		]]>
+	</update>
+	<!-- Gets Dock Block Detail -->
+	<select id="sqlTcsGetDockBlockDtls" parameterClass="java.util.Map"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockBlockBO">
+		<![CDATA[
+			SELECT DOCK_BLOCK_ID dockBlockId, BLOCK_TYPE blockType, MAXIMUM_ALLOWED maximumAllowed, 
+			TRUCKS_IN_TERMINAL insideTerminal, FROM_DT startDateTime, 
+			TO_DT endDateTime, CUST_NO custNo, DOCK_BLOCK_SEGMENT dockBlockSegment
+			FROM TCS_DOCK_BLOCK BLOCK
+			WHERE
+			BLOCK_TYPE = #BLOCK_TYPE# AND #ARRIVAL_DATE_TIME# >= FROM_DT AND #ARRIVAL_DATE_TIME# < TO_DT
+			AND (
+				CUST_NO = (
+					SELECT CUST_NO FROM TCS_IPASS_MASTER WHERE TRUCK_NO = #TRUCK_OR_CUST# AND ROWNUM = 1
+				) OR CUST_NO = (
+					SELECT CODE FROM CUST_COMPANY WHERE CODE = #TRUCK_OR_CUST# AND ROWNUM = 1
+				)
+			)
+		]]>
+	</select>
+	<update id="sqlTcsUpdBlockDtls" parameterClass="cargo.cms.tcs.truckdock.bo.DockBlockBO">
+		<![CDATA[
+			UPDATE TCS_DOCK_BLOCK
+			SET TRUCKS_IN_TERMINAL = #insideTerminal#, LM_USER_ID =	#modifiedUserId#, LM_DATE = SYSDATE
+			WHERE DOCK_BLOCK_ID = #dockBlockId#
+		]]>
+	</update>
+	<select id="sqlTcsGetValBlockDtls" parameterClass="java.util.Map"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockBlockBO">
+		<![CDATA[
+			SELECT DOCK_BLOCK_ID dockBlockId, BLOCK_TYPE blockType, MAXIMUM_ALLOWED maximumAllowed, 
+			TRUCKS_IN_TERMINAL insideTerminal, FROM_DT startDateTime, 
+			TO_DT endDateTime, DOCK_BLOCK_SEGMENT dockBlockSegment 
+			FROM TCS_DOCK_BLOCK BLOCK
+			WHERE BLOCK_TYPE = #BLOCK_TYPE# AND #ARRIVAL_DATE_TIME# >= FROM_DT AND #ARRIVAL_DATE_TIME# < TO_DT AND 
+			ROWNUM = 1
+		]]>
+	</select>
+	<update id="sqlTcsUpdBkPoolDtl" parameterClass="cargo.cms.tcs.truckdock.bo.DockPoolBookingBO">
+		<![CDATA[
+			UPDATE TCS_DOCK_POOL_BOOKING
+			SET 
+			TRUCK_DOCK_1 = #truckDock1#, TRUCK_DOCK_2 = #truckDock2#,
+			ALLOCATED_DOCK_COUNT = #allocatedDockCount#,
+			LM_USER_ID = #modifiedUserId#, LM_DATE = SYSDATE
+			WHERE TR_NO = #trNo#
+		]]>
+	</update>
+	<update id="sqlTcsUpdDockOccupiedOnDockEvent" parameterClass="java.util.Map">
+  		<![CDATA[
+	  		UPDATE TCS_DOCK_ALLOCATION
+	  		SET OCCUPIED = #OCCUPIED#, LM_USER_ID = #LM_USER_ID#, LM_DATE = SYSDATE
+	  		WHERE TRUCK_DOCK = #TRUCK_DOCK#
+  		]]>
+	</update>
+	<select id="sqlTcsGetDockBlockDtlsOnTruckEntryExit"
+		parameterClass="java.util.Map" resultClass="cargo.cms.tcs.truckdock.bo.DockBlockBO">
+		<![CDATA[
+			SELECT DOCK_BLOCK_ID dockBlockId, BLOCK_TYPE blockType, MAXIMUM_ALLOWED maximumAllowed, 
+			TRUCKS_IN_TERMINAL insideTerminal, FROM_DT startDateTime, 
+			TO_DT endDateTime, CUST_NO custNo, DOCK_BLOCK_SEGMENT dockBlockSegment 
+			FROM TCS_DOCK_BLOCK BLOCK
+			WHERE
+			#EVENT_TIME# >= FROM_DT AND #EVENT_TIME# < TO_DT AND BLOCK_TYPE = #BLOCK_TYPE# AND NVL(CUST_NO,'X') = NVL(#CUST_NO#,'X')			
+		]]>
+	</select>
+	<insert id="sqlTcsInsTruckBookingInfo" parameterClass="cargo.cms.tcs.truckdock.bo.DockPoolBookingBO">
+		<![CDATA[
+			INSERT INTO TCS_DOCK_POOL_BOOKING (
+				TR_NO, PURPOSE, DURATION, START_TIMESLOT, END_TIMESLOT, POOL_ID, 
+				CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE,
+				TRUCK_NO_1, TRUCK_NO_2, TRUCK_DOCK_1, TRUCK_DOCK_2, TRUCK_NO_3, TRUCK_NO_4, TRUCK_NO_5, TRUCK_NO_6,
+				REQ_DOCK_COUNT, ALLOCATED_DOCK_COUNT, PREFERRED_LEVEL, PREFERRED_ZONE, BOOKING_TYPE, CUST_NO
+			) VALUES (
+				#trNo#, #purpose#, #duration#, #startTimeSlot#, #startTimeSlot# + (#duration#/24/60), #poolId#, 
+				#createdUserId#, SYSDATE, #modifiedUserId#, SYSDATE,
+				#truckNo1#, #truckNo2#, #truckDock1#, #truckDock2#, #truckNo3#, #truckNo4#, #truckNo5#, #truckNo6#,
+				#requiredDockCount#, #allocatedDockCount#, #preferredLevel#, #preferredZone#, #bookingType#, #custNo#
+			)
+		]]>
+	</insert>
+	<select id="sqlTCSGetDockBlockDockForSCHAllocation"
+		parameterClass="java.util.Map" resultClass="cargo.cms.tcs.truckdock.bo.TruckDockBO">
+		<![CDATA[
+			SELECT
+			DOCK.TRUCK_DOCK truckDock, 
+			SYSDATE allocFrom, BLOCK.TO_DT allocTill, (BLOCK.TO_DT - SYSDATE) * 1440 allocDuration
+			FROM
+			TCS_DOCK_BLOCK_DOCK DOCK
+			JOIN TCS_DOCK_BLOCK BLOCK
+			ON BLOCK.DOCK_BLOCK_ID = DOCK.DOCK_BLOCK_ID
+			JOIN TCS_DOCK_ALLOCATION ALLOC
+			ON ALLOC.TRUCK_DOCK = DOCK.TRUCK_DOCK
+			JOIN TCS_DOCK_MASTER MAST
+			ON ALLOC.TRUCK_DOCK = MAST.TRUCK_DOCK AND MAST.IN_SERVICE = 'Y'
+			WHERE 
+			NVL(ALLOC.STATUS, 'FREE') = 'FREE' AND NVL(ALLOC.OCCUPIED, 'N') = 'N' AND BLOCK.DOCK_BLOCK_ID = #DOCK_BLOCK_ID# AND
+			BLOCK.BLOCK_TYPE = #BLOCK_TYPE# AND #ARRIVAL_DATE_TIME# BETWEEN BLOCK.FROM_DT AND BLOCK.TO_DT     
+			ORDER BY DOCK.TRUCK_DOCK
+		]]>
+	</select>
+	<insert id="sqlTcsInsAdHocDock" parameterClass="cargo.cms.tcs.truckdock.bo.DockPoolBO">
+   		<![CDATA[
+	   		INSERT INTO TCS_ADHOC_DOCK(
+	   			POOL_ID, TRUCK_DOCK, FROM_DT, TO_DT,
+	   			PURPOSE_1, PURPOSE_2, PURPOSE_3, PURPOSE_4, PURPOSE_5,
+	   			CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE,
+	   			TAIL_POOL_ID, HEAD_POOL_ID, AFFECTED_POOLS, DURATION, 
+	   			REVERTED_IND
+	   		) VALUES(
+	   			#poolId#, #truckDock#, #fromDt#, #toDt#, 
+	   			#purpose1#, #purpose2#, #purpose3#, #purpose4#, #purpose5#,
+	   			#createdUserId#, SYSDATE, #modifiedUserId#, SYSDATE,
+	   			#tailPoolId#, #headPoolId#, #affectedPools#, #duration#, 
+	   			'N'
+	   		)
+      	]]>
+	</insert>
+	<!-- SQL For Scheduled Jobs Starts -->
+	<select id="sqlTcsCheckTemplateExistsForPoolGeneration"
+		parameterClass="java.util.Map" resultClass="java.lang.String">
+		<![CDATA[
+			SELECT DECODE(COUNT(1), 0, NULL, 'TRUE') 
+			FROM TCS_DOCK_TEMPLATE_SCH
+			WHERE (
+				TO_DATE(TO_CHAR(#START_DATE_TIME#,'DDMONYY'), 'DDMONYY') >= TO_DATE(TO_CHAR(EFF_FROM,'DDMONYY'), 'DDMONYY')
+      			OR 
+      			TO_DATE(TO_CHAR(#START_DATE_TIME#,'DDMONYY'), 'DDMONYY') <= TO_DATE(TO_CHAR(EFF_TO,'DDMONYY'), 'DDMONYY')
+      		)
+			AND INSTR(FREQUENCY, DECODE(TO_CHAR(#START_DATE_TIME#,'D'), 7, 1, TO_CHAR(#START_DATE_TIME#,'D') + 1)) > 0
+		]]>
+	</select>
+	<!-- Existing Allocated Truck Dock for a Specific Truck -->
+	<select id="sqlTcsGetExistingUnReleasedDockAllocations"
+		parameterClass="java.util.Map" resultClass="cargo.cms.tcs.truckdock.bo.TruckDockBO">
+		<![CDATA[
+			SELECT TRUCK_DOCK truckDock
+			FROM TCS_DOCK_ALLOCATION
+			WHERE STATUS = #STATUS# AND (TRUCK_NO = #TRUCK_NO# OR TRIP_ID = #TRIP_ID#)
+		]]>
+	</select>
+	<insert id="sqlTcsInsTimeSlotBatchProcessLog" parameterClass="cargo.cms.tcs.truckdock.bo.BatchRunProcessBO">
+		<![CDATA[
+			INSERT INTO TCS_TIMESLOT_BATCH_RUN_LOG(
+				LAST_BATCH_RUN_TIME,JOB_ID,JOB_DESC,JOB_COMPLETED_YN,
+				CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE
+			) VALUES(
+				#lastBatchRunTime# - MOD(TO_NUMBER(TO_CHAR(#lastBatchRunTime#,'MI')),5)/1440, #jobId#,
+				#jobDesc#, #jobCompleted#, #createdUserId#, SYSDATE, #modifiedUserId#, SYSDATE
+			)
+		]]>
+	</insert>
+	<select id="sqlTcsGetBatchProcessForJobIdAndStatus"
+		parameterClass="cargo.cms.tcs.truckdock.bo.BatchRunProcessBO"
+		resultClass="cargo.cms.tcs.truckdock.bo.BatchRunProcessBO">
+		<![CDATA[
+			SELECT LAST_BATCH_RUN_TIME lastBatchRunTime, JOB_ID jobId, JOB_DESC jobDesc, 
+			JOB_COMPLETED_YN jobCompleted FROM TCS_TIMESLOT_BATCH_RUN_LOG
+			WHERE JOB_ID = #jobId# AND 
+			JOB_COMPLETED_YN = #jobCompleted# AND
+			LAST_BATCH_RUN_TIME = #lastBatchRunTime# - MOD(TO_NUMBER(TO_CHAR(#lastBatchRunTime#,'MI')),5)/1440	
+			AND ROWNUM = 1
+		]]>
+	</select>
+	<select id="sqlTcsGetLatestTimeSlotForJobIdAndStatus"
+		parameterClass="cargo.cms.tcs.truckdock.bo.BatchRunProcessBO"
+		resultClass="java.util.Date">
+		<![CDATA[
+			SELECT MAX(LAST_BATCH_RUN_TIME) FROM TCS_TIMESLOT_BATCH_RUN_LOG
+			WHERE JOB_ID = #jobId# AND JOB_COMPLETED_YN = #jobCompleted# AND
+		]]>
+		<isNotEmpty property="lastBatchRunTime">
+			<![CDATA[ TO_CHAR(LAST_BATCH_RUN_TIME,'DDMONYY') = TO_CHAR(#lastBatchRunTime#,'DDMONYY') ]]>
+		</isNotEmpty>
+	</select>
+	<!-- SQL For Scheduled Jobs Ends -->
+	<!-- -->
+	<!-- -->
+	<!-- My Changes Starts Here (Naveen K.N.) -->
+	<!-- -->
+	<!-- Create Truck Trip -->
+	<insert id="sqlTCSCreateTruckTrip" parameterClass="java.util.Map">
+		<![CDATA[
+			INSERT INTO TRUCK_TRIP (
+				TRIP_ID, CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE
+			) VALUES (
+				#TRIP_ID#, #USER_ID#, SYSDATE, #USER_ID#, SYSDATE
+			)
+		]]>
+	</insert>
+	<!-- Create Truck Trip Event -->
+	<insert id="sqlTCSCreateTruckTripEvent" parameterClass="java.util.Map">
+  		<![CDATA[
+  			INSERT INTO TRUCK_TRIP_EVENTS (
+  				TRIP_ID, CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE
+  			) VALUES (
+  				#TRIP_ID#, #USER_ID#, SYSDATE, #USER_ID#, SYSDATE
+  			)
+		]]>
+	</insert>
+	
+	
+	<select id="getAssignSrfpendingList" parameterClass="java.lang.String" resultClass="cargo.cms.tcs.bo.TCSBookingBO">
+		SELECT tr_no as trNo,truck_no as truckNo,srf_no as srfNo FROM IMP_CDP_TRUCK_REGISTRATION where nvl(comp_ind,'N') = 'N' and truck_no = #truckNumber#
+	</select>
+	
+	<update id="updateTrkRegCOmpl" parameterClass="cargo.cms.tcs.bo.TCSBookingBO">
+		update IMP_CDP_TRUCK_REGISTRATION set comp_ind = 'Y',comp_date = SYSDATE where tr_no = #trNo#
+	</update>
+	
+	<!-- Update Truck Trip -->
+	<update id="sqlTCSUpdateTruckTrip" parameterClass="cargo.cms.tcs.truckdock.bo.TruckTripBO">
+  		<![CDATA[
+  			UPDATE TRUCK_TRIP SET TRUCK_DOCK = #truckDock#,
+  		]]>
+		<isNotEmpty property="dockBlockId">
+			DOCK_BLOCK_ID = #dockBlockId#,
+		</isNotEmpty>
+		<isNotEmpty property="preferredLevel">
+			PREFERRED_LEVEL = #preferredLevel#,
+		</isNotEmpty>
+		<isNotEmpty property="preferredZone">
+			PREFERRED_ZONE = #preferredZone#,
+		</isNotEmpty>
+		<isNotEmpty property="truckState">
+			TRUCK_STATE = #truckState#,
+		</isNotEmpty>
+		<isNotEmpty property="dockReleased">
+			DOCK_RELEASED = #dockReleased#,
+		</isNotEmpty>
+		<isNotEmpty property="docketNo">
+			DOCKET_NO = #docketNo#,
+  		</isNotEmpty>
+		<isNotEmpty property="ipassNo">
+			IPASS_NO = #ipassNo#,
+  		</isNotEmpty>
+		<isNotEmpty property="ipassType">
+			IPASS_TYPE = #ipassType#,
+  		</isNotEmpty>
+		<isNotEmpty property="truckNo">
+			TRUCK_NO = #truckNo#,
+  		</isNotEmpty>
+		<isNotEmpty property="violationInd">
+			VIOLATION_IND = #violationInd#,
+		</isNotEmpty>
+		<isNotEmpty property="arrivedDateTime">
+			<![CDATA[
+				ARR_TIME = #arrivedDateTime#,
+				QUEUE_ORDER_NO = (
+					CASE
+						WHEN #incomingReason# = 'SHC' THEN
+							NVL(QUEUE_ORDER_NO, TO_NUMBER(TO_CHAR(SYSDATE - 7,'YYMMDDHH24MISSSSS')))
+						WHEN #incomingReason# = 'BKG' THEN
+							NVL(QUEUE_ORDER_NO, TO_NUMBER(TO_CHAR(SYSDATE - 6,'YYMMDDHH24MISSSSS')))
+						WHEN #incomingReason# = 'RES' THEN
+							NVL(QUEUE_ORDER_NO, TO_NUMBER(TO_CHAR(SYSDATE - 5,'YYMMDDHH24MISSSSS')))
+						WHEN #incomingReason# = 'SCH' THEN
+							NVL(QUEUE_ORDER_NO, TO_NUMBER(TO_CHAR(SYSDATE - 4,'YYMMDDHH24MISSSSS')))
+						WHEN #incomingReason# = 'SCU' THEN
+							NVL(QUEUE_ORDER_NO, TO_NUMBER(TO_CHAR(SYSDATE - 3,'YYMMDDHH24MISSSSS')))
+						WHEN #incomingReason# = 'CON' THEN
+							NVL(QUEUE_ORDER_NO, TO_NUMBER(TO_CHAR(SYSDATE - 2,'YYMMDDHH24MISSSSS')))
+						WHEN #incomingReason# = 'FOL' THEN
+							NVL(QUEUE_ORDER_NO, TO_NUMBER(TO_CHAR(SYSDATE - 1,'YYMMDDHH24MISSSSS')))
+						WHEN NVL(#incomingReason#, '0') = '0' THEN
+							NULL
+						ELSE 
+							NVL(QUEUE_ORDER_NO, TO_NUMBER(TO_CHAR(SYSDATE,'YYMMDDHH24MISSSSS')))
+					END
+				),
+			]]>
+		</isNotEmpty>
+		<isNotEmpty property="truckQueueInd">
+			TRUCK_QUEUE_IND = #truckQueueInd#,
+		</isNotEmpty>
+		<isNotEmpty property="incomingReason">
+			INCOMING_REASON = #incomingReason#,
+		</isNotEmpty>
+		<isNotEmpty property="allocationDuration">
+			<![CDATA[
+				ALLOCATION_DURATION = #allocationDuration#,
+			]]>
+		</isNotEmpty>
+		<isNotEmpty property="currentLocn">
+			CURR_LOC = #currentLocn#,
+  		</isNotEmpty>
+		<isNotEmpty property="shAgtCode">
+			SH_AGT_CODE = #shAgtCode#,
+		</isNotEmpty>
+		<isNotEmpty property="closed">
+			CLOSED = #closed#,
+  		</isNotEmpty>
+		<isNotEmpty property="tripClosed">
+			TRIP_CLOSED = #tripClosed#,
+		</isNotEmpty>
+		<isNotEmpty property="closedUserId">
+			CLOSE_USER_ID = #closedUserId#,
+		</isNotEmpty>
+		<isNotEmpty property="closedDateTime">
+			CLOSE_TIME = #closedDateTime#,
+		</isNotEmpty>
+		<isNotEmpty property="purpose">
+			PURPOSE = #purpose#,
+  		</isNotEmpty>
+		<isNotEmpty property="derivedPurpose">
+			DERIVED_PURPOSE = #derivedPurpose#,
+		</isNotEmpty>
+		<isNotEmpty property="dockSegment">
+			DOCK_SEGMENT = #dockSegment#,
+		</isNotEmpty>
+		<isNotEmpty property="modifiedUserId">
+			<![CDATA[
+				LM_USER_ID = #modifiedUserId#,
+			]]>
+		</isNotEmpty>
+		<isNotEmpty property="printVerNo">
+			<![CDATA[
+				PRINT_VER_NO = #printVerNo#,
+			]]>
+		</isNotEmpty>
+		<isNotEmpty property="parkedDock">
+			<isEqual property="parkedDock" compareValue="NONE">
+			<![CDATA[
+				PARKED_DOCK = NULL,
+			]]>
+			</isEqual>
+			<isNotEqual property="parkedDock" compareValue="NONE">
+			<![CDATA[
+				PARKED_DOCK = #parkedDock#,
+			]]>
+			</isNotEqual>
+		</isNotEmpty>
+		<isNotEmpty property="parkedRemarks">
+			<isEqual property="parkedRemarks" compareValue="NONE">
+			<![CDATA[
+				PARKED_REMARKS = NULL,
+			]]>
+			</isEqual>
+			<isNotEqual property="parkedRemarks" compareValue="NONE">
+			<![CDATA[
+				PARKED_REMARKS = #parkedRemarks#,
+			]]>
+			</isNotEqual>
+		</isNotEmpty>
+		<isNotEmpty property="parkedUserId">
+			<isEqual property="parkedUserId" compareValue="NONE">
+			<![CDATA[
+				PARKED_USER_ID = NULL,
+			]]>
+			</isEqual>
+			<isNotEqual property="parkedUserId" compareValue="NONE">
+			<![CDATA[
+				PARKED_USER_ID = #parkedUserId#,
+			]]>
+			</isNotEqual>
+		</isNotEmpty>						
+  		<![CDATA[
+  			LM_DATE = SYSDATE
+  			WHERE TRIP_ID = #tripId#
+  		]]>
+	</update>
+	<!-- Update Truck Trip Event -->
+	<update id="sqlTCSUpdateTruckTripEvents" parameterClass="java.util.HashMap">
+  		<![CDATA[
+  			UPDATE TRUCK_TRIP_EVENTS SET
+		]]>
+		<isEqual property="EVENT_ID" compareValue="ENTERED_TERMINAL">
+			<isEqual property="SENSORY_LOCATION_CODE" compareValue="TME1">
+				<![CDATA[
+					TERMINAL_ENTRY_TIME = #EVENT_TIME#,
+					LVL1_EXIT_CHKPT_TIME = NULL,
+					LVL3_EXIT_CHKPT_TIME = NULL,
+					LVL5_EXIT_CHKPT_TIME = NULL,
+					TERMINAL_EXIT_TIME = NULL,
+					LVL2_RAMP_CHKPT_TIME = NULL,
+					LVL3_RAMP_CHKPT_TIME = NULL,
+					LVL3_EAST_CHKPT_TIME = NULL,
+					LVL3_WEST_CHKPT_TIME = NULL,
+					LVL5_RAMP_CHKPT_TIME = NULL,
+					LVL5_EAST_CHKPT_TIME = NULL,
+					LVL5_WEST_CHKPT_TIME = NULL,
+					LVL7_UP_CHKPT = NULL,
+					LVL7_DOWN_CHKPT = NULL,
+					LEAVE_DOCK_TIME = NULL,
+					DOCK_OCCUPY_TIME = NULL,
+					DOCK_RELEASE_TIME = NULL,
+				]]>
+			</isEqual>
+		</isEqual>
+		<isEqual property="EVENT_ID" compareValue="ENTERED_TRUCK_PARK">
+			<isEqual property="SENSORY_LOCATION_CODE" compareValue="TPE1">
+				<![CDATA[
+					TRUCK_PARK_ENTRY_TIME = #EVENT_TIME#,
+					LEAVE_TRUCKPARK_TIME = NULL,
+					TERMINAL_ENTRY_TIME = NULL,
+					LVL1_EXIT_CHKPT_TIME = NULL,
+					LVL3_EXIT_CHKPT_TIME = NULL,
+					LVL5_EXIT_CHKPT_TIME = NULL,
+					TERMINAL_EXIT_TIME = NULL,
+					LVL2_RAMP_CHKPT_TIME = NULL,
+					LVL3_RAMP_CHKPT_TIME = NULL,
+					LVL3_EAST_CHKPT_TIME = NULL,
+					LVL3_WEST_CHKPT_TIME = NULL,
+					LVL5_RAMP_CHKPT_TIME = NULL,
+					LVL5_EAST_CHKPT_TIME = NULL,
+					LVL5_WEST_CHKPT_TIME = NULL,
+					LVL7_UP_CHKPT = NULL,
+					LVL7_DOWN_CHKPT = NULL,
+					LEAVE_DOCK_TIME = NULL,
+					DOCK_OCCUPY_TIME = NULL,
+					DOCK_RELEASE_TIME = NULL,				
+				]]>
+			</isEqual>
+		</isEqual>
+		<isEqual property="EVENT_ID" compareValue="PASS_CHECKPOINT">
+			<isEqual property="SENSORY_LOCATION_CODE" compareValue="CPO2R">
+				LVL2_RAMP_CHKPT_TIME = #EVENT_TIME#,
+			</isEqual>
+			<isEqual property="SENSORY_LOCATION_CODE" compareValue="CPO3R">
+				LVL3_RAMP_CHKPT_TIME = #EVENT_TIME#,
+			</isEqual>
+			<isEqual property="SENSORY_LOCATION_CODE" compareValue="CPO3N">
+				LVL3_EAST_CHKPT_TIME = #EVENT_TIME#,
+			</isEqual>
+			<isEqual property="SENSORY_LOCATION_CODE" compareValue="CPO3W">
+				LVL3_WEST_CHKPT_TIME = #EVENT_TIME#,
+			</isEqual>
+			<isEqual property="SENSORY_LOCATION_CODE" compareValue="CPO5R">
+				LVL5_RAMP_CHKPT_TIME = #EVENT_TIME#,
+			</isEqual>
+			<isEqual property="SENSORY_LOCATION_CODE" compareValue="CPO5N">
+				LVL5_EAST_CHKPT_TIME = #EVENT_TIME#,
+			</isEqual>
+			<isEqual property="SENSORY_LOCATION_CODE" compareValue="CPO5W">
+				LVL5_WEST_CHKPT_TIME = #EVENT_TIME#,
+			</isEqual>
+			<isEqual property="SENSORY_LOCATION_CODE" compareValue="CPO7U">
+				LVL7_UP_CHKPT = #EVENT_TIME#,
+			</isEqual>
+			<isEqual property="SENSORY_LOCATION_CODE" compareValue="CPO7D">
+				LVL7_DOWN_CHKPT = #EVENT_TIME#,
+			</isEqual>
+		</isEqual>
+		<isEqual property="EVENT_ID" compareValue="EXITED_TERMINAL">
+			<isEqual property="SENSORY_LOCATION_CODE" compareValue="TMX1">
+				<![CDATA[
+					LVL1_EXIT_CHKPT_TIME = #EVENT_TIME#,
+					TERMINAL_EXIT_TIME = #EVENT_TIME#,
+				]]>
+			</isEqual>
+			<isEqual property="SENSORY_LOCATION_CODE" compareValue="TMX3">
+				<![CDATA[
+					LVL3_EXIT_CHKPT_TIME = #EVENT_TIME#,
+					TERMINAL_EXIT_TIME = #EVENT_TIME#,
+				]]>
+			</isEqual>
+			<isEqual property="SENSORY_LOCATION_CODE" compareValue="TMX5">
+				<![CDATA[
+					LVL5_EXIT_CHKPT_TIME = #EVENT_TIME#,
+					TERMINAL_EXIT_TIME = #EVENT_TIME#,
+				]]>
+			</isEqual>
+		</isEqual>
+		<isEqual property="EVENT_ID" compareValue="EXITED_TRUCK_PARK">
+			<isEqual property="SENSORY_LOCATION_CODE" compareValue="TPX1">
+				<![CDATA[
+					LEAVE_TRUCKPARK_TIME = #EVENT_TIME#,
+					TERMINAL_ENTRY_TIME = NULL,
+					LVL1_EXIT_CHKPT_TIME = NULL,
+					LVL3_EXIT_CHKPT_TIME = NULL,
+					LVL5_EXIT_CHKPT_TIME = NULL,
+					TERMINAL_EXIT_TIME = NULL,
+					LVL2_RAMP_CHKPT_TIME = NULL,
+					LVL3_RAMP_CHKPT_TIME = NULL,
+					LVL3_EAST_CHKPT_TIME = NULL,
+					LVL3_WEST_CHKPT_TIME = NULL,
+					LVL5_RAMP_CHKPT_TIME = NULL,
+					LVL5_EAST_CHKPT_TIME = NULL,
+					LVL5_WEST_CHKPT_TIME = NULL,
+					LVL7_UP_CHKPT = NULL,
+					LVL7_DOWN_CHKPT = NULL,
+					LEAVE_DOCK_TIME = NULL,
+					DOCK_OCCUPY_TIME = NULL,
+				]]>
+			</isEqual>
+		</isEqual>
+		<isEqual property="EVENT_ID" compareValue="DOCK_OCCUPIED">
+			<![CDATA[
+				DOCK_OCCUPY_TIME = #EVENT_TIME#,
+				LEAVE_DOCK_TIME = NULL,
+				DOCK_RELEASE_TIME = NULL,
+				LVL1_EXIT_CHKPT_TIME = NULL,
+				LVL3_EXIT_CHKPT_TIME = NULL,
+				LVL5_EXIT_CHKPT_TIME = NULL,
+				TERMINAL_EXIT_TIME = NULL,			
+			]]>
+		</isEqual>
+		<isEqual property="EVENT_ID" compareValue="DOCK_RELEASED">
+			<![CDATA[
+				LEAVE_DOCK_TIME = #EVENT_TIME#,
+			]]>
+		</isEqual>
+		<![CDATA[
+			LM_USER_ID = #LM_USER_ID#, LM_DATE = SYSDATE
+			WHERE TRIP_ID = #TRIP_ID#
+		]]>
+	</update>
+	<!-- Update Non IPC Truck Events -->
+	<update id="sqlTCSUpdateNonIPCTripEvents" parameterClass="cargo.cms.tcs.truckdock.bo.TruckTripEventsBO">
+  		<![CDATA[
+  			UPDATE TRUCK_TRIP_EVENTS SET
+		]]>
+		<isNotEmpty property="incomingPurposeDeclaredTime">
+			<![CDATA[ DECL_PURPOSE_TIME = #incomingPurposeDeclaredTime#, ]]>
+		</isNotEmpty>
+		<isNotEmpty property="truckPutInQueueTime">
+			<![CDATA[ TRUCK_IN_QUEUE_TIME = #truckPutInQueueTime#, ]]>
+		</isNotEmpty>
+		<isNotEmpty property="dockAllocationTime">
+			<![CDATA[ DOCK_ALLOCATION_TIME = #dockAllocationTime#, ]]>
+		</isNotEmpty>
+		<isNotEmpty property="occupyDockTime">
+			<![CDATA[ DOCK_OCCUPY_TIME = #occupyDockTime#, ]]>
+		</isNotEmpty>
+		<isNotEmpty property="dockReleased">
+			<![CDATA[ DOCK_RELEASE_TIME = #dockReleased#, ]]>
+		</isNotEmpty>
+		<isNotEmpty property="allocatedTill">
+			<![CDATA[ ALLOCATED_TILL_TIME = #allocatedTill#, ]]>
+		</isNotEmpty>
+		<![CDATA[
+			LM_USER_ID = #modifiedUserId#, LM_DATE = SYSDATE
+			WHERE TRIP_ID = #tripId#
+		]]>
+	</update>
+	<!-- Get Truck Trip Info by Docket No -->
+	<select id="sqlTCSGetPendingTruckTripForDocketNo"
+		parameterClass="java.lang.String" resultClass="cargo.cms.tcs.truckdock.bo.TruckTripBO">
+  		<![CDATA[
+			SELECT TRIP.TRIP_ID tripId, TRIP.TRUCK_NO truckNo, TRIP.ARR_TIME arrivedDateTime, TRIP.PURPOSE purpose, TRIP.TRUCK_QUEUE_IND truckQueueInd,
+		    TRIP.INCOMING_REASON incomingReason, TRIP.ALLOCATION_DURATION allocationDuration, TRIP.CURR_LOC currentLocn,
+		    TRIP.SH_AGT_CODE shAgtCode, TRIP.CLOSED closed, TRIP.DOCKET_NO docketNo,
+		    TRIP.TRUCK_DOCK truckDock, IPASS.IPASS_NO ipassNo, IPASS.IPASS_TYPE ipassType, TRIP.PREFERRED_LEVEL preferredLevel,
+		    TRIP.TRUCK_STATE truckState, TRIP.DOCK_RELEASED dockReleased, TRIP.CLOSE_USER_ID closedUserId,
+		    TRIP.CLOSE_TIME closedDateTime, TRIP.DOCK_SEGMENT dockSegment, TRIP.DOCK_BLOCK_ID dockBlockId, TRIP.DERIVED_PURPOSE derivedPurpose
+		    FROM TRUCK_TRIP TRIP
+		    LEFT JOIN TCS_IPASS_MASTER IPASS
+		    ON IPASS.TRUCK_NO = TRIP.TRUCK_NO
+			WHERE TRIP.DOCKET_NO = #docketNo#
+			AND TRIP.TRUCK_NO IS NULL AND ROWNUM = 1
+		]]>
+	</select>
+	<!-- Get Truck Trip Info by Truck No -->
+	<select id="sqlTCSGetTruckTripByTruckNo" parameterClass="java.lang.String"
+		resultClass="cargo.cms.tcs.truckdock.bo.TruckTripBO">
+  		<![CDATA[
+			SELECT TRIP.TRIP_ID tripId, TRIP.TRUCK_NO truckNo, TRIP.ARR_TIME arrivedDateTime, TRIP.PURPOSE purpose, TRIP.TRUCK_QUEUE_IND truckQueueInd,
+		    TRIP.INCOMING_REASON incomingReason, TRIP.ALLOCATION_DURATION allocationDuration, TRIP.CURR_LOC currentLocn,
+		    TRIP.SH_AGT_CODE shAgtCode, TRIP.CLOSED closed, TRIP.TRIP_CLOSED tripClosed, TRIP.DOCKET_NO docketNo,
+		    TRIP.TRUCK_DOCK truckDock, IPASS.IPASS_NO ipassNo, IPASS.IPASS_TYPE ipassType, TRIP.PREFERRED_LEVEL preferredLevel,
+		    TRIP.TRUCK_STATE truckState, TRIP.DOCK_RELEASED dockReleased, TRIP.CLOSE_USER_ID closedUserId,
+		    TRIP.CLOSE_TIME closedDateTime, TRIP.DOCK_SEGMENT dockSegment, TRIP.DOCK_BLOCK_ID dockBlockId, TRIP.DERIVED_PURPOSE derivedPurpose
+		    FROM TRUCK_TRIP TRIP
+		    LEFT JOIN TCS_IPASS_MASTER IPASS
+		    ON IPASS.TRUCK_NO = TRIP.TRUCK_NO
+		    WHERE 
+	      	CLOSED = 'N' AND TRIP.TRUCK_NO = #VALUE#
+      	]]>
+	</select>
+	<!-- Get Service Truck Trip Info by Truck No -->
+	<select id="sqlTCSGetServiceTruckTripByTruckNo" parameterClass="java.lang.String"
+		resultClass="cargo.cms.tcs.truckdock.bo.TruckTripBO">
+  		<![CDATA[
+			SELECT TRIP.TRIP_ID tripId, TRIP.TRUCK_NO truckNo, TRIP.ARR_TIME arrivedDateTime, TRIP.PURPOSE purpose, TRIP.TRUCK_QUEUE_IND truckQueueInd,
+		    TRIP.INCOMING_REASON incomingReason, TRIP.ALLOCATION_DURATION allocationDuration, TRIP.CURR_LOC currentLocn,
+		    TRIP.SH_AGT_CODE shAgtCode, TRIP.CLOSED closed, TRIP.TRIP_CLOSED tripClosed, TRIP.DOCKET_NO docketNo,
+		    TRIP.TRUCK_DOCK truckDock, IPASS.IPASS_NO ipassNo, IPASS.IPASS_TYPE ipassType, TRIP.PREFERRED_LEVEL preferredLevel,
+		    TRIP.TRUCK_STATE truckState, TRIP.DOCK_RELEASED dockReleased, TRIP.CLOSE_USER_ID closedUserId,
+		    TRIP.CLOSE_TIME closedDateTime, TRIP.DOCK_SEGMENT dockSegment, TRIP.DOCK_BLOCK_ID dockBlockId, TRIP.DERIVED_PURPOSE derivedPurpose
+		    FROM TRUCK_TRIP TRIP
+		    LEFT JOIN TCS_IPASS_MASTER IPASS
+		    ON IPASS.TRUCK_NO = TRIP.TRUCK_NO
+		    WHERE 
+	      	TRIP_CLOSED = 'N' AND TRIP.TRUCK_NO = #VALUE#
+      	]]>
+	</select>
+	<!-- Get Truck Trip Info by Trip Id -->
+	<select id="sqlTCSGetTruckTripByTripId" parameterClass="java.lang.String"
+		resultClass="cargo.cms.tcs.truckdock.bo.TruckTripBO">
+  		<![CDATA[
+			SELECT TRIP.TRIP_ID tripId, TRIP.TRUCK_NO truckNo, TRIP.ARR_TIME arrivedDateTime, TRIP.PURPOSE purpose, TRIP.TRUCK_QUEUE_IND truckQueueInd,
+		    TRIP.INCOMING_REASON incomingReason, TRIP.ALLOCATION_DURATION allocationDuration, TRIP.CURR_LOC currentLocn,
+		    TRIP.SH_AGT_CODE shAgtCode, TRIP.CLOSED closed, TRIP.TRIP_CLOSED tripClosed, TRIP.DOCKET_NO docketNo,
+		    TRIP.TRUCK_DOCK truckDock, IPASS.IPASS_NO ipassNo, IPASS.IPASS_TYPE ipassType, TRIP.PREFERRED_LEVEL preferredLevel,
+		    TRIP.TRUCK_STATE truckState, TRIP.DOCK_RELEASED dockReleased, TRIP.CLOSE_USER_ID closedUserId,
+		    TRIP.CLOSE_TIME closedDateTime, TRIP.DOCK_SEGMENT dockSegment, TRIP.DOCK_BLOCK_ID dockBlockId, TRIP.DERIVED_PURPOSE derivedPurpose
+		    FROM TRUCK_TRIP TRIP
+		    LEFT JOIN TCS_IPASS_MASTER IPASS
+		    ON IPASS.TRUCK_NO = TRIP.TRUCK_NO
+		    WHERE 
+	      	CLOSED = 'N' AND TRIP.TRIP_ID = #VALUE#
+      	]]>
+	</select>
+	<!-- Get Service Truck Trip Info by Trip Id -->
+	<select id="sqlTCSGetServiceTruckTripByTripId" parameterClass="java.lang.String"
+		resultClass="cargo.cms.tcs.truckdock.bo.TruckTripBO">
+  		<![CDATA[
+			SELECT TRIP.TRIP_ID tripId, TRIP.TRUCK_NO truckNo, TRIP.ARR_TIME arrivedDateTime, TRIP.PURPOSE purpose, TRIP.TRUCK_QUEUE_IND truckQueueInd,
+		    TRIP.INCOMING_REASON incomingReason, TRIP.ALLOCATION_DURATION allocationDuration, TRIP.CURR_LOC currentLocn,
+		    TRIP.SH_AGT_CODE shAgtCode, TRIP.CLOSED closed, TRIP.TRIP_CLOSED tripClosed, TRIP.DOCKET_NO docketNo,
+		    TRIP.TRUCK_DOCK truckDock, IPASS.IPASS_NO ipassNo, IPASS.IPASS_TYPE ipassType, TRIP.PREFERRED_LEVEL preferredLevel,
+		    TRIP.TRUCK_STATE truckState, TRIP.DOCK_RELEASED dockReleased, TRIP.CLOSE_USER_ID closedUserId,
+		    TRIP.CLOSE_TIME closedDateTime, TRIP.DOCK_SEGMENT dockSegment, TRIP.DOCK_BLOCK_ID dockBlockId, TRIP.DERIVED_PURPOSE derivedPurpose
+		    FROM TRUCK_TRIP TRIP
+		    LEFT JOIN TCS_IPASS_MASTER IPASS
+		    ON IPASS.TRUCK_NO = TRIP.TRUCK_NO
+		    WHERE 
+	      	TRIP_CLOSED = 'N' AND TRIP.TRIP_ID = #VALUE#
+      	]]>
+	</select>
+	<!-- Truck Trip Events -->
+	<select id="sqlTCSGetTruckTripEvent" parameterClass="java.lang.String"
+		resultClass="cargo.cms.tcs.truckdock.bo.TruckTripEventsBO">
+  		<![CDATA[
+	  		SELECT
+			TRIP_ID tripId, 
+			TRUCK_PARK_ENTRY_TIME truckParkEntryTime, 
+			DECL_PURPOSE_TIME incomingPurposeDeclaredTime,
+			TRUCK_IN_QUEUE_TIME truckPutInQueueTime, DOCK_ALLOCATION_TIME dockAllocationTime,
+			LEAVE_TRUCKPARK_TIME leaveTruckParkTIme,
+			TERMINAL_ENTRY_TIME terminalEntryTime,
+			LVL2_RAMP_CHKPT_TIME level2RampCheckPointTime,
+			LVL3_RAMP_CHKPT_TIME level3RampCheckPointTime, LVL3_EAST_CHKPT_TIME level3EastCheckPointTime, LVL3_WEST_CHKPT_TIME level3WestCheckPointTime,
+			LVL5_RAMP_CHKPT_TIME level5RampCheckPointTime, LVL5_EAST_CHKPT_TIME level5EastCheckPointTime, LVL5_WEST_CHKPT_TIME level5WestCheckPointTime,
+			LVL7_UP_CHKPT level7UpCheckPointTime, LVL7_DOWN_CHKPT level7DownCheckPointTime, 
+			DOCK_OCCUPY_TIME occupyDockTime,LEAVE_DOCK_TIME leaveDockTime,
+			LVL3_EXIT_CHKPT_TIME level3ExitCheckPointTime, LVL5_EXIT_CHKPT_TIME level5ExitCheckPointTime, TERMINAL_EXIT_TIME terminalExitTime,
+			LM_USER_ID modifiedUserId
+			FROM TRUCK_TRIP_EVENTS
+			WHERE TRIP_ID = #tripId#
+		]]>
+	</select>
+	<!-- Update Dock Allocation Information -->
+	<update id="sqlTCSUpdateDockAllocation" parameterClass="cargo.cms.tcs.truckdock.bo.TruckDockBO">
+		<![CDATA[
+			UPDATE TCS_DOCK_ALLOCATION
+			SET STATUS = #allocStatus#,
+			TRUCK_NO = #truckNo#, TRIP_ID = #tripId#,
+			ALLOCATED_FROM = #allocFrom#,
+			OVERSTAY_IND = #overStayInd#,
+			LM_USER_ID = #modifiedUserId#, LM_DATE = SYSDATE
+		]]>
+		<isNotEmpty property="allocDuration">
+			<![CDATA[ , ALLOCATION_DURATION = #allocDuration# ]]>
+		</isNotEmpty>
+		<isEmpty property="allocDuration">
+			<![CDATA[ , ALLOCATION_DURATION = 0 ]]>
+		</isEmpty>
+		<isNotEmpty property="allocTill">
+			<![CDATA[ 
+				, ALLOCATED_TILL = #allocTill# + ((15-1) - MOD(TO_NUMBER(TO_CHAR(#allocTill#,'MI')),15))/1440
+			]]>
+		</isNotEmpty>
+		<isEmpty property="allocTill">
+			<![CDATA[ , ALLOCATED_TILL = NULL ]]>
+		</isEmpty>
+		<isNotEmpty property="proximityFactor">
+			<![CDATA[ , PROXIMITY_FACTOR = #proximityFactor# ]]>
+		</isNotEmpty>
+		<isEmpty property="proximityFactor">
+			<![CDATA[ , PROXIMITY_FACTOR = NULL ]]>
+		</isEmpty>
+		<isNotEmpty property="dockOccupied">
+			<![CDATA[ , OCCUPIED = #dockOccupied# ]]>
+		</isNotEmpty>
+		<isNotEmpty property="blockedFrom">
+			<![CDATA[ , BLOCKED_FROM =  #blockedFrom# ]]>
+		</isNotEmpty>
+		<isNotEmpty property="blockedReason">
+			<![CDATA[ , BLOCKED_REASON = #blockedReason# ]]>
+		</isNotEmpty>
+		<![CDATA[ WHERE TRUCK_DOCK = #truckDock# ]]>
+	</update>
+	<!-- Get Dock Pool Info -->
+	<select id="sqlGetTCSDockAndPoolInfo" parameterClass="java.lang.String"
+		resultClass="cargo.cms.tcs.truckdock.bo.TruckDockBO">
+		<![CDATA[
+			SELECT ALLOC.TRUCK_DOCK truckDock, ALLOC.ALLOCATED_FROM allocFrom, ALLOC.ALLOCATED_TILL allocTill, ALLOC.STATUS allocStatus,
+			ALLOC.ALLOCATION_DURATION allocDuration, DOCK.POOL_ID poolId, ALLOC.TRIP_ID tripId, ALLOC.TRUCK_NO truckNo,
+			ALLOC.PROXIMITY_FACTOR proximityFactor, ALLOC.OCCUPIED dockOccupied, 
+			OVERSTAY_IND overStayInd, BLOCKED_FROM blockedFrom, BLOCKED_REASON blockedReason
+			FROM TCS_DOCK_ALLOCATION ALLOC
+		    JOIN TCS_DOCK_POOL_DOCK DOCK
+		    ON DOCK.TRUCK_DOCK = ALLOC.TRUCK_DOCK
+		    JOIN TCS_DOCK_MASTER MASTER
+		    ON MASTER.TRUCK_DOCK = ALLOC.TRUCK_DOCK AND MASTER.IN_SERVICE = 'Y'
+			WHERE 
+			ALLOC.TRUCK_DOCK = #PARAM# AND SYSDATE >= DOCK.FROM_DT AND SYSDATE < DOCK.TO_DT
+		]]>
+	</select>
+	<!-- Get Dock Block Info -->
+	<select id="sqlGetTCSDockAndBlockInfo" parameterClass="java.lang.String"
+		resultClass="cargo.cms.tcs.truckdock.bo.TruckDockBO">
+		<![CDATA[
+			SELECT ALLOC.TRUCK_DOCK truckDock, ALLOC.ALLOCATED_FROM allocFrom, ALLOC.ALLOCATED_TILL allocTill, ALLOC.STATUS allocStatus,
+			ALLOC.ALLOCATION_DURATION allocDuration, DOCK.DOCK_BLOCK_ID blockId, ALLOC.TRIP_ID tripId, ALLOC.TRUCK_NO truckNo, 
+			ALLOC.PROXIMITY_FACTOR proximityFactor, ALLOC.OCCUPIED dockOccupied, 
+			OVERSTAY_IND overStayInd, BLOCKED_FROM blockedFrom, BLOCKED_REASON blockedReason
+			FROM TCS_DOCK_ALLOCATION ALLOC
+		    JOIN TCS_DOCK_BLOCK_DOCK DOCK
+		    ON DOCK.TRUCK_DOCK = ALLOC.TRUCK_DOCK
+		    JOIN TCS_DOCK_BLOCK BLOCK
+		    ON BLOCK.DOCK_BLOCK_ID = DOCK.DOCK_BLOCK_ID
+		    JOIN TCS_DOCK_MASTER MASTER
+		    ON MASTER.TRUCK_DOCK = ALLOC.TRUCK_DOCK AND MASTER.IN_SERVICE = 'Y'
+			WHERE 
+			ALLOC.TRUCK_DOCK = #PARAM# AND SYSDATE >= BLOCK.FROM_DT AND SYSDATE < BLOCK.TO_DT
+		]]>
+	</select>
+	<!-- Get Pool Dock Allocation Info -->
+	<select id="sqlTcsGetPoolDockAllocDtls" parameterClass="java.lang.String"
+		resultClass="cargo.cms.tcs.truckdock.bo.TruckDockBO">
+		<![CDATA[
+			SELECT
+			ALLOC.TRUCK_DOCK truckDock, ALLOC.ALLOCATED_FROM allocFrom, 
+			ALLOC.ALLOCATED_TILL allocTill, ALLOC.STATUS allocStatus,
+			ALLOC.ALLOCATION_DURATION allocDuration, DOCK.POOL_ID poolId
+			FROM TCS_DOCK_ALLOCATION ALLOC
+			LEFT OUTER JOIN TCS_DOCK_POOL_DOCK DOCK
+			ON DOCK.TRUCK_DOCK = ALLOC.TRUCK_DOCK AND ALLOC.ALLOCATED_FROM BETWEEN DOCK.FROM_DT AND DOCK.TO_DT
+			WHERE ALLOC.TRIP_ID = (
+			  SELECT TRIP.TRIP_ID FROM TRUCK_TRIP TRIP WHERE TRIP.TRUCK_NO = #PARAM# AND TRIP.CLOSED = 'N'
+			) AND ALLOC.STATUS = 'ALLOCATED' AND
+			ROWNUM = 1
+		]]>
+	</select>
+	<!-- Get Block Dock Allocation Info -->
+	<select id="sqlTcsGetBlockDockAllocDtls" parameterClass="java.lang.String"
+		resultClass="cargo.cms.tcs.truckdock.bo.TruckDockBO">
+		<![CDATA[
+			SELECT ALLOC.TRUCK_DOCK truckDock, ALLOC.ALLOCATED_FROM allocFrom, 
+			ALLOC.ALLOCATED_TILL allocTill, ALLOC.STATUS allocStatus,
+			ALLOC.ALLOCATION_DURATION allocDuration, DOCK.DOCK_BLOCK_ID poolId
+			FROM TCS_DOCK_ALLOCATION ALLOC
+			LEFT OUTER JOIN TCS_DOCK_BLOCK_DOCK DOCK
+			ON DOCK.TRUCK_DOCK = ALLOC.TRUCK_DOCK 
+			LEFT OUTER JOIN TCS_DOCK_BLOCK BLK
+			ON DOCK.DOCK_BLOCK_ID = BLK.DOCK_BLOCK_ID AND ALLOC.ALLOCATED_FROM BETWEEN BLK.FROM_DT AND BLK.TO_DT
+			WHERE ALLOC.TRIP_ID = (
+			  SELECT TRIP.TRIP_ID FROM TRUCK_TRIP TRIP WHERE TRIP.TRUCK_NO = #PARAM# AND TRIP.CLOSED = 'N'
+			) AND ALLOC.STATUS = 'ALLOCATED' AND
+			ROWNUM = 1
+		]]>
+	</select>
+	<!-- Get Current Truck Dock Pool Id -->
+	<select id="sqlTCSGetCurrentDockPoolId" parameterClass="java.lang.String"
+		resultClass="java.lang.Long">
+		<![CDATA[
+			SELECT POOL.POOL_ID poolId    
+		    FROM TCS_DOCK_POOL_DOCK DOCK
+		    JOIN TCS_DOCK_POOL POOL
+		    ON POOL.POOL_ID = DOCK.POOL_ID
+		    JOIN TCS_DOCK_MASTER MASTER
+		    ON MASTER.TRUCK_DOCK = DOCK.TRUCK_DOCK
+		    WHERE 
+		    DOCK.TRUCK_DOCK = #PARAM# AND SYSDATE BETWEEN DOCK.FROM_DT AND DOCK.TO_DT AND 
+		    ROWNUM = 1
+	    ]]>
+	</select>
+	<!-- Get Current Truck Dock Block Id -->
+	<select id="sqlTCSGetCurrentDockBlockId" parameterClass="java.lang.String"
+		resultClass="java.lang.Long">
+		<![CDATA[
+			SELECT BLK.DOCK_BLOCK_ID blockId    
+			FROM TCS_DOCK_BLOCK_DOCK DOCK
+			JOIN TCS_DOCK_BLOCK BLK
+			ON BLK.DOCK_BLOCK_ID = DOCK.DOCK_BLOCK_ID
+			JOIN TCS_DOCK_MASTER MASTER
+			ON MASTER.TRUCK_DOCK = DOCK.TRUCK_DOCK
+			WHERE 
+			DOCK.TRUCK_DOCK = #PARAM# AND SYSDATE BETWEEN BLK.FROM_DT AND BLK.TO_DT AND 
+			ROWNUM = 1
+	    ]]>
+	</select>
+	<select id="sqlTCSIsBlockDock" parameterClass="java.lang.String"
+		resultClass="java.lang.String">
+		<![CDATA[
+			SELECT DECODE(COUNT(1), 0, 'N', 'Y') 
+			FROM TCS_DOCK_BLOCK_DOCK DOCK
+			JOIN TCS_DOCK_BLOCK BLOCK
+			ON DOCK.DOCK_BLOCK_ID = BLOCK.DOCK_BLOCK_ID	AND DOCK.TRUCK_DOCK = #PARAM#
+			WHERE
+			SYSDATE BETWEEN BLOCK.FROM_DT AND BLOCK.TO_DT AND ROWNUM = 1
+		]]>
+	</select>
+	<select id="sqlTCSIsVALDock" parameterClass="java.lang.String"
+		resultClass="java.lang.String">
+		<![CDATA[
+			SELECT DECODE(COUNT(1), 0, 'N', 'Y') 
+			FROM TCS_DOCK_BLOCK_DOCK DOCK
+			JOIN TCS_DOCK_BLOCK BLOCK
+			ON DOCK.DOCK_BLOCK_ID = BLOCK.DOCK_BLOCK_ID	AND DOCK.TRUCK_DOCK = #PARAM#
+			WHERE
+			SYSDATE BETWEEN BLOCK.FROM_DT AND BLOCK.TO_DT AND BLOCK.BLOCK_TYPE = 'VAL' AND ROWNUM = 1
+		]]>
+	</select>
+	<!-- Get overlapped duration (if overlapped to next day) -->
+	<select id="sqlTCSGetOverlappedDuration" parameterClass="java.lang.Integer"
+		resultClass="java.lang.Integer">
+		<![CDATA[
+			SELECT
+			CASE 
+			  WHEN TO_CHAR((SYSDATE + (#PARAM#/24/60)), 'DDMONYY') = TO_CHAR(SYSDATE, 'DDMONYY') THEN 0
+			  ELSE (TO_NUMBER(TO_CHAR(SYSDATE + (#PARAM#/24/60), 'HH24')) * 60) + TO_NUMBER(TO_CHAR(SYSDATE + (#PARAM#/24/60), 'MI'))
+			END OVERLAPPED
+			FROM DUAL
+		]]>
+	</select>
+	<!-- Verify whether the Pool are Matching -->
+	<select id="sqlTCSGetIsPoolMatches" parameterClass="java.util.Map"
+		resultClass="java.lang.String">
+		<![CDATA[
+			SELECT
+			  CASE
+			    WHEN
+			      NVL(P1.PURPOSE_1, 'X') = NVL(P2.PURPOSE_1, 'X')
+			      AND NVL(P1.PURPOSE_2, 'X') = NVL(P2.PURPOSE_2, 'X')
+			      AND NVL(P1.PURPOSE_3, 'X') = NVL(P2.PURPOSE_3, 'X')
+			      AND NVL(P1.PURPOSE_4, 'X') = NVL(P2.PURPOSE_4, 'X')
+			      AND NVL(P1.PURPOSE_5, 'X') = NVL(P2.PURPOSE_5, 'X')
+			    THEN 'Y'
+			    ELSE 'N'
+			  END MATCH
+			FROM
+			TCS_DOCK_POOL P1
+			LEFT OUTER JOIN TCS_DOCK_POOL P2
+			ON 1 = 1
+			WHERE P1.POOL_ID = #POOL_ID1# AND P2.POOL_ID = #POOL_ID2#
+		]]>
+	</select>
+	<!-- Get Free Docks in a Pool -->
+	<select id="sqlTcsGetFreePoolDockList" parameterClass="java.util.Map"
+		resultClass="cargo.cms.tcs.truckdock.bo.TruckDockBO">
+		<![CDATA[
+			SELECT DOCK.TRUCK_DOCK truckDock, POOL.POOL_ID poolId, POOL.PURPOSE_1 purpose
+			FROM
+			TCS_DOCK_POOL_DOCK DOCK
+			JOIN TCS_DOCK_POOL POOL
+			ON POOL.POOL_ID = DOCK.POOL_ID
+	        JOIN TCS_DOCK_ALLOCATION ALLOC
+	        ON ALLOC.TRUCK_DOCK = DOCK.TRUCK_DOCK
+			JOIN TCS_DOCK_MASTER MASTER 
+			ON MASTER.TRUCK_DOCK = ALLOC.TRUCK_DOCK
+			WHERE POOL.POOL_ID = #POOL_ID# AND 
+			MASTER.IN_SERVICE = 'Y' AND NVL(ALLOC.STATUS, 'FREE') = 'FREE' AND NVL(ALLOC.OCCUPIED, 'N') = 'N' AND
+			DOCK.TRUCK_DOCK NOT IN (
+	            SELECT DOCK.TRUCK_DOCK
+	            FROM V_TCS_SPECIAL_PURPOSE_DOCKS DOCK
+	            WHERE (
+	            	SYSDATE BETWEEN DOCK.FROM_DT AND DOCK.TO_DT OR 
+	            	(SYSDATE + NVL(#DURATION#, 15)/1440) BETWEEN DOCK.FROM_DT AND DOCK.TO_DT OR
+	            	DOCK.TO_DT BETWEEN SYSDATE AND (SYSDATE + NVL(#DURATION#, 15)/1440)
+	            ) AND (DOCK.PURPOSE IN('SCH', 'SCU') OR DOCK.PURPOSE = NVL(#RESERVE#, 'NO'))
+			)
+			ORDER BY DOCK.TRUCK_DOCK
+		]]>
+	</select>
+	<!-- Get Free Dock Pool Id -->
+	<select id="sqlTcsGetFreeDockPoolId" parameterClass="java.util.Map"
+		resultClass="cargo.cms.tcs.truckdock.bo.TruckDockBO">
+		<![CDATA[
+			SELECT POOL.POOL_ID poolId, POOL.PURPOSE_1 purpose
+			FROM
+			TCS_DOCK_POOL_DOCK DOCK
+			JOIN TCS_DOCK_POOL POOL 
+			ON POOL.POOL_ID = DOCK.POOL_ID
+	        JOIN TCS_DOCK_ALLOCATION ALLOC 
+	        ON ALLOC.TRUCK_DOCK = DOCK.TRUCK_DOCK
+			JOIN TCS_DOCK_MASTER MASTER 
+			ON MASTER.TRUCK_DOCK = ALLOC.TRUCK_DOCK
+			WHERE DOCK.TRUCK_DOCK = #TRUCK_DOCK# AND SYSDATE BETWEEN POOL.FROM_DT AND POOL.TO_DT AND 
+			MASTER.IN_SERVICE = 'Y' AND NVL(ALLOC.STATUS, 'FREE') = 'FREE' AND  NVL(ALLOC.OCCUPIED, 'N') = 'N' AND
+			DOCK.TRUCK_DOCK NOT IN (
+	            SELECT DOCK.TRUCK_DOCK
+	            FROM V_TCS_SPECIAL_PURPOSE_DOCKS DOCK
+	            WHERE (
+	            	SYSDATE BETWEEN DOCK.FROM_DT AND DOCK.TO_DT OR 
+	            	(SYSDATE + NVL(#DURATION#, 15)/1440) BETWEEN DOCK.FROM_DT AND DOCK.TO_DT OR
+	            	DOCK.TO_DT BETWEEN SYSDATE AND (SYSDATE + NVL(#DURATION#, 15)/1440)
+	            ) AND (DOCK.PURPOSE IN('SCH', 'SCU') OR DOCK.PURPOSE = NVL(#RESERVE#, 'NO'))        
+			)
+		]]>
+	</select>
+	<!-- Get Free Dock Pool Id for Overlap -->
+	<select id="sqlTcsGetFreeDockPoolIdForOverlap" parameterClass="java.util.Map"
+		resultClass="cargo.cms.tcs.truckdock.bo.TruckDockBO">
+		<![CDATA[
+			SELECT POOL.POOL_ID poolId, POOL.PURPOSE_1 purpose
+			FROM
+			TCS_DOCK_POOL_DOCK DOCK
+			JOIN TCS_DOCK_POOL POOL
+			ON POOL.POOL_ID = DOCK.POOL_ID
+			JOIN TCS_DOCK_ALLOCATION ALLOC
+			ON ALLOC.TRUCK_DOCK = DOCK.TRUCK_DOCK
+			JOIN TCS_DOCK_MASTER MASTER
+			ON MASTER.TRUCK_DOCK = ALLOC.TRUCK_DOCK
+			WHERE DOCK.TRUCK_DOCK = #TRUCK_DOCK# AND TO_DATE(TO_CHAR((SYSDATE + 1), 'DDMONYY'), 'DDMONYY') BETWEEN POOL.FROM_DT AND POOL.TO_DT AND 
+			MASTER.IN_SERVICE = 'Y' AND NVL(ALLOC.STATUS, 'FREE') = 'FREE' AND  NVL(ALLOC.OCCUPIED, 'N') = 'N' AND
+			DOCK.TRUCK_DOCK NOT IN (
+			  SELECT DOCK.TRUCK_DOCK
+			  FROM V_TCS_SPECIAL_PURPOSE_DOCKS DOCK
+			  WHERE (
+			    TO_DATE(TO_CHAR((SYSDATE + 1), 'DDMONYY'), 'DDMONYY') BETWEEN DOCK.FROM_DT AND DOCK.TO_DT OR 
+			    (TO_DATE(TO_CHAR((SYSDATE + 1), 'DDMONYY'), 'DDMONYY') + #DURATION#/1440) BETWEEN DOCK.FROM_DT AND DOCK.TO_DT OR
+			    DOCK.TO_DT BETWEEN TO_DATE(TO_CHAR((SYSDATE + 1), 'DDMONYY'), 'DDMONYY') AND (TO_DATE(TO_CHAR((SYSDATE + 1), 'DDMONYY'), 'DDMONYY') + #DURATION#/1440)
+			  ) AND (DOCK.PURPOSE IN('SCH', 'SCU') OR DOCK.PURPOSE = NVL(#RESERVE#, 'NO'))
+			)
+		]]>
+	</select>
+	<!-- Get Free Dock Block -->
+	<select id="sqlTcsGetFreeDockBlock" parameterClass="java.lang.String"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockBlockBO">
+		<![CDATA[
+			SELECT 
+			BLK.DOCK_BLOCK_ID dockBlockId, BLK.BLOCK_TYPE blockType, 
+			BLK.MAXIMUM_ALLOWED maximumAllowed, BLK.TRUCKS_IN_TERMINAL insideTerminal, 
+			BLK.DOCK_BLOCK_SEGMENT dockBlockSegment, BLK.CUST_NO custNo
+			FROM TCS_DOCK_BLOCK BLK
+			JOIN TCS_DOCK_BLOCK_DOCK DOCK
+			ON BLK.DOCK_BLOCK_ID = DOCK.DOCK_BLOCK_ID
+			JOIN TCS_DOCK_ALLOCATION ALLOC
+			ON DOCK.TRUCK_DOCK = ALLOC.TRUCK_DOCK
+			JOIN TCS_DOCK_MASTER MASTER
+			ON ALLOC.TRUCK_DOCK = MASTER.TRUCK_DOCK
+			WHERE DOCK.TRUCK_DOCK = #PARAM# AND SYSDATE BETWEEN BLK.FROM_DT AND BLK.TO_DT AND
+			MASTER.IN_SERVICE = 'Y' AND NVL(ALLOC.STATUS, 'FREE') = 'FREE' AND  NVL(ALLOC.OCCUPIED, 'N') = 'N'
+		]]>
+	</select>
+	<!-- Get Time Slots for Dock Allocation -->
+	<select id="sqlTcsGetTimeSlotsForDockAlloc" parameterClass="java.util.Map"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockPoolSlotBO">
+		<![CDATA[	
+			SELECT 
+			TIMESLOT timeSlot, POOL_ID poolId, 
+			BK_UNALLOCATED bkUnAllocated, UNALLOCATED unAllocated, 
+			ALLOCATED allocated, WI_ALLOCATED wiAllocated, BK_ALLOCATED bkAllocated,
+			LM_DATE lmDate
+			FROM TCS_DOCK_POOL_TIMESLOT SLOT
+			WHERE POOL_ID = #POOL_ID# AND
+			TIMESLOT >= TO_DATE(TO_CHAR(SYSDATE - MOD(TO_NUMBER(TO_CHAR(SYSDATE, 'MI')), 15) / 1440, 'DDMONYY HH24:MI'), 'DDMONYY HH24:MI') AND 
+			TIMESLOT < (SYSDATE + #DURATION#/1440) AND UNALLOCATED > 0
+			ORDER BY TIMESLOT
+		]]>
+	</select>
+	<!-- Get Time Slots for Dock Allocation for Overlap -->
+	<select id="sqlTcsGetTimeSlotsForDockAllocForOverlap"
+		parameterClass="java.util.Map" resultClass="cargo.cms.tcs.truckdock.bo.DockPoolSlotBO">
+		<![CDATA[	
+			SELECT 
+			TIMESLOT timeSlot, POOL_ID poolId, 
+			BK_UNALLOCATED bkUnAllocated, UNALLOCATED unAllocated, 
+			ALLOCATED allocated, WI_ALLOCATED wiAllocated, BK_ALLOCATED bkAllocated,
+			LM_DATE lmDate
+			FROM TCS_DOCK_POOL_TIMESLOT SLOT
+			WHERE POOL_ID = #POOL_ID# AND
+			TIMESLOT >= TO_DATE(TO_CHAR(TO_DATE(TO_CHAR((SYSDATE + 1), 'DDMONYY'), 'DDMONYY') - MOD(TO_NUMBER(TO_CHAR(TO_DATE(TO_CHAR((SYSDATE + 1), 'DDMONYY'), 'DDMONYY'), 'MI')), 15) / 1440, 'DDMONYY HH24:MI'), 'DDMONYY HH24:MI') AND 
+			TIMESLOT < (TO_DATE(TO_CHAR((SYSDATE + 1), 'DDMONYY'), 'DDMONYY') + #DURATION#/1440) AND UNALLOCATED > 0
+			ORDER BY TIMESLOT
+		]]>
+	</select>
+	<!-- Booking Truck Detail for Allocation -->
+	<select id="sqlTcsGetPoolBkDtlOnTruckEntry" parameterClass="java.util.Map"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockPoolBookingBO">
+		<![CDATA[
+			SELECT 
+			trNo, poolId, 'BOOKING' purpose, duration, startTimeSlot, endTimeSlot, 
+			truckNo1, truckNo2, truckNo3, truckNo4, truckNo5, truckNo6,
+			truckDock1, truckDock2, 
+			arrivedTruckNo, arrivedDateTime, 
+			requiredDockCount, allocatedDockCount, 
+			bookingType
+      		FROM (
+				SELECT 
+				BK.TR_NO trNo, BK.POOL_ID poolId, BK.PURPOSE purpose, BK.DURATION duration,
+				BK.START_TIMESLOT startTimeSlot, BK.END_TIMESLOT endTimeSlot, 
+				BK.TRUCK_NO_1 truckNo1, BK.TRUCK_NO_2 truckNo2, BK.TRUCK_NO_3 truckNo3, 
+				BK.TRUCK_NO_4 truckNo4, BK.TRUCK_NO_5 truckNo5, BK.TRUCK_NO_6 truckNo6, 
+				BK.TRUCK_DOCK_1 truckDock1, BK.TRUCK_DOCK_2 truckDock2, 
+				#TRUCK_NO# arrivedTruckNo, CAST(#ARRIVAL_DATE_TIME# AS DATE) arrivedDateTime,
+				BK.REQ_DOCK_COUNT requiredDockCount, BK.ALLOCATED_DOCK_COUNT allocatedDockCount, BK.BOOKING_TYPE bookingType
+				FROM TCS_DOCK_POOL_BOOKING BK
+				JOIN TCS_DOCK_POOL POOL
+				ON POOL.POOL_ID = BK.POOL_ID
+				WHERE BK.ALLOCATED_DOCK_COUNT < BK.REQ_DOCK_COUNT AND
+				#TRUCK_NO# IN (BK.TRUCK_NO_1, BK.TRUCK_NO_2,BK.TRUCK_NO_3, BK.TRUCK_NO_4, BK.TRUCK_NO_5, BK.TRUCK_NO_6) AND
+				SYSDATE BETWEEN (BK.START_TIMESLOT - NVL((
+			      SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'BKG_TRUCK_ARRIVAL_BEFORE_MIN'
+			    ), 0)/24/60) AND (BK.START_TIMESLOT + (15 + NVL((
+			      SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'BKG_TRUCK_ARRIVAL_AFTER_MIN'
+			    ), 0))/24/60) AND
+				BOOKING_TYPE = #BOOKING_TYPE#
+				ORDER BY BK.START_TIMESLOT DESC
+			) WHERE ROWNUM = 1
+		]]>
+	</select>
+	<!-- Booking Truck Detail for Allocation from Queue -->
+	<select id="sqlTcsGetPoolBkDtlOnTruckQueue" parameterClass="java.util.Map"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockPoolBookingBO">
+		<![CDATA[
+			SELECT 
+			trNo, poolId, 'BOOKING' purpose, duration, startTimeSlot, endTimeSlot, 
+			truckNo1, truckNo2, truckNo3, truckNo4, truckNo5, truckNo6,
+			truckDock1, truckDock2, 
+			arrivedTruckNo, arrivedDateTime, 
+			requiredDockCount, allocatedDockCount,
+			bookingType
+      		FROM (
+				SELECT 
+				BK.TR_NO trNo, BK.POOL_ID poolId, BK.PURPOSE purpose, BK.DURATION duration,
+				BK.START_TIMESLOT startTimeSlot, BK.END_TIMESLOT endTimeSlot, 
+				BK.TRUCK_NO_1 truckNo1, BK.TRUCK_NO_2 truckNo2, BK.TRUCK_NO_3 truckNo3, 
+				BK.TRUCK_NO_4 truckNo4, BK.TRUCK_NO_5 truckNo5, BK.TRUCK_NO_6 truckNo6, 
+				BK.TRUCK_DOCK_1 truckDock1, BK.TRUCK_DOCK_2 truckDock2, 
+				#TRUCK_NO# arrivedTruckNo, TRIP.ARR_TIME arrivedDateTime,
+				BK.REQ_DOCK_COUNT requiredDockCount, BK.ALLOCATED_DOCK_COUNT allocatedDockCount, BK.BOOKING_TYPE bookingType
+				FROM TCS_DOCK_POOL_BOOKING BK
+				JOIN TCS_DOCK_POOL POOL
+				ON POOL.POOL_ID = BK.POOL_ID
+				JOIN (
+					SELECT TRIP.TRIP_ID, TRIP.TRUCK_NO, TRIP.ARR_TIME
+					FROM TRUCK_TRIP TRIP
+					WHERE TRIP.CLOSED = 'N' AND TRIP.PURPOSE = 'BOOKING' AND TRIP.CURR_LOC = 'TPA'
+				) TRIP
+				ON TRIP.TRUCK_NO IN (BK.TRUCK_NO_1, BK.TRUCK_NO_2,BK.TRUCK_NO_3, BK.TRUCK_NO_4, BK.TRUCK_NO_5, BK.TRUCK_NO_6)
+				WHERE BK.ALLOCATED_DOCK_COUNT < BK.REQ_DOCK_COUNT AND
+				#TRUCK_NO# IN (BK.TRUCK_NO_1, BK.TRUCK_NO_2,BK.TRUCK_NO_3, BK.TRUCK_NO_4, BK.TRUCK_NO_5, BK.TRUCK_NO_6) AND
+				TRIP.ARR_TIME BETWEEN (BK.START_TIMESLOT - NVL((
+			      SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'BKG_TRUCK_ARRIVAL_BEFORE_MIN'
+			    ), 0)/24/60) AND (BK.START_TIMESLOT + (15 + NVL((
+			      SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'BKG_TRUCK_ARRIVAL_AFTER_MIN'
+			    ), 0))/24/60) AND
+				BOOKING_TYPE = #BOOKING_TYPE#
+				ORDER BY BK.START_TIMESLOT DESC
+			) WHERE ROWNUM = 1
+		]]>
+	</select>
+	<!-- Reservation Truck Detail for Allocation -->
+	<select id="sqlTcsGetPoolResvDtlOnTruckEntry" parameterClass="java.util.Map"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockPoolBookingBO">
+		<![CDATA[
+			SELECT
+			'RESERVE' purpose, duration, startTimeSlot, endTimeSlot,
+			TRUCK_DOCK truckDock1, TRUCK_NO arrivedTruckNo, SYSDATE arrivedDateTime,
+			DECODE(reservedForVAL, 'Y', 'VAL', 'RES') bookingType
+      		FROM (
+	      		SELECT 
+	      		TRUCK_DOCK, TRUCK_NO, RESV_FROM startTimeSlot, RESV_TO endTimeSlot,
+	      		ROUND((RESV_TO - RESV_FROM) * 60 * 24) duration, (
+					SELECT DECODE(COUNT(1), 0, 'N', 'Y') FROM TCS_DOCK_BLOCK BLK
+					JOIN TCS_DOCK_BLOCK_DOCK DOCK
+					ON BLK.DOCK_BLOCK_ID = DOCK.DOCK_BLOCK_ID
+					WHERE DOCK.TRUCK_DOCK = RESV.TRUCK_DOCK AND SYSDATE BETWEEN BLK.FROM_DT AND BLK.TO_DT
+				) reservedForVAL
+				FROM TCS_DOCK_RESV RESV
+				WHERE RESV.TRUCK_NO = #TRUCK_NO# AND RESV.ALLOCATED = 'N' AND
+				SYSDATE BETWEEN (RESV_FROM - (5/24/60)) AND RESV_TO
+			) WHERE ROWNUM = 1
+		]]>
+	</select>
+	<!-- Dock Reservation Details for Manual Dock Allocation -->
+	<select id="sqlTcsGetDockReservationForManualAllocation"
+		parameterClass="java.util.Map" resultClass="cargo.cms.tcs.truckdock.bo.TruckDockBO">
+		<![CDATA[
+			SELECT
+			TRUCK_DOCK truckDock, 
+			TRUCK_NO truckNo, RESV_FROM allocFrom, RESV_TO allocTill, DURATION allocDuration
+			FROM (
+				SELECT 
+				TRUCK_DOCK, TRUCK_NO, RESV_FROM, RESV_TO, DURATION 
+				FROM TCS_DOCK_RESV 
+				WHERE TRUCK_DOCK = #TRUCK_DOCK# AND ALLOCATED = 'N'
+		]]>
+		<isEmpty property="TRUCK_NO">
+			AND TRUCK_NO IS NULL
+		</isEmpty>
+		<isNotEmpty property="TRUCK_NO">
+			<![CDATA[ AND (TRUCK_NO IS NULL OR TRUCK_NO = #TRUCK_NO#) ]]>
+		</isNotEmpty>		
+		<![CDATA[
+				AND (
+					SYSDATE BETWEEN RESV_FROM AND RESV_TO OR
+					(SYSDATE + #DURATION#/1440) BETWEEN RESV_FROM AND RESV_TO
+				)
+				ORDER BY RESV_FROM
+			) WHERE ROWNUM = 1
+        ]]>
+	</select>
+	<!-- Update the Dock Reserve Allocation Status -->
+	<update id="sqlTCSUpdateDockReserveStatus" parameterClass="java.util.Map">
+		<![CDATA[
+			UPDATE TCS_DOCK_RESV
+			SET ALLOCATED = 'Y',
+			LM_USER_ID = #LM_USER_ID#, LM_DATE = SYSDATE
+			WHERE TR_NO IN (
+				SELECT TR_NO 
+				FROM TCS_DOCK_RESV RESV
+				JOIN TCS_DOCK_ALLOCATION ALLOC
+				ON RESV.TRUCK_DOCK = ALLOC.TRUCK_DOCK AND (ALLOC.TRUCK_NO = RESV.TRUCK_NO OR RESV.TRUCK_NO IS NULL) AND ALLOC.STATUS = 'ALLOCATED'
+				WHERE RESV.TRUCK_DOCK = #TRUCK_DOCK# AND RESV.ALLOCATED = 'N' AND (
+					ALLOC.ALLOCATED_FROM BETWEEN RESV.RESV_FROM AND RESV.RESV_TO OR
+					ALLOC.ALLOCATED_TILL BETWEEN RESV.RESV_FROM AND RESV.RESV_TO
+				)
+			)
+		]]>
+	</update>
+	<!-- Make the Dock Pool Reserved -->
+	<update id="sqlTCSMakeDockPoolReserve" parameterClass="java.util.Map">
+		<![CDATA[
+			UPDATE TCS_DOCK_POOL_TIMESLOT
+			SET LM_USER_ID = #USER_ID#, LM_DATE = SYSDATE, 
+			BK_UNALLOCATED = BK_UNALLOCATED + (
+			  CASE WHEN UNALLOCATED > 0 THEN 1 ELSE 0 END
+			),
+			UNALLOCATED = UNALLOCATED - (
+			  CASE WHEN UNALLOCATED > 0 THEN 1 ELSE 0 END
+			)
+			WHERE POOL_ID IN (
+			  SELECT MAX(POOL_ID) FROM (
+			  	SELECT POOL_ID, TO_CHAR(FROM_DT, 'DDMONYY') TM
+			  	FROM TCS_DOCK_POOL_DOCK DOCK
+			  	WHERE TRUCK_DOCK = #DOCK_NO# AND (
+			    (DOCK.FROM_DT >= TO_DATE(#FROM_DT#, 'DDMONYY HH24:MI') AND DOCK.FROM_DT <= TO_DATE(#TO_DT#, 'DDMONYY HH24:MI')) OR
+			    (DOCK.TO_DT >= TO_DATE(#FROM_DT#, 'DDMONYY HH24:MI') AND DOCK.TO_DT <= TO_DATE(#TO_DT#, 'DDMONYY HH24:MI')) OR
+			    (TO_DATE(#FROM_DT#, 'DDMONYY HH24:MI') >= DOCK.FROM_DT AND TO_DATE(#FROM_DT#, 'DDMONYY HH24:MI') <= DOCK.TO_DT) OR
+			    (TO_DATE(#TO_DT#, 'DDMONYY HH24:MI') >= DOCK.FROM_DT AND TO_DATE(#TO_DT#, 'DDMONYY HH24:MI') <= DOCK.TO_DT)
+			  	)
+			  )
+			  GROUP BY TM
+			) AND TIMESLOT > SYSDATE AND (
+			  TIMESLOT BETWEEN TO_DATE(#FROM_DT#, 'DDMONYY HH24:MI') AND (TO_DATE(#TO_DT#, 'DDMONYY HH24:MI') - (1/24/60)) OR
+			  TO_DATE(#FROM_DT#, 'DDMONYY HH24:MI') BETWEEN TIMESLOT AND TIMESLOT + (14/24/60) OR
+			  (TO_DATE(#TO_DT#, 'DDMONYY HH24:MI') - (1/24/60)) BETWEEN TIMESLOT AND TIMESLOT + (14/24/60)
+			) AND (
+				SELECT TRUCK_DOCK FROM TCS_DOCK_MASTER WHERE TRUCK_DOCK = #DOCK_NO# AND IN_SERVICE = 'Y'
+			) IS NOT NULL
+		]]>
+	</update>
+	<!-- Make the Dock Pool Un-Reserved -->
+	<update id="sqlTCSMakeDockPoolUnReserve" parameterClass="java.util.Map">
+		<![CDATA[
+			UPDATE TCS_DOCK_POOL_TIMESLOT
+			SET LM_USER_ID = #USER_ID#, LM_DATE = SYSDATE,
+			UNALLOCATED = UNALLOCATED + (
+			  CASE WHEN BK_UNALLOCATED > 0 THEN 1 ELSE 0 END
+			),
+			BK_UNALLOCATED = BK_UNALLOCATED - (
+			  CASE WHEN BK_UNALLOCATED > 0 THEN 1 ELSE 0 END
+			)
+			WHERE POOL_ID IN (
+			  SELECT MAX(POOL_ID) FROM (
+			  	SELECT POOL_ID, TO_CHAR(FROM_DT, 'DDMONYY') TM
+			  	FROM TCS_DOCK_POOL_DOCK DOCK
+			  	WHERE TRUCK_DOCK = #DOCK_NO# AND (
+			    (DOCK.FROM_DT >= TO_DATE(#FROM_DT#, 'DDMONYY HH24:MI') AND DOCK.FROM_DT <= TO_DATE(#TO_DT#, 'DDMONYY HH24:MI')) OR
+			    (DOCK.TO_DT >= TO_DATE(#FROM_DT#, 'DDMONYY HH24:MI') AND DOCK.TO_DT <= TO_DATE(#TO_DT#, 'DDMONYY HH24:MI')) OR
+			    (TO_DATE(#FROM_DT#, 'DDMONYY HH24:MI') >= DOCK.FROM_DT AND TO_DATE(#FROM_DT#, 'DDMONYY HH24:MI') <= DOCK.TO_DT) OR
+			    (TO_DATE(#TO_DT#, 'DDMONYY HH24:MI') >= DOCK.FROM_DT AND TO_DATE(#TO_DT#, 'DDMONYY HH24:MI') <= DOCK.TO_DT)
+			    )
+			  )
+			  GROUP BY TM
+			) AND TIMESLOT > SYSDATE AND (
+			  TIMESLOT BETWEEN TO_DATE(#FROM_DT#, 'DDMONYY HH24:MI') AND (TO_DATE(#TO_DT#, 'DDMONYY HH24:MI') - (1/24/60)) OR
+			  TO_DATE(#FROM_DT#, 'DDMONYY HH24:MI') BETWEEN TIMESLOT AND TIMESLOT + (14/24/60) OR
+			  (TO_DATE(#TO_DT#, 'DDMONYY HH24:MI') - (1/24/60)) BETWEEN TIMESLOT AND TIMESLOT + (14/24/60)
+			) AND (
+				SELECT TRUCK_DOCK FROM TCS_DOCK_MASTER WHERE TRUCK_DOCK = #DOCK_NO# AND IN_SERVICE = 'Y'
+			) IS NOT NULL
+		]]>
+	</update>
+	<!-- Revert Reserved Pool for Manual Allocation -->
+	<update id="sqlTCSRevertReserveDockPoolForManualAlloc"
+		parameterClass="java.util.Map">
+		<![CDATA[
+			UPDATE TCS_DOCK_POOL_TIMESLOT
+			SET LM_USER_ID = #USER_ID#, LM_DATE = SYSDATE,
+			UNALLOCATED = UNALLOCATED + (
+			  CASE WHEN BK_UNALLOCATED > 0 THEN 1 ELSE 0 END
+			),
+			BK_UNALLOCATED = BK_UNALLOCATED - (
+			  CASE WHEN BK_UNALLOCATED > 0 THEN 1 ELSE 0 END
+			)
+			WHERE POOL_ID IN (
+			  SELECT MAX(POOL_ID) FROM (
+			  	SELECT POOL_ID, TO_CHAR(FROM_DT, 'DDMONYY') TM
+			  	FROM TCS_DOCK_POOL_DOCK DOCK
+			  	WHERE TRUCK_DOCK = #DOCK_NO# AND (
+			    (DOCK.FROM_DT >= TO_DATE(#FROM_DT#, 'DDMONYY HH24:MI') AND DOCK.FROM_DT <= TO_DATE(#TO_DT#, 'DDMONYY HH24:MI')) OR
+			    (DOCK.TO_DT >= TO_DATE(#FROM_DT#, 'DDMONYY HH24:MI') AND DOCK.TO_DT <= TO_DATE(#TO_DT#, 'DDMONYY HH24:MI')) OR
+			    (TO_DATE(#FROM_DT#, 'DDMONYY HH24:MI') >= DOCK.FROM_DT AND TO_DATE(#FROM_DT#, 'DDMONYY HH24:MI') <= DOCK.TO_DT) OR
+			    (TO_DATE(#TO_DT#, 'DDMONYY HH24:MI') >= DOCK.FROM_DT AND TO_DATE(#TO_DT#, 'DDMONYY HH24:MI') <= DOCK.TO_DT)
+			    )
+			  )
+			  GROUP BY TM
+			) AND (
+			  TIMESLOT BETWEEN TO_DATE(#FROM_DT#, 'DDMONYY HH24:MI') AND (TO_DATE(#TO_DT#, 'DDMONYY HH24:MI') - (1/24/60)) OR
+			  TO_DATE(#FROM_DT#, 'DDMONYY HH24:MI') BETWEEN TIMESLOT AND TIMESLOT + (14/24/60) OR
+			  (TO_DATE(#TO_DT#, 'DDMONYY HH24:MI') - (1/24/60)) BETWEEN TIMESLOT AND TIMESLOT + (14/24/60)
+			) AND (
+				SELECT TRUCK_DOCK FROM TCS_DOCK_MASTER WHERE TRUCK_DOCK = #DOCK_NO# AND IN_SERVICE = 'Y'
+			) IS NOT NULL
+		]]>
+	</update>
+	<!-- Update Truck Dock Service Status -->
+	<update id="sqlUpdateTCSDockStatus" parameterClass="map">
+		<![CDATA[
+			UPDATE TCS_DOCK_MASTER 
+			SET IN_SERVICE = #STATUS#, LM_USER_ID = #USER_ID#, LM_DATE = SYSDATE
+			WHERE TRUCK_DOCK = #DOCK_NO#
+		]]>
+	</update>
+	<!-- Make the Dock Pool Un-serviceable -->
+	<update id="sqlTCSMakeDockPoolUnserviceable" parameterClass="map">
+		<![CDATA[
+			UPDATE TCS_DOCK_POOL_TIMESLOT
+			SET LM_DATE = SYSDATE, LM_USER_ID = #USER_ID#,
+			BK_NO_SVC = BK_NO_SVC + (
+			  CASE WHEN UNALLOCATED < 1 AND BK_UNALLOCATED > 0 THEN 1
+			  ELSE 0 END
+			),
+			NO_SVC = NO_SVC + (
+			  CASE WHEN UNALLOCATED < 1 THEN 0 ELSE 1 END
+			),
+			BK_UNALLOCATED = BK_UNALLOCATED - (
+			  CASE WHEN UNALLOCATED < 1 AND BK_UNALLOCATED > 0 THEN 1
+			  ELSE 0 END
+			),
+			UNALLOCATED = UNALLOCATED - (
+			  CASE WHEN UNALLOCATED < 1 THEN 0 ELSE 1 END
+			)
+			WHERE POOL_ID IN(
+			  SELECT DISTINCT POOL_ID FROM TCS_DOCK_POOL_DOCK DOCK
+			  WHERE TRUCK_DOCK = #DOCK_NO# AND (
+			  	SYSDATE BETWEEN FROM_DT AND TO_DT OR FROM_DT > SYSDATE
+			  )
+			) AND TIMESLOT >= TO_DATE(TO_CHAR(SYSDATE - MOD(TO_NUMBER(TO_CHAR(SYSDATE, 'MI')), 15) / 1440, 'DDMONYY HH24:MI'), 'DDMONYY HH24:MI') AND (
+				SELECT TRUCK_DOCK FROM TCS_DOCK_MASTER 
+				WHERE TRUCK_DOCK = #DOCK_NO# AND IN_SERVICE = 'Y'
+			) IS NOT NULL
+		]]>
+	</update>
+	<!-- Make the Dock Pool Serviceable -->
+	<update id="sqlTCSMakeDockPoolServiceable" parameterClass="map">
+		<![CDATA[
+			UPDATE TCS_DOCK_POOL_TIMESLOT
+			SET LM_DATE = SYSDATE, LM_USER_ID = #USER_ID#,
+			NO_SVC = NO_SVC - (
+			  CASE WHEN BK_NO_SVC < 1 AND NO_SVC > 0 THEN 1 ELSE 0 END
+			),
+			BK_NO_SVC = BK_NO_SVC - (
+			  CASE WHEN BK_NO_SVC > 0 THEN 1 ELSE 0 END
+			),
+			UNALLOCATED = UNALLOCATED + (
+			  CASE WHEN BK_NO_SVC < 1 AND NO_SVC > 0 THEN 1 ELSE 0 END
+			),
+			BK_UNALLOCATED = BK_UNALLOCATED + (
+			  CASE WHEN BK_NO_SVC > 0 THEN 1 ELSE 0 END
+			)
+			WHERE POOL_ID IN(
+			  SELECT DISTINCT POOL_ID FROM TCS_DOCK_POOL_DOCK DOCK
+			  WHERE TRUCK_DOCK = #DOCK_NO# AND (
+			  	SYSDATE BETWEEN FROM_DT AND TO_DT OR FROM_DT > SYSDATE
+			  )
+			) AND TIMESLOT >= TO_DATE(TO_CHAR(SYSDATE - MOD(TO_NUMBER(TO_CHAR(SYSDATE, 'MI')), 15) / 1440, 'DDMONYY HH24:MI'), 'DDMONYY HH24:MI') AND (
+				SELECT TRUCK_DOCK FROM TCS_DOCK_MASTER 
+				WHERE TRUCK_DOCK = #DOCK_NO# AND IN_SERVICE = 'N'
+			) IS NOT NULL
+		]]>
+	</update>
+	<!-- Insert Truck Events (log) -->
+	<insert id="sqlInsertDockTruckEvents" parameterClass="cargo.cms.tcs.truckdock.bo.TCSTruckEventsBO">
+		<![CDATA[
+			INSERT INTO TCS_TRUCK_EVENTS (
+				TR_NO, TRUCK_NO, EVENT_ID, EVENT_DESC, 
+				CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE
+			)
+			VALUES (
+				TCS_TRUCK_EVENT_SEQ.NEXTVAL, UPPER(#truckNo#), #eventId#, #eventDesc#, 
+				#createdUserId#, SYSDATE, #createdUserId#, SYSDATE
+			)
+		]]>
+	</insert>
+	<!-- Revert Booking Slot -->
+	<update id="sqlTCSMoveBookingSlotToWalkin" parameterClass="java.util.Map">
+		<![CDATA[
+			UPDATE TCS_DOCK_POOL_TIMESLOT
+			SET 
+			UNALLOCATED = UNALLOCATED + (
+			  CASE WHEN BK_UNALLOCATED > 0 THEN 1 ELSE 0 END
+			),
+			BK_UNALLOCATED = BK_UNALLOCATED - (
+			  CASE WHEN BK_UNALLOCATED > 0 THEN 1 ELSE 0 END
+			),
+			LM_DATE = SYSDATE
+			WHERE POOL_ID = #POOL_ID# AND TIMESLOT BETWEEN #START_TIMESLOT# AND ((#END_TIMESLOT#) - 1/24/60)
+		]]>
+	</update>
+	<!-- Revert Booking Slot Back to Normal -->
+	<update id="sqlTCSMoveWalkinSlotToBooking" parameterClass="java.util.Map">
+		<![CDATA[
+			UPDATE TCS_DOCK_POOL_TIMESLOT
+			SET 
+			BK_UNALLOCATED = BK_UNALLOCATED + (
+			  CASE WHEN UNALLOCATED > 0 THEN 1 ELSE 0 END
+			),
+			UNALLOCATED = UNALLOCATED - (
+			  CASE WHEN UNALLOCATED > 0 THEN 1 ELSE 0 END
+			),
+			LM_DATE = SYSDATE
+			WHERE POOL_ID = #POOL_ID# AND TIMESLOT BETWEEN #START_TIMESLOT# AND ((#END_TIMESLOT#) - 1/24/60)
+		]]>
+	</update>
+	<!-- Get Affected Pools for Ad-hoc Purpose Change -->
+	<select id="sqlGetTCSFindAffectedPoolsForAdhoc" parameterClass="java.util.Map"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockPoolBO">
+  		<![CDATA[
+			WITH TM AS (
+			  SELECT
+			  TO_DATE(TO_CHAR(SYSDATE - MOD(TO_NUMBER(TO_CHAR(SYSDATE, 'MI')), 15) / 1440, 'DDMONYY HH24:MI'), 'DDMONYY HH24:MI') FROM_TM,
+			  TO_DATE(TO_CHAR((SYSDATE - MOD(TO_NUMBER(TO_CHAR(SYSDATE, 'MI')), 15) / 1440) + 15/24/60, 'DDMONYY HH24:MI'), 'DDMONYY HH24:MI') + (((#HOURS# * 60)-1)/24/60) TO_TM
+			  FROM DUAL
+			)
+			SELECT POOL.POOL_ID poolId, POOL.FROM_DT fromDt, POOL.TO_DT toDt, TM.FROM_TM adHocFromDt, TM.TO_TM adHocToDt,
+			POOL.PURPOSE_1 purpose1, POOL.PURPOSE_2 purpose2, POOL.PURPOSE_3 purpose3, POOL.PURPOSE_4 purpose4, POOL.PURPOSE_5 purpose5, 
+			POOL.TOTALDOCKS totalDocks, POOL.DOCK_LEVEL dockLevel, POOL.ZONE zone
+			FROM TCS_DOCK_POOL POOL
+			JOIN TCS_DOCK_POOL_DOCK DOCK
+			ON POOL.POOL_ID = DOCK.POOL_ID
+			JOIN TM
+			ON 1 = 1
+			WHERE DOCK.TRUCK_DOCK = #DOCK_NO# AND (
+			  (DOCK.FROM_DT >= TM.FROM_TM AND DOCK.FROM_DT <= TM.TO_TM) OR
+			  (DOCK.TO_DT >= TM.FROM_TM AND DOCK.TO_DT <= TM.TO_TM) OR
+			  (TM.FROM_TM >= DOCK.FROM_DT AND TM.FROM_TM <= DOCK.TO_DT) OR
+			  (TM.TO_TM >= DOCK.FROM_DT AND TM.TO_TM <= DOCK.TO_DT)
+			)
+			ORDER BY POOL.FROM_DT
+      	]]>
+	</select>
+	<!-- Update Dock Pool - Total Docks (Ad-hoc) -->
+	<update id="sqlTCSUpdatePoolTotalDocksForAdhoc" parameterClass="java.util.Map">
+		<![CDATA[
+			UPDATE TCS_DOCK_POOL 
+			SET TOTALDOCKS = #DOCKS#, LM_USER_ID = #USER_ID#, LM_DATE = SYSDATE
+			WHERE POOL_ID = #POOL_ID#
+		]]>
+	</update>
+	<!-- Remove Pool -->
+	<delete id="sqlTCSRemovePool" parameterClass="java.lang.Long">
+		<![CDATA[
+			DELETE FROM TCS_DOCK_POOL WHERE POOL_ID = #POOL_ID#
+		]]>
+	</delete>
+	<!-- Remove Dock Pool Dock (Ad-hoc) -->
+	<delete id="sqlTCSRemoveDockPoolDockForAdhoc" parameterClass="java.util.Map">
+		<![CDATA[
+			DELETE FROM TCS_DOCK_POOL_DOCK
+			WHERE POOL_ID = #POOL_ID# AND TRUCK_DOCK = #DOCK_NO#
+		]]>
+	</delete>
+	<!-- Update Dock Pool Time Slots (Ad-hoc) -->
+	<update id="sqlTCSUpdateOrgDockPoolTimeSlotsForAdhoc"
+		parameterClass="java.util.Map">
+		<![CDATA[
+			UPDATE TCS_DOCK_POOL_TIMESLOT SLOT
+			SET LM_USER_ID = #USER_ID#, LM_DATE = SYSDATE,
+			UNALLOCATED = UNALLOCATED - (
+			  CASE 
+			  WHEN (
+			  		SELECT COUNT(1) FROM TCS_DOCK_ALLOCATION 
+			  		WHERE TRUCK_DOCK = #DOCK_NO# AND STATUS = 'ALLOCATED' AND SLOT.TIMESLOT < ALLOCATED_TILL
+			  	) = 0 THEN
+			    CASE
+			      WHEN (SELECT COUNT(1) FROM TCS_DOCK_MASTER WHERE TRUCK_DOCK = #DOCK_NO# AND IN_SERVICE = 'Y') = 1 THEN
+			      CASE
+			        WHEN UNALLOCATED > 0 THEN 1
+			        ELSE 0
+			      END
+			      ELSE 0
+			    END
+			  ELSE 0
+			  END
+			),
+			BK_UNALLOCATED = BK_UNALLOCATED - (
+			  CASE 
+			  WHEN (
+			  		SELECT COUNT(1) FROM TCS_DOCK_ALLOCATION 
+			  		WHERE TRUCK_DOCK = #DOCK_NO# AND STATUS = 'ALLOCATED' AND SLOT.TIMESLOT < ALLOCATED_TILL
+			  	) = 0 THEN
+			    CASE
+			      WHEN (SELECT COUNT(1) FROM TCS_DOCK_MASTER WHERE TRUCK_DOCK = #DOCK_NO# AND IN_SERVICE = 'Y') = 1 THEN
+			      CASE
+			        WHEN BK_UNALLOCATED > 0 AND UNALLOCATED < 1 THEN 1
+			        ELSE 0
+			      END
+			      ELSE 0
+			    END
+			  ELSE 0
+			  END
+			),
+			ALLOCATED = ALLOCATED - (
+			  CASE 
+			  WHEN ALLOCATED > 0 AND (
+			  	SELECT COUNT(1) FROM TCS_DOCK_ALLOCATION 
+			  	WHERE TRUCK_DOCK = #DOCK_NO# AND STATUS = 'ALLOCATED' AND SLOT.TIMESLOT < ALLOCATED_TILL
+			  ) = 1 THEN 1
+			  ELSE 0
+			  END
+			),
+			NO_SVC = NO_SVC - (
+			  CASE
+			    WHEN NO_SVC > 0 AND (
+			    	SELECT COUNT(1) FROM TCS_DOCK_MASTER 
+			    	WHERE TRUCK_DOCK = #DOCK_NO# AND IN_SERVICE = 'Y'
+			    ) = 0 THEN 1
+			    ELSE 0
+			  END
+			),
+			BK_NO_SVC = BK_NO_SVC - (
+			  CASE
+			    WHEN NO_SVC < 1 AND	BK_NO_SVC > 0 AND (
+			    	SELECT COUNT(1) FROM TCS_DOCK_MASTER 
+			    	WHERE TRUCK_DOCK = #DOCK_NO# AND IN_SERVICE = 'Y'
+			    ) = 0 THEN 1
+			    ELSE 0
+			  END
+			)
+			WHERE POOL_ID = #POOL_ID# AND TIMESLOT >= #FROM_DT#
+		]]>
+	</update>
+	<!-- Create a new Pool for Ad-hoc Purpose -->
+	<insert id="sqlTCSCreateNewAdhocPool" parameterClass="java.util.Map">
+		<![CDATA[
+			INSERT INTO TCS_DOCK_POOL (
+			  POOL_ID, FROM_DT, TO_DT, TOTALDOCKS,
+			  PURPOSE_1, PURPOSE_2, PURPOSE_3, PURPOSE_4, PURPOSE_5,
+			  DOCK_LEVEL, ZONE, 
+			  CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE
+			)
+			SELECT 
+			#NEW_POOL_ID# POOL_ID, #FROM_DT# FROM_DT, #TO_DT# TO_DT, 1 TOTALDOCKS,
+			#PURPOSE_1# PURPOSE_1, #PURPOSE_2# PURPOSE_2, #PURPOSE_3# PURPOSE_3, #PURPOSE_4# PURPOSE_4, #PURPOSE_5# PURPOSE_5,
+			DOCK_LEVEL, ZONE, #USER_ID# CR_USER_ID, SYSDATE CR_DATE, #USER_ID# LM_USER_ID, SYSDATE LM_DATE
+			FROM TCS_DOCK_POOL
+			WHERE POOL_ID = #POOL_ID#
+		]]>
+	</insert>
+	<!-- Create a new Tail Pool for Ad-hoc Purpose -->
+	<insert id="sqlTCSCreateNewTailPool" parameterClass="java.util.Map">
+		<![CDATA[
+			INSERT INTO TCS_DOCK_POOL (
+			  POOL_ID, FROM_DT, TO_DT, TOTALDOCKS,
+			  PURPOSE_1, PURPOSE_2, PURPOSE_3, PURPOSE_4, PURPOSE_5,
+			  DOCK_LEVEL, ZONE,
+			  CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE
+			)
+			SELECT 
+			#NEW_POOL_ID# POOL_ID, #FROM_DT# FROM_DT, TO_DT, 1 TOTALDOCKS,
+			PURPOSE_1, PURPOSE_2, PURPOSE_3, PURPOSE_4, PURPOSE_5,
+			DOCK_LEVEL, ZONE, #USER_ID# CR_USER_ID, SYSDATE CR_DATE, #USER_ID# LM_USER_ID, SYSDATE LM_DATE
+			FROM TCS_DOCK_POOL
+			WHERE POOL_ID = #POOL_ID#
+		]]>
+	</insert>
+	<!-- Create a new Pool Dock -->
+	<insert id="sqlTCSCreateNewPoolDock" parameterClass="java.util.Map">
+		<![CDATA[
+			INSERT INTO TCS_DOCK_POOL_DOCK (
+			  POOL_ID, FROM_DT, TO_DT, TRUCK_DOCK,
+			  CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE
+			) VALUES (
+				#NEW_POOL_ID#, #FROM_DT#, #TO_DT#, #DOCK_NO#,
+				#USER_ID#, SYSDATE, #USER_ID#, SYSDATE
+			)
+		]]>
+	</insert>
+	<!-- Create a new Pool Time Slot for Ad-hoc Purpose -->
+	<insert id="sqlTCSCreateNewAdhocPoolTimeSlot" parameterClass="java.util.Map">
+		<![CDATA[
+			INSERT INTO TCS_DOCK_POOL_TIMESLOT (
+			  POOL_ID, TIMESLOT, UNALLOCATED, BK_UNALLOCATED, 
+			  ALLOCATED, WI_ALLOCATED, BK_ALLOCATED,
+			  NO_SVC, BK_NO_SVC,
+			  CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE
+			)
+			SELECT
+			#NEW_POOL_ID# POOL_ID, TIMESLOT,
+			CASE 
+			  WHEN ALLOC_STATUS = 'N' THEN 1
+			  ELSE 0 
+			END UNALLOCATED,
+			0 BK_UNALLOCATED,
+			CASE 
+			  WHEN ALLOC_STATUS = 'Y' AND TIMESLOT < ALLOCATED_TILL THEN 1
+			  ELSE 0 
+			END ALLOCATED,
+			CASE 
+			  WHEN ALLOC_STATUS = 'Y' AND TIMESLOT < ALLOCATED_TILL THEN 1
+			  ELSE 0 
+			END WI_ALLOCATED,
+			0 BK_ALLOCATED,
+			CASE
+			  WHEN IN_SERVICE = 'Y' THEN 0
+			  ELSE 1
+			END NO_SVC, 
+			0 BK_NO_SVC,  
+			#USER_ID# CR_USER_ID, SYSDATE CR_DATE, #USER_ID# LM_USER_ID, SYSDATE LM_DATE
+			FROM TCS_DOCK_POOL_TIMESLOT
+			JOIN (
+			  SELECT DECODE(STATUS, 'FREE', 'N', 'Y') ALLOC_STATUS, ALLOCATED_TILL
+			  FROM TCS_DOCK_ALLOCATION WHERE TRUCK_DOCK = #DOCK_NO#
+			) ALLOC
+			ON 1 = 1
+			JOIN (
+			  SELECT IN_SERVICE
+			  FROM TCS_DOCK_MASTER WHERE TRUCK_DOCK = #DOCK_NO#
+			) SVC
+			ON 1 = 1
+			WHERE POOL_ID = #POOL_ID# AND TIMESLOT BETWEEN #FROM_DT# AND #TO_DT#
+		]]>
+	</insert>
+	<!-- Create a new Tail Pool Time Slot for Ad-hoc Purpose -->
+	<insert id="sqlTCSCreateNewTailPoolTimeSlot" parameterClass="java.util.Map">
+		<![CDATA[
+			INSERT INTO TCS_DOCK_POOL_TIMESLOT (
+			  POOL_ID, TIMESLOT, UNALLOCATED, BK_UNALLOCATED, 
+			  ALLOCATED, WI_ALLOCATED, BK_ALLOCATED,
+			  NO_SVC, BK_NO_SVC,  
+			  CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE
+			)
+			SELECT
+			#NEW_POOL_ID# POOL_ID, TIMESLOT,
+			CASE 
+			  WHEN ALLOC_STATUS = 'N' THEN 1
+			  ELSE 0 
+			END UNALLOCATED,
+			0 BK_UNALLOCATED,			
+			CASE 
+			  WHEN ALLOC_STATUS = 'Y' AND TIMESLOT < ALLOCATED_TILL THEN 1
+			  ELSE 0 
+			END ALLOCATED,
+			CASE 
+			  WHEN ALLOC_STATUS = 'Y' AND TIMESLOT < ALLOCATED_TILL THEN 1
+			  ELSE 0 
+			END WI_ALLOCATED,
+			0 BK_ALLOCATED,
+			CASE
+			  WHEN IN_SERVICE = 'Y' THEN 0
+			  ELSE 1
+			END NO_SVC, 
+			0 BK_NO_SVC,  
+			#USER_ID# CR_USER_ID, SYSDATE CR_DATE, #USER_ID# LM_USER_ID, SYSDATE LM_DATE
+			FROM TCS_DOCK_POOL_TIMESLOT
+			JOIN (
+			  SELECT DECODE(STATUS, 'FREE', 'N', 'Y') ALLOC_STATUS, ALLOCATED_TILL
+			  FROM TCS_DOCK_ALLOCATION WHERE TRUCK_DOCK = #DOCK_NO#
+			) ALLOC
+			ON 1 = 1
+			JOIN (
+			  SELECT IN_SERVICE
+			  FROM TCS_DOCK_MASTER WHERE TRUCK_DOCK = #DOCK_NO#
+			) SVC
+			ON 1 = 1
+			WHERE POOL_ID = #POOL_ID# AND TIMESLOT >= #FROM_DT#
+		]]>
+	</insert>
+	<!-- Revert the Ad-hoc Pool Dock -->
+	<insert id="sqlTCSRevertPoolDockForAdhoc" parameterClass="java.util.Map">
+		<![CDATA[
+			INSERT INTO TCS_DOCK_POOL_DOCK (
+			  POOL_ID, TRUCK_DOCK, FROM_DT, TO_DT, 
+			  CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE
+			)
+			SELECT POOL_ID, TRUCK_DOCK, FROM_DT, TO_DT,
+			#USER_ID# CR_USER_ID, SYSDATE CR_DATE, #USER_ID# LM_USER_ID, SYSDATE LM_DATE
+			FROM (
+			  SELECT TRUCK_DOCK
+			  FROM TCS_DOCK_POOL_DOCK
+			  WHERE POOL_ID = #ADHOC_POOL_ID#
+			)
+			JOIN (
+			  SELECT POOL_ID, FROM_DT, TO_DT
+			  FROM TCS_DOCK_POOL
+			  WHERE POOL_ID = #POOL_ID#
+			)
+			ON 1 = 1
+		]]>
+	</insert>
+	<!-- Revert the Ad-hoc Pool Time Slot -->
+	<update id="sqlTCSRevertPoolTimeSlotForAdhoc" parameterClass="java.util.Map">
+		<![CDATA[
+			UPDATE TCS_DOCK_POOL_TIMESLOT SLOT
+			SET LM_USER_ID = #USER_ID#, LM_DATE = SYSDATE,
+			UNALLOCATED = UNALLOCATED - (
+			  CASE 
+			  WHEN (
+			      SELECT COUNT(1) FROM TCS_DOCK_ALLOCATION 
+			      WHERE TRUCK_DOCK = #DOCK_NO# AND STATUS = 'ALLOCATED' AND SLOT.TIMESLOT < ALLOCATED_TILL
+			    ) = 0 THEN
+			    CASE
+			      WHEN (SELECT COUNT(1) FROM TCS_DOCK_MASTER WHERE TRUCK_DOCK = #DOCK_NO# AND IN_SERVICE = 'Y') = 1 THEN 1
+			      ELSE 0
+			    END
+			  ELSE 0
+			  END
+			),
+			ALLOCATED = ALLOCATED + (
+			  CASE 
+			  WHEN (
+			    SELECT COUNT(1) FROM TCS_DOCK_ALLOCATION 
+			    WHERE TRUCK_DOCK = #DOCK_NO# AND STATUS = 'ALLOCATED' AND SLOT.TIMESLOT < ALLOCATED_TILL
+			  ) = 1 THEN 1
+			  ELSE 0
+			  END
+			),
+			NO_SVC = NO_SVC + (
+			  CASE
+			    WHEN (
+			      SELECT COUNT(1) FROM TCS_DOCK_MASTER 
+			      WHERE TRUCK_DOCK = #DOCK_NO# AND IN_SERVICE = 'Y'
+			    ) = 0 THEN 1
+			    ELSE 0
+			  END
+			)
+			WHERE POOL_ID = #POOL_ID# AND TIMESLOT >= #FROM_DT#
+		]]>
+	</update>
+	<!-- Get the Ad-hoc Pool Data -->
+	<select id="sqlGetTCSAdhocPoolData" parameterClass="java.lang.String"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockPoolBO">
+  		<![CDATA[
+			SELECT
+			POOL_ID adHocPoolId, TAIL_POOL_ID tailPoolId, AFFECTED_POOLS affectedPools,
+			FROM_DT adHocFromDt, TO_DT adHocToDt
+			FROM TCS_ADHOC_DOCK
+			WHERE
+			NVL(REVERTED_IND, 'N') = 'N' AND TRUCK_DOCK = #PARAM# AND (
+				SYSDATE BETWEEN FROM_DT AND TO_DT OR
+				TO_DATE(TO_CHAR((SYSDATE - MOD(TO_NUMBER(TO_CHAR(SYSDATE, 'MI')), 15) / 1440) + 15/24/60, 'DDMONYY HH24:MI'), 'DDMONYY HH24:MI') BETWEEN FROM_DT AND TO_DT
+			)
+      	]]>
+	</select>
+	<!-- Update Ad-hoc Pool Dock Status -->
+	<update id="sqlTCSUpdateAdhocPoolRevertedStatus" parameterClass="java.util.Map">
+		<![CDATA[
+			UPDATE TCS_ADHOC_DOCK
+			SET REVERTED_IND = 'Y', LM_USER_ID = #USER_ID#, LM_DATE = SYSDATE
+			WHERE
+			POOL_ID = #POOL_ID# AND NVL(REVERTED_IND, 'N') = 'N' AND TRUCK_DOCK = #DOCK_NO#
+		]]>
+	</update>
+	<!-- Revert Original Pool Total Dock Count -->
+	<update id="sqlTCSUpdateOrgPoolTotalDocksForAdhoc"
+		parameterClass="java.util.Map">
+		<![CDATA[
+			UPDATE TCS_DOCK_POOL
+			SET TOTALDOCKS = TOTALDOCKS + 1, LM_USER_ID = #USER_ID#, LM_DATE = SYSDATE
+			WHERE POOL_ID = #POOL_ID#
+		]]>
+	</update>
+	<!-- Extend the SHA Truck inside the Terminal to Current Day (for Scheduler; 
+		Daily Once) -->
+	<select id="sqlTcsGetSHADockBlockList" parameterClass="java.lang.String"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockBlockBO">
+		<![CDATA[
+			SELECT DOCK_BLOCK_ID dockBlockId, BLOCK_TYPE blockType, 
+			MAXIMUM_ALLOWED maximumAllowed,
+			BLK.FROM_DT startDateTime, BLK.TO_DT endDateTime, 
+			BLK.CUST_NO custNo, BLK.DOCK_BLOCK_SEGMENT dockBlockSegment, (
+			  SELECT COUNT(TRIP_ID)
+			  FROM TRUCK_TRIP TRIP 
+			  JOIN TCS_IPASS_MASTER IPASS
+			  ON TRIP.TRUCK_NO = IPASS.TRUCK_NO AND IPASS.CUST_TYPE = 'SHA' AND TRIP.INCOMING_REASON = 'SHC'
+			  WHERE CLOSED = 'N' AND TRIP.CURR_LOC NOT IN('TPA', 'TPX') AND IPASS.CUST_NO = BLK.CUST_NO
+			) insideTerminal
+			FROM TCS_DOCK_BLOCK BLK
+			WHERE
+			SYSDATE >= FROM_DT AND SYSDATE < TO_DT AND BLOCK_TYPE = 'SHC'
+		]]>
+	</select>
+	<!-- Get Latest SHA Block for Update After Entering/Exiting the Terminal -->
+	<select id="sqlTcsGetSHADockBlock" parameterClass="java.lang.Integer"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockBlockBO">
+		<![CDATA[
+			SELECT DOCK_BLOCK_ID dockBlockId, BLOCK_TYPE blockType, 
+			MAXIMUM_ALLOWED maximumAllowed,
+			BLK.FROM_DT startDateTime, BLK.TO_DT endDateTime, 
+			BLK.CUST_NO custNo, BLK.DOCK_BLOCK_SEGMENT dockBlockSegment, (
+			  SELECT COUNT(TRIP_ID)
+			  FROM TRUCK_TRIP TRIP 
+			  JOIN TCS_IPASS_MASTER IPASS
+			  ON TRIP.TRUCK_NO = IPASS.TRUCK_NO AND IPASS.CUST_TYPE = 'SHA' AND TRIP.INCOMING_REASON = 'SHC'
+			  WHERE CLOSED = 'N' AND TRIP.CURR_LOC NOT IN('TPA', 'TPX') AND IPASS.CUST_NO = BLK.CUST_NO
+			) insideTerminal
+			FROM TCS_DOCK_BLOCK BLK
+			WHERE
+			SYSDATE >= FROM_DT AND SYSDATE < TO_DT AND BLOCK_TYPE = 'SHC' AND BLK.DOCK_BLOCK_ID = #PARAM#
+		]]>
+	</select>
+	<!-- Extend the VAL Truck inside the Terminal to Current Day (for Scheduler; 
+		Daily Once) -->
+	<select id="sqlTcsGetVALDockBlockList" parameterClass="java.lang.String"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockBlockBO">
+		<![CDATA[
+			SELECT DOCK_BLOCK_ID dockBlockId, BLOCK_TYPE blockType, 
+			MAXIMUM_ALLOWED maximumAllowed,
+			BLK.FROM_DT startDateTime, BLK.TO_DT endDateTime, 
+			BLK.CUST_NO custNo, BLK.DOCK_BLOCK_SEGMENT dockBlockSegment, (
+			  SELECT COUNT(TRIP.TRIP_ID)
+			  FROM TRUCK_TRIP TRIP 
+			  JOIN TCS_IPASS_MASTER IPASS
+			  ON TRIP.TRUCK_NO = IPASS.TRUCK_NO AND TRIP.PURPOSE = 'VAL'
+			  WHERE CLOSED = 'N' AND TRIP.CURR_LOC = 'L1SR' AND TRIP.TRUCK_STATE IN('A', 'D') AND (
+			  	SELECT TRUCK_DOCK FROM TCS_DOCK_ALLOCATION ALLOC WHERE ALLOC.TRIP_ID = TRIP.TRIP_ID
+			  ) IS NULL
+			) insideTerminal
+			FROM TCS_DOCK_BLOCK BLK
+			WHERE
+			SYSDATE >= FROM_DT AND SYSDATE < TO_DT AND BLOCK_TYPE = 'VAL'
+		]]>
+	</select>
+	<!-- Get Latest VAL Block for Update After Entering/Exiting the Terminal -->
+	<select id="sqlTcsGetVALDockBlock" parameterClass="java.lang.Integer"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockBlockBO">
+		<![CDATA[
+			SELECT DOCK_BLOCK_ID dockBlockId, BLOCK_TYPE blockType, 
+			MAXIMUM_ALLOWED maximumAllowed,
+			BLK.FROM_DT startDateTime, BLK.TO_DT endDateTime, 
+			BLK.CUST_NO custNo, BLK.DOCK_BLOCK_SEGMENT dockBlockSegment, (
+			  SELECT COUNT(TRIP.TRIP_ID)
+			  FROM TRUCK_TRIP TRIP 
+			  JOIN TCS_IPASS_MASTER IPASS
+			  ON TRIP.TRUCK_NO = IPASS.TRUCK_NO AND TRIP.PURPOSE = 'VAL'
+			  WHERE CLOSED = 'N' AND TRIP.CURR_LOC = 'L1SR' AND TRIP.TRUCK_STATE IN('A', 'D') AND (
+			  	SELECT TRUCK_DOCK FROM TCS_DOCK_ALLOCATION ALLOC WHERE ALLOC.TRIP_ID = TRIP.TRIP_ID
+			  ) IS NULL
+			) insideTerminal
+			FROM TCS_DOCK_BLOCK BLK
+			WHERE
+			SYSDATE >= FROM_DT AND SYSDATE < TO_DT AND BLOCK_TYPE = 'VAL' AND BLK.DOCK_BLOCK_ID = #PARAM#
+		]]>
+	</select>
+	<!-- Extend the SCH Truck inside the Terminal to Current Day (for Scheduler; 
+		Daily Once) -->
+	<select id="sqlTcsGetSCHDockBlockList" parameterClass="java.lang.String"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockBlockBO">
+		<![CDATA[
+			SELECT DOCK_BLOCK_ID dockBlockId, BLOCK_TYPE blockType, 
+			MAXIMUM_ALLOWED maximumAllowed,
+			BLK.FROM_DT startDateTime, BLK.TO_DT endDateTime, 
+			BLK.CUST_NO custNo, BLK.DOCK_BLOCK_SEGMENT dockBlockSegment, (
+			  SELECT COUNT(TRIP.TRIP_ID)
+			  FROM TRUCK_TRIP TRIP 
+			  JOIN TCS_IPASS_MASTER IPASS
+			  ON TRIP.TRUCK_NO = IPASS.TRUCK_NO AND TRIP.PURPOSE = 'SCH_COLL'
+			  WHERE CLOSED = 'N' AND TRIP.TRUCK_STATE IN('A', 'D') AND (
+			    SELECT TRUCK_DOCK FROM TCS_DOCK_ALLOCATION ALLOC WHERE ALLOC.TRIP_ID = TRIP.TRIP_ID
+			  ) IS NOT NULL AND IPASS.CUST_NO = BLK.CUST_NO
+			) insideTerminal
+			FROM TCS_DOCK_BLOCK BLK
+			WHERE
+			SYSDATE >= FROM_DT AND SYSDATE < TO_DT AND BLOCK_TYPE IN('SCH', 'SCU')
+		]]>
+	</select>
+	<!-- Get Latest SCH Block for Update After Entering/Exiting the Terminal -->
+	<select id="sqlTcsGetSCHDockBlock" parameterClass="java.lang.Integer"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockBlockBO">
+		<![CDATA[
+			SELECT DOCK_BLOCK_ID dockBlockId, BLOCK_TYPE blockType,
+			MAXIMUM_ALLOWED maximumAllowed,
+			BLK.FROM_DT startDateTime, BLK.TO_DT endDateTime, 
+			BLK.CUST_NO custNo, BLK.DOCK_BLOCK_SEGMENT dockBlockSegment, (
+			  SELECT COUNT(TRIP.TRIP_ID)
+			  FROM TRUCK_TRIP TRIP 
+			  JOIN TCS_IPASS_MASTER IPASS
+			  ON TRIP.TRUCK_NO = IPASS.TRUCK_NO AND TRIP.PURPOSE = 'SCH_COLL'
+			  WHERE CLOSED = 'N' AND TRIP.TRUCK_STATE IN('A', 'D') AND (
+			    SELECT TRUCK_DOCK FROM TCS_DOCK_ALLOCATION ALLOC WHERE ALLOC.TRIP_ID = TRIP.TRIP_ID
+			  ) IS NOT NULL AND IPASS.CUST_NO = BLK.CUST_NO
+			) insideTerminal
+			FROM TCS_DOCK_BLOCK BLK
+			WHERE
+			SYSDATE >= FROM_DT AND SYSDATE < TO_DT AND BLOCK_TYPE IN('SCH', 'SCU') AND BLK.DOCK_BLOCK_ID = #PARAM#
+		]]>
+	</select>
+	<!-- Close All Invalid Trips -->
+	<update id="sqlUpdateCloseOldTrips" parameterClass="java.lang.String">
+		<![CDATA[
+			UPDATE TRUCK_TRIP TRIP
+			SET CLOSED = 'Y', TRIP_CLOSED = 'Y', CLOSE_TIME = SYSDATE,	CLOSE_USER_ID =	#PARAM#, 
+			LM_USER_ID = #PARAM#, LM_DATE = SYSDATE
+			WHERE (CLOSED = 'N' OR TRIP_CLOSED = 'N') AND ((
+			    SYSDATE  > NVL((SELECT EVT.TERMINAL_EXIT_TIME FROM TRUCK_TRIP_EVENTS EVT WHERE EVT.TRIP_ID = TRIP.TRIP_ID), SYSDATE - 1)
+			    AND CURR_LOC = 'TMX'
+			  ) OR (
+			    (SYSDATE - (NVL((SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'TCS_ALLOWED_AFTER_TPX'), 15)/24/60)) > 
+			    		NVL((SELECT EVT.LEAVE_TRUCKPARK_TIME FROM TRUCK_TRIP_EVENTS EVT WHERE EVT.TRIP_ID = TRIP.TRIP_ID), SYSDATE - 1)  
+			      AND CURR_LOC = 'TPX' AND PURPOSE NOT IN('SHC', 'VAL') AND (
+			      	SELECT MAX(TRUCK_DOCK) FROM TCS_DOCK_ALLOCATION WHERE NVL(TRIP_ID, 0) = TRIP.TRIP_ID
+			      ) IS NULL
+			  ) OR (
+			       CURR_LOC IS NULL AND (
+			       		SELECT COUNT(1) FROM TCS_DOCK_ALLOCATION ALLOC WHERE ALLOC.TRIP_ID = TRIP.TRIP_ID
+			       ) = 0 AND SYSDATE > (NVL(ARR_TIME, SYSDATE-1) + (15/24/60))
+			  ) OR ((
+			  	 	(SELECT EVT.TRUCK_PARK_ENTRY_TIME FROM TRUCK_TRIP_EVENTS EVT WHERE EVT.TRIP_ID = TRIP.TRIP_ID) + 
+			     		(NVL((SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'TCS_DOCKET_EXPIRY'), 24)/24)
+			     ) < SYSDATE AND (
+			     	(TRIP.DOCKET_NO IS NOT NULL AND TRIP.TRUCK_NO IS NULL) OR (
+			     		TRIP.DOCKET_NO IS NOT NULL AND TRIP.TRUCK_NO IS NOT NULL AND (
+			     			SELECT COUNT(1) FROM TCS_IPASS_MASTER IPASS WHERE IPASS.TRUCK_NO = TRIP.TRUCK_NO
+			     		) = 0
+			     	)
+			     )
+			  ) OR (
+			    (SELECT COUNT(1) FROM TRUCK_TRIP_EVENTS EVT WHERE EVT.TRIP_ID = TRIP.TRIP_ID) = 0
+			  ) OR (
+			  	(
+			  		SELECT COUNT(1) FROM TCS_IPASS_MASTER IPASS
+			  		WHERE TRUCK_CATEGORY NOT IN('REFUGE', 'SERVICE', 'VIP') AND IPASS.TRUCK_NO = TRIP.TRUCK_NO AND TRIP.CLOSED = 'Y'
+			  	) > 0
+			  )
+			)
+		]]>
+	</update>
+	<!-- Find Trucks in Queue for Dock Allocation (Scheduler) -->
+	<select id="sqlTcsGetTruckTripInQueueForBatch" resultClass="cargo.cms.tcs.truckdock.bo.TruckTripBO">
+  		<![CDATA[
+			SELECT 
+			TRIP.TRIP_ID tripId, TRIP.TRUCK_NO truckNo, TRIP.ARR_TIME arrivedDateTime, TRIP.PURPOSE purpose, TRIP.TRUCK_QUEUE_IND truckQueueInd,
+		    TRIP.INCOMING_REASON incomingReason, TRIP.ALLOCATION_DURATION allocationDuration, TRIP.CURR_LOC currentLocn,
+		    TRIP.SH_AGT_CODE shAgtCode, TRIP.CLOSED closed, TRIP.DOCKET_NO docketNo,
+		    TRIP.TRUCK_DOCK truckDock, IPASS.IPASS_NO ipassNo, IPASS.IPASS_TYPE ipassType, TRIP.PREFERRED_LEVEL preferredLevel,
+		    TRIP.TRUCK_STATE truckState, TRIP.DOCK_RELEASED dockReleased, 
+		    TRIP.CLOSE_USER_ID closedUserId, TRIP.CLOSE_TIME closedDateTime, 
+		    TRIP.DOCK_SEGMENT dockSegment, TRIP.DOCK_BLOCK_ID dockBlockId, TRIP.DERIVED_PURPOSE derivedPurpose
+		    FROM TRUCK_TRIP TRIP
+		    LEFT JOIN TCS_IPASS_MASTER IPASS
+		    ON IPASS.TRUCK_NO = TRIP.TRUCK_NO
+		    WHERE 
+	      	CLOSED = 'N' AND TRUCK_QUEUE_IND = 'Y' AND CURR_LOC = 'TPA'
+	      	ORDER BY QUEUE_ORDER_NO
+      	]]>
+	</select>
+	<!-- Get list of Truck Docks which are not Occupied the Truck Dock -->
+	<select id="sqlTCSGetAllocatedDocksNotOccupied" parameterClass="java.lang.String"
+		resultClass="cargo.cms.tcs.truckdock.bo.TruckDockBO">
+		<![CDATA[
+			SELECT
+			ALLOC.TRUCK_DOCK truckDock, ALLOC.TRIP_ID tripId,
+			ALLOC.ALLOCATED_FROM allocFrom, ALLOC.ALLOCATED_TILL allocTill
+			FROM TCS_DOCK_ALLOCATION ALLOC
+			JOIN TRUCK_TRIP TRIP
+			ON ALLOC.TRIP_ID = TRIP.TRIP_ID
+			JOIN TRUCK_TRIP_EVENTS EVT
+			ON TRIP.TRIP_ID = EVT.TRIP_ID
+			WHERE TRIP.CLOSED = 'N' AND (
+			  ALLOC.ALLOCATED_FROM + (
+			    NVL((SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'TCS_TPE_TO_TD_OCCUPY_DURATION'), 15) / 24 / 60
+			  )
+			) < SYSDATE AND 
+			ALLOC.STATUS = 'ALLOCATED' AND  EVT.DOCK_OCCUPY_TIME IS NULL AND
+			NVL(TRIP.INCOMING_REASON, 'NO') NOT IN('VAL', 'FOL', 'CON', 'SCH')
+		]]>
+	</select>
+	<!-- Gets Unused Booking Pools -->
+	<select id="sqlTCSGetUnusedBookingPool" parameterClass="java.lang.String"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockPoolBookingBO">
+		<![CDATA[
+			WITH BKG AS (
+			  SELECT 
+			  TR_NO, POOL_ID, 
+			  (REQ_DOCK_COUNT - ALLOCATED_DOCK_COUNT) DOCKS, REQ_DOCK_COUNT, ALLOCATED_DOCK_COUNT,
+			  START_TIMESLOT,
+			  START_TIMESLOT - NVL((
+			    SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'BKG_TRUCK_ARRIVAL_BEFORE_MIN'
+			  ), 0)/24/60 AS TRUCK_BEFORE_TIME,
+			  END_TIMESLOT,
+			  START_TIMESLOT + (15 + NVL((
+				SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'BKG_TRUCK_ARRIVAL_AFTER_MIN'
+			  ), 0))/24/60 AS TRUCK_AFTER_TIME			  
+			  FROM TCS_DOCK_POOL_BOOKING BKG
+			  WHERE 
+			  BOOKING_TYPE = 'BKG' AND ALLOCATED_DOCK_COUNT < REQ_DOCK_COUNT AND 
+			  SYSDATE BETWEEN START_TIMESLOT AND END_TIMESLOT
+			)
+			SELECT TR_NO trNo, POOL_ID poolId, 
+			REQ_DOCK_COUNT requiredDockCount, ALLOCATED_DOCK_COUNT allocatedDockCount,
+			START_TIMESLOT startTimeSlot, END_TIMESLOT endTimeSlot,
+			CASE 
+				WHEN TO_CHAR(START_TIMESLOT, 'DDMONYY') = TO_CHAR(END_TIMESLOT, 'DDMONYY') THEN 'N' 
+				ELSE 'Y' 
+			END overlapStatus
+			FROM BKG
+			WHERE SYSDATE > TRUCK_AFTER_TIME AND DOCKS > 0
+		]]>
+	</select>
+	<!-- Update the Booking Pool -->
+	<update id="sqlTCSRevertBkgDockCount" parameterClass="cargo.cms.tcs.truckdock.bo.DockPoolBookingBO">
+		<![CDATA[
+			UPDATE TCS_DOCK_POOL_BOOKING
+			SET 
+			REQ_DOCK_COUNT = REQ_DOCK_COUNT - 1,
+			LM_USER_ID = #modifiedUserId#, LM_DATE = SYSDATE
+			WHERE TR_NO = #trNo#
+		]]>
+	</update>
+	<!-- Get list of Trucks Over stayed -->
+	<select id="sqlTcsGetOverStayTrucks" parameterClass="java.lang.String"
+		resultClass="cargo.cms.tcs.truckdock.bo.TruckDockBO">
+		<![CDATA[
+			SELECT 
+			ALLOC.TRUCK_DOCK truckDock, ALLOC.STATUS allocStatus,  ALLOC.ALLOCATION_DURATION allocDuration,
+			ALLOC.TRUCK_NO truckNo, ALLOC.TRIP_ID tripId, ALLOC.ALLOCATED_FROM allocFrom,
+			ALLOC.ALLOCATED_TILL allocTill, DECODE(SPL.PURPOSE, NULL, POOL.POOL_ID, NULL) poolId,
+			ALLOC.PROXIMITY_FACTOR proximityFactor, ALLOC.OCCUPIED dockOccupied, SPL.PURPOSE blockedReason
+			FROM 
+			TCS_DOCK_ALLOCATION ALLOC
+			JOIN TCS_DOCK_MASTER MASTER
+			ON MASTER.TRUCK_DOCK = ALLOC.TRUCK_DOCK
+			JOIN TCS_DOCK_POOL_DOCK DOCK
+			ON DOCK.TRUCK_DOCK = ALLOC.TRUCK_DOCK
+			JOIN TCS_DOCK_POOL POOL
+			ON POOL.POOL_ID = DOCK.POOL_ID
+			LEFT JOIN V_TCS_SPECIAL_PURPOSE_DOCKS SPL
+			ON SPL.TRUCK_DOCK = DOCK.TRUCK_DOCK AND
+			SYSDATE BETWEEN SPL.FROM_DT AND SPL.TO_DT AND SPL.PURPOSE IN ('RES','SCH','SCU')      
+			WHERE
+			ALLOC.STATUS = 'ALLOCATED' AND ALLOC.OCCUPIED = 'Y' AND	ALLOC.TRUCK_NO IS NOT NULL AND ALLOC.TRIP_ID IS NOT NULL AND
+			ALLOC.ALLOCATED_TILL < SYSDATE AND SYSDATE BETWEEN DOCK.FROM_DT AND DOCK.TO_DT
+	  	]]>
+	</select>
+	<!-- Get Current Time Slot of Over stay Truck -->
+	<select id="sqlTcsGetTimeSlotForOverStayTrucks" parameterClass="java.lang.Long"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockPoolSlotBO">
+		<![CDATA[
+			SELECT 
+   			POOL_ID poolId, TIMESLOT timeSlot, BK_UNALLOCATED bkUnAllocated,
+			ALLOCATED allocated, UNALLOCATED unAllocated	
+    		FROM 
+	    	TCS_DOCK_POOL_TIMESLOT
+			WHERE
+			TIMESLOT = SYSDATE - MOD(TO_NUMBER(TO_CHAR(SYSDATE,'MI')),15)/1440 AND POOL_ID = #POOL_ID#
+		]]>
+	</select>
+	<!-- Get Current Time Slot of Over stay Truck -->
+	<select id="sqlGetTCSProximityFactor" parameterClass="java.lang.String"
+		resultClass="java.lang.Double">
+		<![CDATA[
+			WITH TRIP AS (
+			  SELECT TRIP.DOCK_SEGMENT, TRIP.CURR_LOC, MAST.DOCK_LEVEL, MAST.TRUCK_DOCK,
+			  CASE
+			    WHEN TRIP.CURR_LOC = 'L1' THEN EVT.LVL2_RAMP_CHKPT_TIME
+			    WHEN TRIP.CURR_LOC = 'L2' THEN EVT.LVL2_RAMP_CHKPT_TIME
+			    WHEN TRIP.CURR_LOC = 'L3E' THEN EVT.LVL3_RAMP_CHKPT_TIME
+			    WHEN TRIP.CURR_LOC = 'L3N' THEN EVT.LVL3_EAST_CHKPT_TIME
+			    WHEN TRIP.CURR_LOC = 'L3W' THEN EVT.LVL3_WEST_CHKPT_TIME
+			    WHEN TRIP.CURR_LOC = 'L5E' THEN EVT.LVL5_RAMP_CHKPT_TIME
+			    WHEN TRIP.CURR_LOC = 'L5N' THEN EVT.LVL5_EAST_CHKPT_TIME
+			    WHEN TRIP.CURR_LOC = 'L5W' THEN EVT.LVL5_WEST_CHKPT_TIME
+			    WHEN TRIP.CURR_LOC = 'L7' THEN EVT.LVL7_UP_CHKPT
+			    WHEN TRIP.CURR_LOC = 'L7X' THEN EVT.LVL7_DOWN_CHKPT
+			  END LAST_LOC_TIME, EVT.DOCK_OCCUPY_TIME
+			  FROM TRUCK_TRIP TRIP
+			  JOIN TRUCK_TRIP_EVENTS EVT
+			  ON TRIP.TRIP_ID = EVT.TRIP_ID
+			  JOIN TCS_DOCK_ALLOCATION ALLOC
+			  ON TRIP.TRIP_ID = ALLOC.TRIP_ID AND ALLOC.TRUCK_DOCK = #PARAM#
+			  JOIN TCS_DOCK_MASTER MAST
+			  ON ALLOC.TRUCK_DOCK = MAST.TRUCK_DOCK
+			  WHERE CLOSED = 'N'
+			),
+			ROUTE AS (
+			  SELECT SEG.SEGMENT_ID, SEG.ENTRY_LOCATION_CODE, SEG.DOCK_LEVEL, PATH.PATH_SEQUENCE
+			  FROM TCS_TERMINAL_SEGMENT SEG
+			  JOIN TCS_SEGMENT_PATH PATH
+			  ON SEG.ENTRY_LOCATION_CODE = PATH.SENSORY_LOCATION_CODE
+			  WHERE PATH.SEGMENT_ID = (SELECT DOCK_SEGMENT FROM TRIP) AND PATH.ON_WAY_IN_OUT = 'IN'
+			  ORDER BY PATH.PATH_SEQUENCE
+			),
+			DURATIONS AS (
+			  SELECT (NUM * 1.3) + 45 TO_DOCK_DURATION , LOC_DURATION
+			  FROM (
+			    SELECT ROWNUM NUM, TRUCK_DOCK, LOC_DURATION
+			    FROM (
+			      SELECT DOCK.TRUCK_DOCK, DOCK.DOCK_LEVEL, DOCK.SIDE, ((TRIP.DOCK_OCCUPY_TIME - TRIP.LAST_LOC_TIME) * (1440 * 60)) LOC_DURATION
+			      FROM TCS_DOCK_MASTER DOCK
+			      JOIN TRIP
+			      ON DOCK.DOCK_LEVEL = TRIP.DOCK_LEVEL
+			      WHERE NVL(DOCK.SIDE, 0) = NVL((
+			        CASE
+			          WHEN INSTR(TRIP.DOCK_SEGMENT, 'E') = 3 THEN 'E'
+			          WHEN INSTR(TRIP.DOCK_SEGMENT, 'W') = 3 THEN 'W'
+			          ELSE NULL
+			        END
+			      ), 0)
+			      ORDER BY DOCK.TRUCK_DOCK
+			    ) DOCK
+			  ) WHERE TRUCK_DOCK = (SELECT TRIP.TRUCK_DOCK FROM TRIP)
+			)
+			SELECT
+			  CASE
+			    WHEN TRIP.DOCK_SEGMENT <> TRIP.CURR_LOC THEN
+			      CASE
+			        WHEN (SELECT COUNT(1) FROM ROUTE WHERE ROUTE.SEGMENT_ID = TRIP.CURR_LOC) = 0 THEN 0.0       
+			        ELSE ((
+			          80.0 / (
+			            SELECT HOPS FROM TCS_TERMINAL_SEGMENT_HOPS WHERE FROM_SEGMENT_ID = 'L1' AND TO_SEGMENT_ID = TRIP.DOCK_SEGMENT
+			          )) * (
+			              SELECT COUNT(1) FROM ROUTE WHERE PATH_SEQUENCE > (
+			                SELECT PATH_SEQUENCE FROM ROUTE WHERE ROUTE.SEGMENT_ID = TRIP.CURR_LOC
+			              )
+			          )
+			        )
+			      END
+			    ELSE (
+			        SELECT 
+			          CASE
+			            WHEN LOC_DURATION >= (TO_DOCK_DURATION - 15) AND LOC_DURATION <= (TO_DOCK_DURATION + 15) THEN 99.9
+			            WHEN LOC_DURATION >= (TO_DOCK_DURATION - 15) AND LOC_DURATION <= (TO_DOCK_DURATION + 30) THEN 95.0
+			            WHEN LOC_DURATION >= (TO_DOCK_DURATION - 15) AND LOC_DURATION <= (TO_DOCK_DURATION + 45) THEN 90.0
+			            WHEN LOC_DURATION >= (TO_DOCK_DURATION - 15) AND LOC_DURATION <= (TO_DOCK_DURATION + 60) THEN 85.0
+			            ELSE 80.0
+			          END
+			        FROM DURATIONS
+			    )
+			  END FACTOR
+			FROM DUAL
+			JOIN TRIP
+			ON TRIP.DOCK_SEGMENT IS NOT NULL
+		]]>
+	</select>
+	<!-- Update Proximity Factor -->
+	<update id="sqlTCSUpdateProximityFactor" parameterClass="java.util.Map">
+  		<![CDATA[
+	  		UPDATE TCS_DOCK_ALLOCATION
+	  		SET PROXIMITY_FACTOR = ROUND(#PROXIMITY_FACTOR#, 2),
+	  		LM_USER_ID = #LM_USER_ID#, LM_DATE = SYSDATE
+	  		WHERE TRUCK_DOCK = #TRUCK_DOCK#
+		]]>
+	</update>
+	<!-- Verify whether Truck is Leaving Without Dock Release -->
+	<select id="sqlGetTCSIsTruckLeavingWORelease" parameterClass="java.util.Map"
+		resultClass="java.lang.String">
+  		<![CDATA[
+			SELECT DECODE(COUNT(1), 0, 'N', 'Y')
+			FROM TCS_SEGMENT_PATH PATH
+			JOIN TRUCK_TRIP TRIP
+			ON PATH.SEGMENT_ID = DECODE(TRIP.DOCK_SEGMENT, 'L1SR', 'L1', TRIP.DOCK_SEGMENT)
+			JOIN TRUCK_TRIP_EVENTS EVT
+			ON TRIP.TRIP_ID = EVT.TRIP_ID
+			WHERE PATH.ON_WAY_IN_OUT = 'OUT' AND TRIP.CLOSED = 'N' AND TRIP.TRIP_ID = #TRIP_ID#
+			AND PATH.SENSORY_LOCATION_CODE = (
+			  SELECT SENSORY_LOCATION_CODE FROM TCS_SENSORY_LOCATION WHERE SENSORY_CODE = #SENSORY_CODE#
+			)
+        ]]>
+	</select>
+	<!-- Swap Dock - Revert the Dock Pool with Old Allocation -->
+	<update id="sqlTCSRevertSwapDockPool" parameterClass="java.util.Map">
+    	<![CDATA[
+			UPDATE TCS_DOCK_POOL_TIMESLOT TIMESLOT
+			SET ALLOCATED = ALLOCATED - (
+			  CASE WHEN ALLOCATED > 0 THEN 1 ELSE 0 END
+			), UNALLOCATED = UNALLOCATED + (
+			  CASE WHEN ALLOCATED > 0 THEN 1 ELSE 0 END
+			),
+			LM_USER_ID = #LM_USER_ID#, LM_DATE = SYSDATE
+			WHERE POOL_ID = (
+			  SELECT POOL_ID
+			  FROM TCS_DOCK_POOL_DOCK DOCK
+			  WHERE TRUCK_DOCK = #TRUCK_DOCK# AND SYSDATE BETWEEN FROM_DT AND TO_DT
+			) AND TIMESLOT BETWEEN 
+				TO_DATE(TO_CHAR(SYSDATE - MOD(TO_NUMBER(TO_CHAR(SYSDATE, 'MI')), 15) / 1440, 'DDMONYY HH24:MI'), 'DDMONYY HH24:MI') AND (
+					SELECT ALLOC.ALLOCATED_TILL FROM TCS_DOCK_ALLOCATION ALLOC WHERE TRUCK_DOCK = #TRUCK_DOCK# AND ALLOC.STATUS = 'ALLOCATED'
+				)
+		]]>
+	</update>
+	<!-- Swap Dock - Update the Dock Pool with New Allocation -->
+	<update id="sqlTCSUpdateSwapDockPool" parameterClass="java.util.Map">
+		<![CDATA[
+	    	UPDATE TCS_DOCK_POOL_TIMESLOT TIMESLOT
+			SET ALLOCATED = ALLOCATED + (
+				CASE WHEN UNALLOCATED > 0 THEN 1 ELSE 0 END
+			), UNALLOCATED = UNALLOCATED - (
+				CASE WHEN UNALLOCATED > 0 THEN 1 ELSE 0 END
+			),
+			LM_USER_ID = #LM_USER_ID#, LM_DATE = SYSDATE
+			WHERE POOL_ID = (
+			  SELECT POOL_ID
+			  FROM TCS_DOCK_POOL_DOCK DOCK
+			  WHERE TRUCK_DOCK = #TRUCK_DOCK# AND SYSDATE BETWEEN FROM_DT AND TO_DT
+			) AND TIMESLOT BETWEEN 
+				TO_DATE(TO_CHAR(SYSDATE - MOD(TO_NUMBER(TO_CHAR(SYSDATE, 'MI')), 15) / 1440, 'DDMONYY HH24:MI'), 'DDMONYY HH24:MI') AND (
+					SELECT ALLOC.ALLOCATED_TILL FROM TCS_DOCK_ALLOCATION ALLOC WHERE TRUCK_DOCK = #TRUCK_DOCK# AND ALLOC.STATUS = 'ALLOCATED'
+				)
+		]]>
+	</update>
+	<!-- Update Dock Allocation for Swap Allocation -->
+	<update id="sqlTCSUpdateSwapDockAllocation" parameterClass="cargo.cms.tcs.truckdock.bo.TruckDockBO">
+		<![CDATA[ 
+			UPDATE TCS_DOCK_ALLOCATION
+			SET STATUS = #allocStatus#, 
+			TRUCK_NO = #truckNo#, TRIP_ID = #tripId#,
+			ALLOCATION_DURATION = NVL(#allocDuration#, 0),
+			PROXIMITY_FACTOR = DECODE(#allocStatus#, 'ALLOCATED', 99.9, 0.0),
+			BLOCKED_REASON = 'SWAP;' || NVL((SELECT PURPOSE FROM TRUCK_TRIP TRIP WHERE TRIP.CLOSED = 'N' AND TRIP.TRUCK_NO = #truckNo#), 'FREE'),
+		]]>
+		<isNotEmpty property="allocFrom">
+			<![CDATA[ ALLOCATED_FROM = #allocFrom#, ]]>
+		</isNotEmpty>
+		<isNotEmpty property="allocTill">
+			<![CDATA[ ALLOCATED_TILL = #allocTill#, ]]>
+		</isNotEmpty>
+		<isNotEmpty property="blockedFrom">
+			<![CDATA[ BLOCKED_FROM = #blockedFrom#, ]]>
+		</isNotEmpty>
+		<![CDATA[ 
+			LM_USER_ID = #modifiedUserId#, LM_DATE = SYSDATE
+			WHERE TRUCK_DOCK = #truckDock#
+		]]>
+	</update>
+	<!-- Get All the ASAP Reservation Trucks in Queue -->
+	<select id="sqlTCSGetASAPTruckFromQueue" parameterClass="java.lang.String"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockPoolBookingBO">
+		<![CDATA[
+			SELECT
+			TRIP.TRIP_ID tripId, TRIP.TRUCK_NO arrivedTruckNo, TRIP.ARR_TIME arrivedDateTime,
+			TRIP.PURPOSE purpose, RESV.DURATION duration
+			FROM TCS_DOCK_RESV RESV
+			JOIN TRUCK_TRIP TRIP
+			ON RESV.TRUCK_NO = TRIP.TRUCK_NO AND CLOSED = 'N' AND TRIP.CURR_LOC = 'TPA'
+			WHERE RESV.TRUCK_DOCK = #PARAM# AND RESV.RESV_FROM IS NULL AND RESV.RESV_TO IS NULL AND RESV.ALLOCATED = 'N'
+			ORDER BY TRIP.ARR_TIME
+		]]>
+	</select>
+	<!-- Update the Dock Reserve Allocation Status for ASAP -->
+	<update id="sqlTCSUpdateASAPDockReserveStatus" parameterClass="java.util.Map">
+		<![CDATA[
+			UPDATE TCS_DOCK_RESV
+			SET ALLOCATED = 'Y',
+			LM_USER_ID = #LM_USER_ID#, LM_DATE = SYSDATE
+			WHERE TR_NO IN (
+				SELECT TR_NO 
+				FROM TCS_DOCK_RESV RESV
+				JOIN TCS_DOCK_ALLOCATION ALLOC
+				ON RESV.TRUCK_DOCK = ALLOC.TRUCK_DOCK AND (ALLOC.TRUCK_NO = RESV.TRUCK_NO OR RESV.TRUCK_NO IS NULL) AND ALLOC.STATUS = 'ALLOCATED'
+				WHERE RESV.TRUCK_DOCK = #TRUCK_DOCK# AND RESV.ALLOCATED = 'N' AND RESV.RESV_FROM IS NULL AND RESV.RESV_TO IS NULL
+			)
+		]]>
+	</update>
+	<!-- Reset ASAP Allocation -->
+	<delete id="sqlUpdateResetASAPAlloc" parameterClass="java.lang.String">
+		<![CDATA[
+			DELETE FROM TCS_DOCK_RESV
+			WHERE RESV_FROM IS NULL AND RESV_TO IS NULL AND (
+			  TR_NO NOT IN (
+			    SELECT RESV.TR_NO
+			    FROM TCS_DOCK_RESV RESV
+			    JOIN TCS_DOCK_ALLOCATION ALLOC
+			    ON RESV.TRUCK_DOCK = ALLOC.TRUCK_DOCK
+			    JOIN TCS_DOCK_MASTER DOCK
+			    ON RESV.TRUCK_DOCK = DOCK.TRUCK_DOCK AND DOCK.IN_SERVICE = 'Y'
+			    WHERE RESV_FROM IS NULL AND RESV_TO IS NULL AND (
+			    	RESV.CR_DATE > ALLOC.ALLOCATED_FROM OR ALLOC.STATUS = 'FREE'
+			    )
+			  )	
+			  OR ((CR_DATE + 1) < SYSDATE)
+			)
+		]]>
+	</delete>
+	<!-- ULD Schedule Collection Booking Detail -->
+	<select id="sqlTCSGetULDScheduleCollectionBkgDtl"
+		parameterClass="java.lang.String" resultClass="cargo.cms.tcs.truckdock.bo.DockPoolBookingBO">
+		<![CDATA[
+			SELECT BK.TR_NO trNo, BK.POOL_ID poolId, BK.PURPOSE purpose, BK.DURATION duration, BK.START_TIMESLOT startTimeSlot,
+			BK.END_TIMESLOT endTimeSlot, BK.TRUCK_NO_1 truckNo1, BK.TRUCK_NO_2 truckNo2, BK.TRUCK_NO_3 truckNo3, BK.TRUCK_NO_4 truckNo4,
+			BK.TRUCK_NO_5 truckNo5, BK.TRUCK_NO_6 truckNo6, BK.TRUCK_DOCK_1 truckDock1,
+			BK.TRUCK_DOCK_2 truckDock2, #TRUCK_NO# arrivedTruckNo, SYSDATE arrivedDateTime, REQ_DOCK_COUNT requiredDockCount,
+			ALLOCATED_DOCK_COUNT allocatedDockCount, BOOKING_TYPE bookingType
+			FROM TCS_DOCK_POOL_BOOKING BK 
+			JOIN TCS_DOCK_POOL POOL
+			ON POOL.POOL_ID = BK.POOL_ID
+			WHERE #PARAM# IN (BK.TRUCK_NO_1, BK.TRUCK_NO_2,BK.TRUCK_NO_3, BK.TRUCK_NO_4,BK.TRUCK_NO_5, BK.TRUCK_NO_6) AND
+			SYSDATE BETWEEN BK.START_TIMESLOT AND BK.END_TIMESLOT AND BOOKING_TYPE = 'SCU' AND ROWNUM = 1
+		]]>
+	</select>
+	<!-- Get All the Schedule Collection Trucks in Queue from Particular Block -->
+	<select id="sqlTCSGetSchCollTruckFromQueueForBlock"
+		parameterClass="java.lang.Long" resultClass="cargo.cms.tcs.truckdock.bo.DockPoolBookingBO">
+		<![CDATA[
+			SELECT
+			TRIP.TRIP_ID tripId, TRIP.TRUCK_NO arrivedTruckNo, TRIP.ARR_TIME arrivedDateTime,
+			TRIP.PURPOSE purpose, PURP.ALLOCATION_DURATION duration
+			FROM TRUCK_TRIP TRIP
+			JOIN TCS_DOCK_BLOCK BLK
+			ON TRIP.INCOMING_REASON = BLK.BLOCK_TYPE
+			JOIN MAST_TCS_INCOMING_PURPOSE PURP
+			ON TRIP.PURPOSE = PURP.CODE AND TRIP.PURPOSE = 'SCH_COLL'
+			JOIN TCS_IPASS_MASTER IPASS
+			ON TRIP.TRUCK_NO = IPASS.TRUCK_NO			
+			WHERE TRIP.CLOSED = 'N' AND NVL(TRIP.TRUCK_QUEUE_IND, 'N') = 'Y' AND TRIP.CURR_LOC = 'TPA' AND
+			BLK.CUST_NO = IPASS.CUST_NO AND BLK.DOCK_BLOCK_ID = #PARAM#
+			ORDER BY TRIP.QUEUE_ORDER_NO
+		]]>
+	</select>
+	<!-- Get All the Booking Trucks in Queue from Particular Pool -->
+	<select id="sqlTCSGetPriorityBkTruckFromQueuePool"
+		parameterClass="java.lang.Long" resultClass="cargo.cms.tcs.truckdock.bo.DockPoolBookingBO">
+		<![CDATA[
+			SELECT TRIP.TRIP_ID tripId, BK.TR_NO trNo, TRIP.TRUCK_NO arrivedTruckNo, TRIP.ARR_TIME arrivedDateTime,
+			BK.POOL_ID poolId, TRIP.PURPOSE purpose, BK.DURATION duration, BK.PURPOSE bkgPurpose,
+			BK.START_TIMESLOT startTimeSlot, BK.END_TIMESLOT endTimeSlot,
+			CASE 
+			  WHEN (
+			    SELECT COUNT(1) FROM IMP_BOOKING IMP WHERE IMP.POOL_ID = BK.TR_NO
+			  ) > 0 THEN 'IMP'
+			  WHEN (
+			    SELECT COUNT(1) FROM EXP_BOOKING EXP WHERE EXP.POOL_ID = BK.TR_NO
+			  ) > 0 THEN 'EXP'
+			  ELSE 'NO'
+			END purposeCategory			
+			FROM
+			TRUCK_TRIP TRIP
+			JOIN TCS_DOCK_POOL_BOOKING BK
+			ON TRIP.TRUCK_NO IN (BK.TRUCK_NO_1, BK.TRUCK_NO_2, BK.TRUCK_NO_3, BK.TRUCK_NO_4, BK.TRUCK_NO_5, BK.TRUCK_NO_6)
+			JOIN TCS_DOCK_POOL POOL
+			ON POOL.POOL_ID = BK.POOL_ID
+			WHERE
+			TRIP.CLOSED = 'N' AND NVL(TRIP.TRUCK_QUEUE_IND, 'N') = 'Y' AND TRIP.CURR_LOC = 'TPA' AND
+			TRIP.INCOMING_REASON = 'BKG' AND POOL.POOL_ID = #POOL_ID#
+			ORDER BY TRIP.QUEUE_ORDER_NO
+		]]>
+	</select>
+	<!-- Get All the Booking Trucks in Queue from Particular Zone -->
+	<select id="sqlTCSGetPriorityBkTruckFromQueueZone"
+		parameterClass="java.lang.Long" resultClass="cargo.cms.tcs.truckdock.bo.DockPoolBookingBO">
+		<![CDATA[
+			SELECT TRIP.TRIP_ID tripId, BK.TR_NO trNo, TRIP.TRUCK_NO arrivedTruckNo, TRIP.ARR_TIME arrivedDateTime,
+			BK.POOL_ID poolId, TRIP.PURPOSE purpose, BK.DURATION duration, BK.PURPOSE bkgPurpose,
+			BK.START_TIMESLOT startTimeSlot, BK.END_TIMESLOT endTImeSlot,
+			CASE 
+			  WHEN (
+			    SELECT COUNT(1) FROM IMP_BOOKING IMP WHERE IMP.POOL_ID = BK.TR_NO
+			  ) > 0 THEN 'IMP'
+			  WHEN (
+			    SELECT COUNT(1) FROM EXP_BOOKING EXP WHERE EXP.POOL_ID = BK.TR_NO
+			  ) > 0 THEN 'EXP'
+			  ELSE 'NO'
+			END purposeCategory
+			FROM
+			TRUCK_TRIP TRIP
+			JOIN TCS_DOCK_POOL_BOOKING BK
+			ON TRIP.TRUCK_NO IN (BK.TRUCK_NO_1, BK.TRUCK_NO_2, BK.TRUCK_NO_3, BK.TRUCK_NO_4, BK.TRUCK_NO_5, BK.TRUCK_NO_6)
+			JOIN TCS_DOCK_POOL POOL
+			ON POOL.POOL_ID = BK.POOL_ID
+			WHERE
+			TRIP.CLOSED = 'N' AND NVL(TRIP.TRUCK_QUEUE_IND, 'N') = 'Y' AND 
+			TRIP.INCOMING_REASON = 'BKG' AND TRIP.CURR_LOC = 'TPA' AND
+			POOL.ZONE = (
+				SELECT ZONE FROM TCS_DOCK_POOL WHERE POOL_ID = #POOL_ID#
+			) AND POOL.DOCK_LEVEL = (
+				SELECT DOCK_LEVEL FROM TCS_DOCK_POOL WHERE POOL_ID = #POOL_ID#
+			) AND BK.PURPOSE IN (POOL.PURPOSE_1, POOL.PURPOSE_2, POOL.PURPOSE_3, POOL.PURPOSE_4, POOL.PURPOSE_5)
+			ORDER BY TRIP.QUEUE_ORDER_NO
+		]]>
+	</select>
+	<!-- Get All the Walk-in Trucks in Queue from a Particular Pool -->
+	<select id="sqlTCSGetPriorityWiTruckFromQueue" parameterClass="java.lang.Long"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockPoolBookingBO">
+		<![CDATA[
+			SELECT TRIP.TRIP_ID tripId, TRIP.TRUCK_NO arrivedTruckNo, TRIP.ARR_TIME arrivedDateTime,
+			TRIP.PURPOSE purpose, TRIP.ALLOCATION_DURATION duration
+			FROM
+			TRUCK_TRIP TRIP
+			JOIN TCS_DOCK_POOL POOL
+			ON TRIP.DERIVED_PURPOSE IN (POOL.PURPOSE_1, POOL.PURPOSE_2, POOL.PURPOSE_3, POOL.PURPOSE_4, POOL.PURPOSE_5)
+			WHERE
+			TRIP.CLOSED = 'N' AND NVL(TRIP.TRUCK_QUEUE_IND, 'N') = 'Y' AND TRIP.CURR_LOC = 'TPA' AND
+			TRIP.INCOMING_REASON = 'WIN' AND POOL.POOL_ID = #PARAM#
+			ORDER BY TRIP.QUEUE_ORDER_NO
+		]]>
+	</select>
+	<!-- Update Unused Time Slots on Dock Release -->
+	<update id="sqlTCSUpdateUnusedSlotsOnDockRelease"
+		parameterClass="java.util.Map">
+		<![CDATA[	    
+			UPDATE TCS_DOCK_POOL_TIMESLOT
+			SET UNALLOCATED = UNALLOCATED + (
+			  CASE WHEN ALLOCATED > 0 THEN 1 ELSE 0 END
+			), ALLOCATED = ALLOCATED - (
+			  CASE WHEN ALLOCATED > 0 THEN 1 ELSE 0 END
+			),
+			LM_USER_ID = #LM_USER_ID#, LM_DATE = SYSDATE
+			WHERE
+			ROWID IN (
+			  SELECT SLOT.ROWID
+			  FROM TCS_DOCK_POOL_TIMESLOT SLOT
+			  JOIN TCS_DOCK_POOL POOL
+			  ON POOL.POOL_ID = SLOT.POOL_ID
+			  WHERE SLOT.POOL_ID IN (
+			    SELECT POOL_ID 
+			    FROM TCS_DOCK_POOL_DOCK  DOCK
+			    WHERE DOCK.TRUCK_DOCK = #TRUCK_DOCK# AND (
+			      SYSDATE BETWEEN DOCK.FROM_DT AND DOCK.TO_DT OR
+			      (SELECT ALLOCATED_TILL FROM TCS_DOCK_ALLOCATION WHERE TRUCK_DOCK = #TRUCK_DOCK#) BETWEEN DOCK.FROM_DT AND DOCK.TO_DT
+			    )
+			  )
+			  AND SLOT.TIMESLOT > (SYSDATE - 15/1440)
+			  AND SLOT.TIMESLOT <= (SELECT ALLOCATED_TILL FROM TCS_DOCK_ALLOCATION WHERE TRUCK_DOCK = #TRUCK_DOCK#)
+			)		    
+	    ]]>
+	</update>
+	<!-- Update Dock Allocation Status to Free for Unknown Trip -->
+	<update id="sqlTCSFreeUnknownTripAlloc" parameterClass="java.lang.String">
+  		<![CDATA[
+			UPDATE TCS_DOCK_ALLOCATION ALLOC
+			SET TRUCK_NO = NULL, TRIP_ID = NULL,
+      		STATUS = 'FREE',
+			OVERSTAY_IND = NULL,
+			ALLOCATION_DURATION = 0, PROXIMITY_FACTOR = 0,
+			ALLOCATED_FROM = NULL, ALLOCATED_TILL = NULL,
+			LM_USER_ID = 'SYSTEM', LM_DATE = SYSDATE
+			WHERE STATUS = 'ALLOCATED' AND (
+				SELECT TRIP_ID 
+				FROM TRUCK_TRIP TRIP 
+				WHERE CLOSED = 'N' AND TRIP.TRIP_ID = ALLOC.TRIP_ID
+			) IS NULL
+		]]>
+	</update>
+	<!-- Pool for Allocation - Nearest Dock Allocation Method -->
+	<select id="sqlTCSGetPossiblePoolsForNearestWiAlloc"
+		parameterClass="java.util.Map" resultClass="cargo.cms.tcs.truckdock.bo.DockPoolBO">
+		<![CDATA[
+			WITH SLOTS AS (
+			  SELECT POOL.POOL_ID, (
+			    SELECT MIN(DOCK.TRUCK_DOCK) truckDock
+			    FROM
+			    TCS_DOCK_POOL_DOCK DOCK
+			    JOIN TCS_DOCK_ALLOCATION ALLOC
+			    ON ALLOC.TRUCK_DOCK = DOCK.TRUCK_DOCK
+			    JOIN TCS_DOCK_MASTER MASTER
+			    ON MASTER.TRUCK_DOCK = ALLOC.TRUCK_DOCK
+			    WHERE DOCK.POOL_ID = POOL.POOL_ID AND 
+			    MASTER.IN_SERVICE = 'Y' AND NVL(ALLOC.STATUS, 'FREE') = 'FREE' AND NVL(ALLOC.OCCUPIED, 'N') = 'N' AND
+			    DOCK.TRUCK_DOCK NOT IN (
+			      SELECT DOCK.TRUCK_DOCK
+			      FROM V_TCS_SPECIAL_PURPOSE_DOCKS DOCK
+			      WHERE (
+			        SYSDATE BETWEEN DOCK.FROM_DT AND DOCK.TO_DT OR
+			        (SYSDATE + NVL(#DURATION#, 15)/1440) BETWEEN DOCK.FROM_DT AND DOCK.TO_DT OR
+			        DOCK.TO_DT BETWEEN SYSDATE AND (SYSDATE + NVL(#DURATION#, 15)/1440)
+			      ) AND DOCK.PURPOSE IN('SCH', 'SCU', 'RES')
+			    )
+			    AND nvl(MASTER.SIDE,'XX') = NVL(#PREFERRED_SIDE#,nvl(MASTER.SIDE,'XX'))
+			  ) MIN_DOCK_ID,
+			  POOL.DOCK_LEVEL, POOL.ZONE, SLOT.UNALLOCATED, SLOT.TIMESLOT TIMESLOT,
+			  DECODE(POOL.PURPOSE_1, #PURPOSE#, 'X', 'Y') P1,
+			  DECODE(POOL.PURPOSE_2, #PURPOSE#, 'X', 'Y') P2,
+			  DECODE(POOL.PURPOSE_3, #PURPOSE#, 'X', 'Y') P3,
+			  DECODE(POOL.PURPOSE_4, #PURPOSE#, 'X', 'Y') P4,
+			  DECODE(POOL.PURPOSE_5, #PURPOSE#, 'X', 'Y') P5
+			  FROM TCS_DOCK_POOL_TIMESLOT SLOT
+			  JOIN TCS_DOCK_POOL POOL
+			  ON SLOT.POOL_ID = POOL.POOL_ID
+			  WHERE
+			  #PURPOSE# IN(POOL.PURPOSE_1, POOL.PURPOSE_2, POOL.PURPOSE_3, POOL.PURPOSE_4, POOL.PURPOSE_5) AND
+			  SLOT.UNALLOCATED >= 1 AND 
+			  SLOT.TIMESLOT BETWEEN
+			    TO_DATE(TO_CHAR(SYSDATE - MOD(TO_NUMBER(TO_CHAR(SYSDATE, 'MI')), 15) / 1440, 'DDMONYY HH24:MI'), 'DDMONYY HH24:MI') AND
+			    (TO_DATE(TO_CHAR(SYSDATE, 'DDMONYY HH24:MI'), 'DDMONYY HH24:MI') + (((15 * ROUND(NVL(#DURATION#, 15)/15, 1))-1)/24/60))
+		]]>
+		<isNotEmpty property="PREFERRED_LEVEL">
+			<isNotEqual property="PREFERRED_LEVEL" compareValue="0">
+					<![CDATA[ AND POOL.DOCK_LEVEL = #PREFERRED_LEVEL# ]]>
+			</isNotEqual>
+		</isNotEmpty>
+		<isNotEmpty property="PREFERRED_ZONE">
+			<![CDATA[ AND POOL.ZONE = #PREFERRED_ZONE#	]]>
+		</isNotEmpty>
+		<![CDATA[		    
+			)
+			SELECT POOL_ID poolId, MIN_DOCK_ID, DOCK_LEVEL, ZONE, P1, P2, P3, P4, P5
+			FROM SLOTS FINALSLOTS
+			WHERE MIN_DOCK_ID IS NOT NULL AND 
+			FINALSLOTS.TIMESLOT >= TO_DATE(TO_CHAR(SYSDATE - MOD(TO_NUMBER(TO_CHAR(SYSDATE, 'MI')), 15) / 1440, 'DDMONYY HH24:MI'), 'DDMONYY HH24:MI') AND
+			EXISTS (
+			  SELECT COUNT(POOL_ID) CNT, POOL_ID FROM SLOTS
+			  WHERE SLOTS.UNALLOCATED >= 1 AND
+			  SLOTS.POOL_ID IN (
+			    SELECT POOL_ID FROM SLOTS WHERE TIMESLOT = FINALSLOTS.TIMESLOT
+			  )
+			  GROUP BY POOL_ID
+			  HAVING COUNT(POOL_ID) >= NVL(ROUND(ROUND(NVL(#DURATION#, 15)/15, 1)), 1)
+			)
+			GROUP BY POOL_ID, P1, P2, P3, P4, P5, DOCK_LEVEL, ZONE, MIN_DOCK_ID
+			ORDER BY P1, P2, P3, P4, P5, DOCK_LEVEL, ZONE, MIN_DOCK_ID
+		]]>
+	</select>
+	<!-- Booking - Start Time Slot List -->
+	<select id="sqlTCSGetStartTimeSlots" parameterClass="java.util.Map"
+		resultClass="java.util.Date">
+		<![CDATA[
+			WITH SLOTS AS (
+			  SELECT SLOT.POOL_ID, SLOT.UNALLOCATED UNALLOC, SLOT.TIMESLOT TIMESLOT
+			  FROM TCS_DOCK_POOL_TIMESLOT SLOT
+			  JOIN TCS_DOCK_POOL POOL ON SLOT.POOL_ID = POOL.POOL_ID
+			  JOIN TCS_DOCK_POOL_DOCK DOCK ON DOCK.POOL_ID = POOL.POOL_ID 
+			  JOIN TCS_DOCK_MASTER MASTER  ON MASTER.TRUCK_DOCK = DOCK.TRUCK_DOCK
+			  WHERE
+			  #BK_PURPOSE# IN(POOL.PURPOSE_1, POOL.PURPOSE_2, POOL.PURPOSE_3, POOL.PURPOSE_4, POOL.PURPOSE_5) AND 
+			  SLOT.UNALLOCATED >= 1 AND SLOT.TIMESLOT > SYSDATE 
+			  AND nvl(MASTER.SIDE,'XX') = NVL(#PREFERRED_SIDE#,nvl(MASTER.SIDE,'XX')) 
+			  AND SLOT.TIMESLOT BETWEEN TO_DATE(TO_CHAR(#FROM_DATE#, 'DDMONYY'), 'DDMONYY') AND (TO_DATE(TO_CHAR(#TO_DATE#, 'DDMONYY'), 'DDMONYY') + ((1440 - 1)/24/60))
+		]]>
+		<isNotEmpty property="PREFERRED_LEVEL">
+			<isNotEqual property="PREFERRED_LEVEL" compareValue="0">
+					<![CDATA[ AND POOL.DOCK_LEVEL = #PREFERRED_LEVEL# ]]>
+			</isNotEqual>
+		</isNotEmpty>
+		<![CDATA[
+			)
+			SELECT STARTSLOTS.TIMESLOT
+			FROM (
+			  SELECT
+			  TO_DATE(PROC_DATE || ' ' || PROC_TIME1, 'DDMONYY HH24:MI') AS TIMESLOT       
+			  FROM (
+			    SELECT TO_CHAR(FROMDATE + COUNTER, 'DDMONYY') AS PROC_DATE, 
+			    CASE WHEN (TO_NUMBER(TO_CHAR(FROMDATE + COUNTER, 'D')) - 1) = 0 THEN 7 
+			    ELSE TO_NUMBER(TO_CHAR(FROMDATE + COUNTER, 'D')) - 1 
+			    END AS WEEK
+			    FROM (
+			      SELECT TO_DATE(TO_CHAR(#FROM_DATE#, 'DDMONYY'), 'DDMONYY') FROMDATE, TO_DATE(TO_CHAR(#TO_DATE#, 'DDMONYY'), 'DDMONYY') TODATE FROM DUAL
+			    ) DATESEL, XMLTABLE('for $$counter in 0 to xs:int(D) return $$counter'
+			    PASSING XMLELEMENT(D, ROUND(TODATE - FROMDATE))
+			    COLUMNS COUNTER INTEGER PATH '.')			
+			  )
+			  LEFT OUTER JOIN (
+			    SELECT 
+			    TO_CHAR(TO_DATE(TO_CHAR(SYSDATE, 'DDMONYY'), 'DDMONYY') + (((HRS * 60) + MINUTES) / 24 / 60), 'HH24:MI') PROC_TIME1,
+			    TO_CHAR(TO_DATE(TO_CHAR(SYSDATE, 'DDMONYY'), 'DDMONYY') + (((HRS * 60) + (MINUTES + 15)) / 24 / 60), 'HH24:MI') PROC_TIME2
+			    FROM (
+			      SELECT (counter - 1) HRS
+			      FROM DUAL, 
+			      XMLTABLE('for $$counter in 1 to xs:int(TOTAL) return $$counter'
+			      PASSING XMLELEMENT(total, 24) COLUMNS counter INTEGER path '.')
+			    ) HRTAB
+			    LEFT OUTER JOIN (
+			      SELECT 15 * (counter - 1) MINUTES
+			      FROM DUAL, 
+			      XMLTABLE('for $$counter in 1 to xs:int(TOTAL) return $$counter'
+			      PASSING XMLELEMENT(total, 4) COLUMNS counter INTEGER path '.')
+			    ) TIMETAB
+			    ON 1 = 1
+			  )
+			  ON 1 = 1
+			) STARTSLOTS
+			WHERE
+			STARTSLOTS.TIMESLOT > SYSDATE AND NVL(#REQ_DOCK_COUNT#, 0) > 0 AND EXISTS (
+				SELECT COUNT(POOL_ID) CNT, POOL_ID 
+				FROM SLOTS
+				WHERE SLOTS.UNALLOC >= NVL(#REQ_DOCK_COUNT#, 1) AND
+				SLOTS.TIMESLOT BETWEEN STARTSLOTS.TIMESLOT AND (STARTSLOTS.TIMESLOT + (((15 * NVL(#REQ_SLOTS#, 1))-1)/24/60)) AND
+				SLOTS.POOL_ID IN (
+				  SELECT POOL_ID FROM SLOTS WHERE TIMESLOT = STARTSLOTS.TIMESLOT
+				)
+				GROUP BY POOL_ID
+				HAVING COUNT(POOL_ID) >= NVL(#REQ_SLOTS#, 1)
+			)
+			ORDER BY 1
+	    ]]>
+	</select>
+	<!-- Pool List For Booking the Pool (Nearest Dock Allocation) -->
+	<select id="sqlTCSGetNearestPoolListForBooking" parameterClass="java.util.Map"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockPoolSlotBO">
+		<![CDATA[
+			WITH SLOTS AS (
+			  SELECT POOL.POOL_ID, POOL.DOCK_LEVEL, POOL.ZONE, SLOT.UNALLOCATED, SLOT.TIMESLOT TIMESLOT,
+				DECODE(POOL.PURPOSE_1, #BK_PURPOSE#, 'X', 'Y') P1,
+				DECODE(POOL.PURPOSE_2, #BK_PURPOSE#, 'X', 'Y') P2,
+				DECODE(POOL.PURPOSE_3, #BK_PURPOSE#, 'X', 'Y') P3,
+				DECODE(POOL.PURPOSE_4, #BK_PURPOSE#, 'X', 'Y') P4,
+				DECODE(POOL.PURPOSE_5, #BK_PURPOSE#, 'X', 'Y') P5, (
+				    SELECT MIN(DOCK.TRUCK_DOCK) truckDock
+				    FROM
+				    TCS_DOCK_POOL_DOCK DOCK
+				    WHERE DOCK.POOL_ID = POOL.POOL_ID AND DOCK.TRUCK_DOCK NOT IN (
+				      SELECT DOCK.TRUCK_DOCK
+				      FROM V_TCS_SPECIAL_PURPOSE_DOCKS DOCK
+				      WHERE (
+				        TO_DATE(TO_CHAR(#REQ_TIME#, 'DDMONYY HH24:MI'), 'DDMONYY HH24:MI') BETWEEN DOCK.FROM_DT AND DOCK.TO_DT OR 
+				        DOCK.TO_DT BETWEEN TO_DATE(TO_CHAR(#REQ_TIME#, 'DDMONYY HH24:MI'), 'DDMONYY HH24:MI') AND (TO_DATE(TO_CHAR(#REQ_TIME#, 'DDMONYY HH24:MI'), 'DDMONYY HH24:MI') + (15 * NVL(#REQ_SLOTS#, 1))/1440)
+				      ) AND DOCK.PURPOSE IN('SCH', 'SCU', 'RES')
+				    )
+			  	) MIN_DOCK_ID
+			  FROM TCS_DOCK_POOL_TIMESLOT SLOT
+			  JOIN TCS_DOCK_POOL POOL ON SLOT.POOL_ID = POOL.POOL_ID
+			  JOIN TCS_DOCK_POOL_DOCK DOCK ON DOCK.POOL_ID = POOL.POOL_ID 
+			  JOIN TCS_DOCK_MASTER MASTER  ON MASTER.TRUCK_DOCK = DOCK.TRUCK_DOCK
+			  WHERE
+			  #BK_PURPOSE# IN(POOL.PURPOSE_1, POOL.PURPOSE_2, POOL.PURPOSE_3, POOL.PURPOSE_4, POOL.PURPOSE_5) AND 
+			  SLOT.UNALLOCATED >= 1 AND SLOT.TIMESLOT >= TO_DATE(TO_CHAR(SYSDATE, 'DDMONYY HH24:MI'), 'DDMONYY HH24:MI')  
+			  AND nvl(MASTER.SIDE,'XX') = NVL(#PREFERRED_SIDE#,nvl(MASTER.SIDE,'XX')) 
+			  AND SLOT.TIMESLOT BETWEEN TO_DATE(TO_CHAR(#REQ_TIME#, 'DDMONYY HH24:MI'), 'DDMONYY HH24:MI') AND 
+			  	(TO_DATE(TO_CHAR(#REQ_TIME#, 'DDMONYY HH24:MI'), 'DDMONYY HH24:MI') + (((15 * NVL(#REQ_SLOTS#, 1))-1)/24/60))
+		]]>
+		<isNotEmpty property="PREFERRED_LEVEL">
+			<isNotEqual property="PREFERRED_LEVEL" compareValue="0">
+					<![CDATA[ AND POOL.DOCK_LEVEL = #PREFERRED_LEVEL# ]]>
+			</isNotEqual>
+		</isNotEmpty>
+		<![CDATA[
+			)
+			SELECT POOL_ID poolId, DOCK_LEVEL, ZONE, P1, P2, P3, P4, P5, MIN_DOCK_ID
+			FROM SLOTS FINALSLOTS
+			WHERE MIN_DOCK_ID IS NOT NULL AND FINALSLOTS.TIMESLOT >= SYSDATE AND NVL(#REQ_DOCK_COUNT#, 0) > 0 AND
+			EXISTS (
+			  SELECT COUNT(POOL_ID) CNT, POOL_ID 
+			  FROM SLOTS
+			  WHERE SLOTS.UNALLOCATED >= NVL(#REQ_DOCK_COUNT#, 1) AND
+			  SLOTS.POOL_ID IN(
+			    SELECT POOL_ID FROM SLOTS WHERE POOL_ID = FINALSLOTS.POOL_ID AND TIMESLOT = FINALSLOTS.TIMESLOT
+			  )
+			  GROUP BY POOL_ID
+			  HAVING COUNT(POOL_ID) >= NVL(#REQ_SLOTS#, 1)
+			)
+			GROUP BY POOL_ID, P1, P2, P3, P4, P5, DOCK_LEVEL, ZONE, MIN_DOCK_ID
+			ORDER BY P1, P2, P3, P4, P5, DOCK_LEVEL, ZONE, MIN_DOCK_ID	
+		]]>
+	</select>
+	<!-- Other Possible Pools from same Zone and Level of Booked Pool -->
+	<select id="sqlTCSGetPossibleOtherPoolsForBkAlloc"
+		parameterClass="java.util.Map" resultClass="cargo.cms.tcs.truckdock.bo.DockPoolBO">
+		<![CDATA[
+			SELECT POOL.POOL_ID poolId,
+			DECODE(POOL.PURPOSE_1, #PURPOSE#, 'X', 'Y') P1,
+			DECODE(POOL.PURPOSE_2, #PURPOSE#, 'X', 'Y') P2,
+			DECODE(POOL.PURPOSE_3, #PURPOSE#, 'X', 'Y') P3,
+			DECODE(POOL.PURPOSE_4, #PURPOSE#, 'X', 'Y') P4,
+			DECODE(POOL.PURPOSE_5, #PURPOSE#, 'X', 'Y') P5,
+          	POOL.DOCK_LEVEL dockLevel, POOL.ZONE zone,
+          	COUNT(DOCK.TRUCK_DOCK) totalDocks, MIN(DOCK.TRUCK_DOCK) MIN_DOCK_ID
+			FROM
+			TCS_DOCK_POOL_DOCK DOCK
+			JOIN TCS_DOCK_POOL POOL 
+			ON POOL.POOL_ID = DOCK.POOL_ID
+			JOIN TCS_DOCK_ALLOCATION ALLOC 
+			ON ALLOC.TRUCK_DOCK = DOCK.TRUCK_DOCK  
+			JOIN TCS_DOCK_MASTER MASTER 
+			ON MASTER.TRUCK_DOCK = ALLOC.TRUCK_DOCK
+			WHERE DOCK.POOL_ID <> #POOL_ID# AND 
+			SYSDATE BETWEEN DOCK.FROM_DT AND DOCK.TO_DT AND MASTER.DOCK_LEVEL = (
+				SELECT DOCK_LEVEL FROM TCS_DOCK_POOL WHERE POOL_ID = #POOL_ID#
+			) AND MASTER.ZONE = (
+				SELECT ZONE FROM TCS_DOCK_POOL WHERE POOL_ID = #POOL_ID#
+			) AND #PURPOSE# IN (POOL.PURPOSE_1, POOL.PURPOSE_2, POOL.PURPOSE_3, POOL.PURPOSE_4, POOL.PURPOSE_5) AND 
+			MASTER.IN_SERVICE = 'Y' AND NVL(ALLOC.STATUS, 'FREE') = 'FREE' AND NVL(ALLOC.OCCUPIED, 'N') = 'N' AND
+			DOCK.TRUCK_DOCK NOT IN (
+				SELECT DOCK.TRUCK_DOCK
+				FROM V_TCS_SPECIAL_PURPOSE_DOCKS DOCK
+				WHERE (
+					SYSDATE BETWEEN DOCK.FROM_DT AND DOCK.TO_DT OR
+					DOCK.TO_DT BETWEEN SYSDATE AND (SYSDATE + NVL(#DURATION#, 15) / 1440)
+				) AND DOCK.PURPOSE IN ('SCH', 'SCU', 'RES')
+			)
+			GROUP BY POOL.POOL_ID,
+				POOL.PURPOSE_1, POOL.PURPOSE_2, POOL.PURPOSE_3, POOL.PURPOSE_4, POOL.PURPOSE_5, 
+				POOL.DOCK_LEVEL, POOL.ZONE
+      		ORDER BY 2, 3, 4, 5, 6, 7, 8, 9 DESC, 10 ASC
+		]]>
+	</select>
+	<!-- -->
+	<!-- TRUCK DOCK MONITORING -->
+	<!-- -->
+	<!-- TD Monitoring - All the Open Trips -->
+	<select id="sqlTcsGetAllOpenTripInTerminal" parameterClass="java.lang.String"
+		resultClass="cargo.cms.tcs.truckdock.bo.TruckInfoBO">
+		<![CDATA[
+			SELECT TRIP.TRIP_ID tripId, TRIP.TRUCK_NO truckNo, TRIP.CURR_LOC currLocn, 
+			  CASE
+			  	WHEN TRIP.PARKED_DOCK IS NOT NULL THEN 'D'
+	       	  	ELSE TRIP.TRUCK_STATE
+        	  END truckState,
+        	  DOCK_SEGMENT dockSegment, 
+        	  CASE 
+			  	WHEN TRIP.PURPOSE = 'SHC' AND TRIP.CURR_LOC IN ('TPA', 'TPX') THEN TRIP.TRUCK_DOCK
+			  	ELSE (
+					SELECT MAX(TRUCK_DOCK) FROM TCS_DOCK_ALLOCATION ALLOC WHERE ALLOC.TRIP_ID = TRIP.TRIP_ID
+			  	) 
+			  END truckDock, 
+			  IPASS.IPASS_TYPE ipassType, IPASS.IPASS_NO ipassNo, TRIP.PURPOSE purpose, IPASS.TRUCK_CATEGORY truckCategory,
+			  TRIP.INCOMING_REASON incomingReason, ALLOC.PROXIMITY_FACTOR proximityFactor,
+			  DECODE(WRNG.WARNING_RMK, NULL, 'N', 'Y') warnedInd, 
+			  DECODE(TRIP.INCOMING_REASON, 'BKG', 'Y', 'N') bookingInd,      
+			  DECODE((SELECT COUNT(TRUCK_NO) FROM TCS_BAN_TRUCK WHERE TRUCK_NO = TRIP.TRUCK_NO AND STATUS IN('BANNED', 'ONETIME') AND 
+			    BAN_FROM <= SYSDATE AND BAN_TO >= TO_DATE(TO_CHAR(SYSDATE, 'DDMONYY'), 'DDMONYY')), 0, 'N', 'Y') bannedInd,
+			  DECODE(TRIP.INCOMING_REASON, 'SHC', 'Y', 'N') shcInd,
+			  DECODE(TRIP.INCOMING_REASON, 'VAL', 'Y', 'N') valInd,
+			  TRIP.SPL_ATTN splAttnRemark,
+			  TRIP.REJ_RMK exitRemark,
+			  NVL(ALLOC.OVERSTAY_IND, 'N') overstayInd,
+			  NVL(TRIP.VIOLATION_IND, 'N') violationInd, (
+			    SELECT DECODE(TRIP.TRUCK_STATE, 'L', PATH_SIDE_LEAVING, PATH_SIDE_APPROACHING)
+			    FROM TCS_SEGMENT_PATH
+			    WHERE SEGMENT_ID = DECODE(TRIP.CURR_LOC, 'L1SR', 'L1', TRIP.CURR_LOC)
+			    AND SENSORY_LOCATION_CODE = (
+			      SELECT 
+			      CASE 
+			        WHEN TRIP.TRUCK_STATE = 'L' THEN
+			          CASE 
+			            WHEN CURR_LOC IN('L3E', 'L5E', 'L3W', 'L5W') 
+			            THEN ENTRY_LOCATION_CODE
+			            ELSE EXIT_LOCATION_CODE
+			          END       
+			        ELSE ENTRY_LOCATION_CODE 
+			      END
+			      FROM TCS_TERMINAL_SEGMENT WHERE SEGMENT_ID = DECODE(TRIP.CURR_LOC, 'L1SR', 'L1', TRIP.CURR_LOC)
+			    )
+			  ) terminalSide,
+			  NVL(TRIP.TRUCK_QUEUE_IND, 'N') truckInQueueInd, TRIP.ARR_TIME arrivalDateTime, 
+			  EVENT.TRUCK_PARK_ENTRY_TIME truckParkEntryTime, EVENT.LEAVE_TRUCKPARK_TIME truckParkExitTime,
+			  EVENT.TRUCK_IN_QUEUE_TIME TRUCKENQUEUETIME, EVENT.DOCK_ALLOCATION_TIME dockAllocationTime, 
+			  EVENT.DOCK_OCCUPY_TIME DOCKOCCUPIEDTIME, PURPOSE.CODE_DESC purposeDesc, 
+			  CODE.CODE_DESC incomingReasonDesc, 
+			  CASE 
+			  	WHEN CURR_LOC IN('L1', 'L1SR') THEN 1
+			  	WHEN CURR_LOC IN('L2') THEN 2
+			  	WHEN CURR_LOC IN('L3', 'L3E', 'L3N', 'L3W') THEN 3
+			  	WHEN CURR_LOC IN('L5', 'L5E', 'L5N', 'L5W') THEN 5
+			  	WHEN CURR_LOC IN('L7', 'L7X') THEN 7
+			  	ELSE NULL
+			  END truckLevel,
+			  TRIP.QUEUE_ORDER_NO queueOrderNo, EVENT.DECL_PURPOSE_TIME purposeDeclared,
+			  EVENT.TERMINAL_ENTRY_TIME ternimalEntryTime,EVENT.LVL2_RAMP_CHKPT_TIME l2RCheckPointTime,
+			  EVENT.LVL3_RAMP_CHKPT_TIME l3RCheckPointTime, EVENT.LVL3_EAST_CHKPT_TIME l3ECheckPointTime,
+			  EVENT.LVL3_WEST_CHKPT_TIME l3WCheckPointTime, EVENT.LVL5_RAMP_CHKPT_TIME l5RCheckPointTime,
+			  EVENT.LVL5_EAST_CHKPT_TIME l5ECheckPointTime, EVENT.LVL5_WEST_CHKPT_TIME l5WCheckPointTime,
+			  EVENT.LVL7_UP_CHKPT l7UCheckPointTime, EVENT.LVL7_DOWN_CHKPT l7DCheckPointTime,
+			  EVENT.LEAVE_DOCK_TIME dockLeftTime, EVENT.LVL3_EXIT_CHKPT_TIME l3XCheckPointTime,
+			  EVENT.LVL5_EXIT_CHKPT_TIME l5XCheckPointTime, EVENT.TERMINAL_EXIT_TIME terminalExitTime,
+			  EVENT.DOCK_RELEASE_TIME dockReleasedTime, EVENT.ALLOCATED_TILL_TIME allocatedTillTime, 
+        	  CASE 
+			  	WHEN TRIP.PURPOSE = 'SHC' AND TRIP.CURR_LOC IN ('TPA', 'TPX') AND TRIP.TRUCK_DOCK IS NOT NULL THEN 'N'
+			  	ELSE DECODE(ALLOC.TRUCK_DOCK, NULL, DECODE(TRIP.TRUCK_DOCK, NULL, 'N', 'Y'), 'N')
+			  END dockReleased,
+			  TRIP.PARKED_DOCK parkedDock
+			FROM 
+			  TRUCK_TRIP TRIP
+			  LEFT OUTER JOIN TRUCK_TRIP_EVENTS EVENT
+			  ON EVENT.TRIP_ID = TRIP.TRIP_ID
+			  LEFT OUTER JOIN TCS_DOCK_ALLOCATION ALLOC
+			  ON ALLOC.TRIP_ID = TRIP.TRIP_ID AND ALLOC.TRUCK_DOCK = TRIP.TRUCK_DOCK
+			  LEFT OUTER JOIN TCS_IPASS_MASTER IPASS
+			  ON IPASS.TRUCK_NO = TRIP.TRUCK_NO
+			  LEFT OUTER JOIN TCS_WRNG_LETTER WRNG
+			  ON WRNG.TRIP_ID = TRIP.TRIP_ID
+			  LEFT OUTER JOIN MAST_TCS_INCOMING_PURPOSE PURPOSE
+			  ON PURPOSE.CODE = TRIP.PURPOSE
+			  LEFT OUTER JOIN MAST_CODE_DTL CODE 
+			  ON CODE.CODE = TRIP.INCOMING_REASON AND CODE.CODE_TYPE = 'TCS_INCOMING_REASON'  
+			WHERE 
+			TRIP.CURR_LOC IS NOT NULL AND TRIP.TRIP_CLOSED = 'N'
+			ORDER BY EVENT.LM_DATE DESC, TRIP.LM_DATE DESC
+	    ]]>
+	</select>
+	<!-- TD Monitoring - All the Open Valuable Trips -->
+	<select id="sqlTcsGetAllOpenTripInTerminalForVCC"
+		parameterClass="java.lang.String" resultClass="cargo.cms.tcs.truckdock.bo.TruckInfoBO">
+		<![CDATA[
+			SELECT TRIP.TRIP_ID tripId, TRIP.TRUCK_NO truckNo, TRIP.CURR_LOC currLocn, 
+			  TRIP.TRUCK_STATE truckState, (
+				SELECT MAX(TRUCK_DOCK) FROM TCS_DOCK_ALLOCATION ALLOC WHERE ALLOC.TRIP_ID = TRIP.TRIP_ID
+			  ) truckDock, 
+			  IPASS.IPASS_TYPE ipassType, IPASS.IPASS_NO ipassNo, TRIP.PURPOSE purpose, IPASS.TRUCK_CATEGORY truckCategory,
+			  TRIP.INCOMING_REASON incomingReason, ALLOC.PROXIMITY_FACTOR proximityFactor,
+			  DECODE(WRNG.WARNING_RMK, NULL, 'N', 'Y') warnedInd, 
+			  DECODE(TRIP.INCOMING_REASON, 'BKG', 'Y', 'N') bookingInd,      
+			  DECODE((SELECT COUNT(TRUCK_NO) FROM TCS_BAN_TRUCK WHERE TRUCK_NO = TRIP.TRUCK_NO AND STATUS IN('BANNED', 'ONETIME') AND 
+			    BAN_FROM <= SYSDATE AND BAN_TO >= TO_DATE(TO_CHAR(SYSDATE, 'DDMONYY'), 'DDMONYY')), 0, 'N', 'Y') bannedInd,
+			  DECODE(TRIP.INCOMING_REASON, 'SHC', 'Y', 'N') shcInd,
+			  DECODE(TRIP.INCOMING_REASON, 'VAL', 'Y', 'N') valInd,
+			  TRIP.SPL_ATTN splAttnRemark,
+			  TRIP.REJ_RMK exitRemark,
+			  NVL(ALLOC.OVERSTAY_IND, 'N') overstayInd,
+			  NVL(TRIP.VIOLATION_IND, 'N') violationInd, (
+			    SELECT DECODE(TRIP.TRUCK_STATE, 'L', PATH_SIDE_LEAVING, PATH_SIDE_APPROACHING)
+			    FROM TCS_SEGMENT_PATH
+			    WHERE SEGMENT_ID = DECODE(TRIP.CURR_LOC, 'L1SR', 'L1', TRIP.CURR_LOC)
+			    AND SENSORY_LOCATION_CODE = (
+			      SELECT 
+			      CASE 
+			        WHEN TRIP.TRUCK_STATE = 'L' THEN
+			          CASE 
+			            WHEN CURR_LOC IN('L3E', 'L5E', 'L3W', 'L5W') 
+			            THEN ENTRY_LOCATION_CODE
+			            ELSE EXIT_LOCATION_CODE
+			          END       
+			        ELSE ENTRY_LOCATION_CODE 
+			      END
+			      FROM TCS_TERMINAL_SEGMENT WHERE SEGMENT_ID = DECODE(TRIP.CURR_LOC, 'L1SR', 'L1', TRIP.CURR_LOC)
+			    )
+			  ) terminalSide,
+			  NVL(TRIP.TRUCK_QUEUE_IND, 'N') truckInQueueInd, TRIP.ARR_TIME arrivalDateTime, 
+			  EVENT.TRUCK_PARK_ENTRY_TIME truckParkEntryTime, EVENT.LEAVE_TRUCKPARK_TIME truckParkExitTime,
+			  EVENT.TRUCK_IN_QUEUE_TIME TRUCKENQUEUETIME, EVENT.DOCK_ALLOCATION_TIME dockAllocationTime, 
+			  EVENT.DOCK_OCCUPY_TIME DOCKOCCUPIEDTIME, PURPOSE.CODE_DESC purposeDesc, 
+			  CODE.CODE_DESC incomingReasonDesc, 
+			  CASE 
+			  	WHEN CURR_LOC IN('L1', 'L1SR') THEN 1
+			  	WHEN CURR_LOC IN('L2') THEN 2
+			  	WHEN CURR_LOC IN('L3', 'L3E', 'L3N', 'L3W') THEN 3
+			  	WHEN CURR_LOC IN('L5', 'L5E', 'L5N', 'L5W') THEN 5
+			  	WHEN CURR_LOC IN('L7', 'L7X') THEN 7
+			  	ELSE NULL
+			  END truckLevel,
+			  TRIP.QUEUE_ORDER_NO queueOrderNo, EVENT.DECL_PURPOSE_TIME purposeDeclared,
+			  EVENT.TERMINAL_ENTRY_TIME ternimalEntryTime,EVENT.LVL2_RAMP_CHKPT_TIME l2RCheckPointTime,
+			  EVENT.LVL3_RAMP_CHKPT_TIME l3RCheckPointTime, EVENT.LVL3_EAST_CHKPT_TIME l3ECheckPointTime,
+			  EVENT.LVL3_WEST_CHKPT_TIME l3WCheckPointTime, EVENT.LVL5_RAMP_CHKPT_TIME l5RCheckPointTime,
+			  EVENT.LVL5_EAST_CHKPT_TIME l5ECheckPointTime, EVENT.LVL5_WEST_CHKPT_TIME l5WCheckPointTime,
+			  EVENT.LVL7_UP_CHKPT l7UCheckPointTime, EVENT.LVL7_DOWN_CHKPT l7DCheckPointTime,
+			  EVENT.LEAVE_DOCK_TIME dockLeftTime, EVENT.LVL3_EXIT_CHKPT_TIME l3XCheckPointTime,
+			  EVENT.LVL5_EXIT_CHKPT_TIME l5XCheckPointTime, EVENT.TERMINAL_EXIT_TIME terminalExitTime,
+			  EVENT.DOCK_RELEASE_TIME dockReleasedTime, EVENT.ALLOCATED_TILL_TIME allocatedTillTime,
+			  DECODE(ALLOC.TRUCK_DOCK, NULL, DECODE(TRIP.TRUCK_DOCK, NULL, 'N', 'Y'), 'N') dockReleased
+			FROM
+			  TRUCK_TRIP TRIP
+			  LEFT OUTER JOIN TRUCK_TRIP_EVENTS EVENT
+			  ON EVENT.TRIP_ID = TRIP.TRIP_ID
+			  LEFT OUTER JOIN TCS_DOCK_ALLOCATION ALLOC
+			  ON ALLOC.TRIP_ID = TRIP.TRIP_ID AND ALLOC.TRUCK_DOCK = TRIP.TRUCK_DOCK
+			  LEFT OUTER JOIN TCS_IPASS_MASTER IPASS
+			  ON IPASS.TRUCK_NO = TRIP.TRUCK_NO
+			  LEFT OUTER JOIN TCS_WRNG_LETTER WRNG
+			  ON WRNG.TRIP_ID = TRIP.TRIP_ID
+			  LEFT OUTER JOIN MAST_TCS_INCOMING_PURPOSE PURPOSE
+			  ON PURPOSE.CODE = TRIP.PURPOSE
+			  LEFT OUTER JOIN MAST_CODE_DTL CODE
+			  ON CODE.CODE = TRIP.INCOMING_REASON AND CODE.CODE_TYPE = 'TCS_INCOMING_REASON'
+			WHERE
+			TRIP.CURR_LOC IS NOT NULL AND TRIP.CLOSED = 'N' AND (TRIP.PURPOSE = 'VAL' OR TRIP.INCOMING_REASON = 'VAL')
+			ORDER BY EVENT.LM_DATE DESC, TRIP.LM_DATE DESC
+	    ]]>
+	</select>
+	<!-- TD Monitoring - All Docks -->
+	<select id="sqlTcsGetAllDocks" parameterClass="java.lang.String"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockInfoBO">
+		<![CDATA[
+			SELECT
+			  MST.TRUCK_DOCK truckDock, ALLOC.STATUS STATUS, MST.IN_SERVICE inService, 
+			  NVL(ALLOC.OCCUPIED, 'N') occupiedInd, 
+			  POOL.PURPOSE_1 purpose,
+			  POOL.PURPOSE_1 purpose1, POOL.PURPOSE_2 purpose2, POOL.PURPOSE_3 purpose3, POOL.PURPOSE_4 purpose4, POOL.PURPOSE_5 purpose5,
+			  (SELECT CODE_DESC FROM MAST_TCS_DOCK_PURPOSE WHERE CODE = POOL.PURPOSE_1) purposeDesc,
+			  (SELECT CODE_DESC FROM MAST_TCS_DOCK_PURPOSE WHERE CODE = POOL.PURPOSE_1) purposeDesc1,
+			  (SELECT CODE_DESC FROM MAST_TCS_DOCK_PURPOSE WHERE CODE = POOL.PURPOSE_2) purposeDesc2,
+			  (SELECT CODE_DESC FROM MAST_TCS_DOCK_PURPOSE WHERE CODE = POOL.PURPOSE_3) purposeDesc3,
+			  (SELECT CODE_DESC FROM MAST_TCS_DOCK_PURPOSE WHERE CODE = POOL.PURPOSE_4) purposeDesc4,
+			  (SELECT CODE_DESC FROM MAST_TCS_DOCK_PURPOSE WHERE CODE = POOL.PURPOSE_5) purposeDesc5,
+			  NULL blockId, NULL blockType, 
+			  NULL maximumAllowed, NULL trucksInTerminal,
+			  ALLOC.PROXIMITY_FACTOR proximityFactor,
+			  NULL agentCode, NULL agentName, (
+			  	SELECT PARKED_DOCK 
+			  	FROM TRUCK_TRIP TRIP 
+			  	WHERE TRIP.TRIP_CLOSED = 'N' AND TRIP.PARKED_DOCK = ALLOC.TRUCK_DOCK AND ROWNUM = 1
+			  ) parkedDock, NVL((
+			  	SELECT NVL2(PARKED_DOCK, TRIP_ID, NULL) 
+			  	FROM TRUCK_TRIP TRIP 
+			  	WHERE TRIP.TRIP_CLOSED = 'N' AND TRIP.PARKED_DOCK = ALLOC.TRUCK_DOCK AND ROWNUM = 1
+			  ), ALLOC.TRIP_ID) tripId, NVL((
+			  	SELECT NVL2(PARKED_DOCK, TRUCK_NO, NULL) 
+			  	FROM TRUCK_TRIP TRIP 
+			  	WHERE TRIP.TRIP_CLOSED = 'N' AND TRIP.PARKED_DOCK = ALLOC.TRUCK_DOCK AND ROWNUM = 1
+			  ), ALLOC.TRUCK_NO) truckNo,			  
+			  ALLOC.ALLOCATED_FROM allocatedFrom, ALLOC.ALLOCATED_TILL allocatedTill, ALLOC.ALLOCATION_DURATION allocatedDuration, (
+			  	SELECT NVL2(PARKED_DOCK, PARKED_REMARKS, NULL) 
+			  	FROM TRUCK_TRIP TRIP 
+			  	WHERE TRIP.TRIP_CLOSED = 'N' AND TRIP.PARKED_DOCK = ALLOC.TRUCK_DOCK AND ROWNUM = 1
+			  ) parkingRemarks, (
+			  	SELECT DECODE(COUNT(TR_NO), 0, 'N', 'Y')
+			  	FROM TCS_DOCK_RESV
+			  	WHERE SYSDATE BETWEEN RESV_FROM AND RESV_TO AND TRUCK_DOCK = MST.TRUCK_DOCK AND ALLOCATED = 'N'
+			  ) reserved
+			FROM
+			TCS_DOCK_MASTER MST
+			JOIN TCS_DOCK_ALLOCATION ALLOC
+			ON ALLOC.TRUCK_DOCK = MST.TRUCK_DOCK
+			LEFT OUTER JOIN TCS_DOCK_POOL_DOCK PDOCK
+			ON PDOCK.TRUCK_DOCK = MST.TRUCK_DOCK
+			LEFT OUTER JOIN TCS_DOCK_POOL POOL
+			ON POOL.POOL_ID = PDOCK.POOL_ID
+			WHERE
+			SYSDATE BETWEEN PDOCK.FROM_DT AND PDOCK.TO_DT AND 
+			MST.TRUCK_DOCK NOT IN (
+			  SELECT MST.TRUCK_DOCK truckDock
+			  FROM 
+			  TCS_DOCK_MASTER MST
+			  JOIN TCS_DOCK_ALLOCATION ALLOC
+			  ON ALLOC.TRUCK_DOCK = MST.TRUCK_DOCK
+			  LEFT OUTER JOIN TCS_DOCK_BLOCK_DOCK DOCK
+			  ON DOCK.TRUCK_DOCK = MST.TRUCK_DOCK
+			  LEFT OUTER JOIN TCS_DOCK_BLOCK BLK
+			  ON BLK.DOCK_BLOCK_ID = DOCK.DOCK_BLOCK_ID
+			  WHERE SYSDATE BETWEEN BLK.FROM_DT AND BLK.TO_DT
+			)
+			UNION
+			SELECT 
+			  MST.TRUCK_DOCK truckDock, ALLOC.STATUS status, MST.IN_SERVICE inService, 
+			  NVL(ALLOC.OCCUPIED,'N') occupiedInd,
+			  POOL.PURPOSE_1 purpose,
+			  POOL.PURPOSE_1 purpose1, POOL.PURPOSE_2 purpose2, POOL.PURPOSE_3 purpose3, POOL.PURPOSE_4 purpose4, POOL.PURPOSE_5 purpose5,
+			  (SELECT CODE_DESC FROM MAST_TCS_DOCK_PURPOSE WHERE CODE = POOL.PURPOSE_1) purposeDesc,
+			  (SELECT CODE_DESC FROM MAST_TCS_DOCK_PURPOSE WHERE CODE = POOL.PURPOSE_1) purposeDesc1,
+			  (SELECT CODE_DESC FROM MAST_TCS_DOCK_PURPOSE WHERE CODE = POOL.PURPOSE_2) purposeDesc2,
+			  (SELECT CODE_DESC FROM MAST_TCS_DOCK_PURPOSE WHERE CODE = POOL.PURPOSE_3) purposeDesc3,
+			  (SELECT CODE_DESC FROM MAST_TCS_DOCK_PURPOSE WHERE CODE = POOL.PURPOSE_4) purposeDesc4,
+			  (SELECT CODE_DESC FROM MAST_TCS_DOCK_PURPOSE WHERE CODE = POOL.PURPOSE_5) purposeDesc5,
+			  BLK.DOCK_BLOCK_ID blockId,  BLK.BLOCK_TYPE blockType, 
+			  BLK.MAXIMUM_ALLOWED maximumAllowed, BLK.TRUCKS_IN_TERMINAL trucksInTerminal,
+			  ALLOC.PROXIMITY_FACTOR proximityFactor,
+			  BLK.CUST_NO agentCode, (
+			  	SELECT CODE_DESC FROM CUST_COMPANY WHERE CODE = BLK.CUST_NO AND ROWNUM = 1
+			  ) agentName, (
+			  	SELECT PARKED_DOCK 
+			  	FROM TRUCK_TRIP TRIP 
+			  	WHERE TRIP.TRIP_CLOSED = 'N' AND TRIP.PARKED_DOCK = ALLOC.TRUCK_DOCK AND ROWNUM = 1
+			  ) parkedDock, NVL((
+			  	SELECT NVL2(PARKED_DOCK, TRIP_ID, NULL) 
+			  	FROM TRUCK_TRIP TRIP 
+			  	WHERE TRIP.TRIP_CLOSED = 'N' AND TRIP.PARKED_DOCK = ALLOC.TRUCK_DOCK AND ROWNUM = 1
+			  ), ALLOC.TRIP_ID) tripId, NVL((
+			  	SELECT NVL2(PARKED_DOCK, TRUCK_NO, NULL) 
+			  	FROM TRUCK_TRIP TRIP 
+			  	WHERE TRIP.TRIP_CLOSED = 'N' AND TRIP.PARKED_DOCK = ALLOC.TRUCK_DOCK AND ROWNUM = 1
+			  ), ALLOC.TRUCK_NO) truckNo, 
+			  ALLOC.ALLOCATED_FROM allocatedFrom, ALLOC.ALLOCATED_TILL allocatedTill, ALLOC.ALLOCATION_DURATION allocatedDuration, (
+			  	SELECT NVL2(PARKED_DOCK, PARKED_REMARKS, NULL) 
+			  	FROM TRUCK_TRIP TRIP 
+			  	WHERE TRIP.TRIP_CLOSED = 'N' AND TRIP.PARKED_DOCK = ALLOC.TRUCK_DOCK AND ROWNUM = 1
+			  ) parkingRemarks, (
+			  	SELECT DECODE(COUNT(TR_NO), 0, 'N', 'Y')
+			  	FROM TCS_DOCK_RESV 
+			  	WHERE SYSDATE BETWEEN RESV_FROM AND RESV_TO AND TRUCK_DOCK = MST.TRUCK_DOCK AND ALLOCATED = 'N'
+			  ) reserved
+			FROM 
+			TCS_DOCK_MASTER MST
+			JOIN TCS_DOCK_ALLOCATION ALLOC
+			ON ALLOC.TRUCK_DOCK = MST.TRUCK_DOCK
+			LEFT OUTER JOIN TCS_DOCK_BLOCK_DOCK DOCK
+			ON DOCK.TRUCK_DOCK = MST.TRUCK_DOCK
+			LEFT OUTER JOIN TCS_DOCK_BLOCK BLK
+			ON BLK.DOCK_BLOCK_ID = DOCK.DOCK_BLOCK_ID
+			LEFT OUTER JOIN TCS_DOCK_POOL_DOCK PDOCK
+			ON PDOCK.TRUCK_DOCK = DOCK.TRUCK_DOCK
+			AND SYSDATE BETWEEN PDOCK.FROM_DT AND PDOCK.TO_DT
+			LEFT OUTER JOIN TCS_DOCK_POOL POOL
+			ON POOL.POOL_ID  = PDOCK.POOL_ID		  
+			WHERE
+			SYSDATE BETWEEN BLK.FROM_DT AND BLK.TO_DT
+		]]>
+	</select>
+	<!-- TD Monitoring - All VCC Docks -->
+	<select id="sqlTcsGetAllVCCDocks" parameterClass="java.lang.String"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockInfoBO">
+		<![CDATA[
+			SELECT 
+			  MST.TRUCK_DOCK truckDock, ALLOC.STATUS status, MST.IN_SERVICE inService, 
+			  NVL(ALLOC.OCCUPIED,'N') occupiedInd, 
+			  'VAL' purpose,
+			  'VAL' purpose1, '' purpose2, '' purpose3, '' purpose4, '' purpose5,
+			  (SELECT CODE_DESC FROM MAST_TCS_DOCK_PURPOSE WHERE CODE = 'VAL') purposeDesc,
+			  (SELECT CODE_DESC FROM MAST_TCS_DOCK_PURPOSE WHERE CODE = 'VAL') purposeDesc1,
+			  '' purposeDesc2,
+			  '' purposeDesc3,
+			  '' purposeDesc4,
+			  '' purposeDesc5,
+			  BLK.DOCK_BLOCK_ID blockId,  BLK.BLOCK_TYPE blockType, 
+			  BLK.MAXIMUM_ALLOWED maximumAllowed, BLK.TRUCKS_IN_TERMINAL trucksInTerminal,
+			  ALLOC.PROXIMITY_FACTOR proximityFactor,
+			  BLK.CUST_NO agentCode, (
+			  	SELECT CODE_DESC FROM CUST_COMPANY WHERE CODE = BLK.CUST_NO AND ROWNUM = 1
+			  ) agentName, 
+			  ALLOC.TRIP_ID tripId, ALLOC.TRUCK_NO truckNo, 
+			  ALLOC.ALLOCATED_FROM allocatedFrom, ALLOC.ALLOCATED_TILL allocatedTill, ALLOC.ALLOCATION_DURATION allocatedDuration, (
+			  	SELECT DECODE(COUNT(TR_NO), 0, 'N', 'Y')
+			  	FROM TCS_DOCK_RESV 
+			  	WHERE SYSDATE BETWEEN RESV_FROM AND RESV_TO AND TRUCK_DOCK = MST.TRUCK_DOCK AND ALLOCATED = 'N'
+			  ) reserved
+			FROM 
+			TCS_DOCK_MASTER MST
+			JOIN TCS_DOCK_ALLOCATION ALLOC
+			ON ALLOC.TRUCK_DOCK = MST.TRUCK_DOCK
+			LEFT OUTER JOIN TCS_DOCK_BLOCK_DOCK DOCK
+			ON DOCK.TRUCK_DOCK = MST.TRUCK_DOCK
+			LEFT OUTER JOIN TCS_DOCK_BLOCK BLK
+			ON BLK.DOCK_BLOCK_ID = DOCK.DOCK_BLOCK_ID	  
+			WHERE
+			SYSDATE BETWEEN BLK.FROM_DT AND BLK.TO_DT AND BLK.BLOCK_TYPE = 'VAL'
+		]]>
+	</select>
+	<!-- Find SHA Agent from Trip -->
+	<select id="sqlTCSGetSHAAgentCodeFromTrip" parameterClass="java.lang.String"
+		resultClass="java.lang.String">
+  		<![CDATA[
+			SELECT SH_AGT_CODE FROM TRUCK_TRIP WHERE TRIP_ID = #PARAM#
+		]]>
+	</select>
+	<!-- Find SHA Trucks in Queue -->
+	<select id="sqlTCSGetSHATruckInQueue" parameterClass="java.lang.String"
+		resultClass="cargo.cms.tcs.truckdock.bo.DockInfoBO">
+  		<![CDATA[
+			SELECT TRIP.TRIP_ID tripId, TRIP.TRUCK_NO truckNo, (
+			  SELECT MIN(TRUCK_DOCK) FROM TCS_SHA_DOCKS SHADOCK
+			  WHERE SHADOCK.CUST_NO = SHA.CUST_NO
+			) truckDock
+			FROM TRUCK_TRIP TRIP
+			JOIN TCS_IPASS_MASTER IPASS
+			ON IPASS.TRUCK_NO = TRIP.TRUCK_NO
+			JOIN TCS_SHA_CONFIG SHA
+			ON TRIP.SH_AGT_CODE = SHA.CUST_NO
+			WHERE TRIP.PURPOSE = 'SHC' AND TRIP.CLOSED = 'N' AND TRIP.TRUCK_QUEUE_IND = 'Y' 
+			AND TRIP.CURR_LOC = 'TPA' AND TRIP.SH_AGT_CODE = #PARAM#
+			ORDER BY TRIP.QUEUE_ORDER_NO
+		]]>
+	</select>
+	<!-- First SHA Dock for SHA -->
+	<select id="sqlTCSGetFirstSHADock" parameterClass="java.lang.String"
+		resultClass="java.lang.String">
+  		<![CDATA[
+			SELECT (
+			  SELECT MIN(TRUCK_DOCK) FROM TCS_SHA_DOCKS SHADOCK
+			  WHERE SHADOCK.CUST_NO = SHA.CUST_NO
+			) truckDock
+			FROM TRUCK_TRIP TRIP
+			JOIN TCS_IPASS_MASTER IPASS
+			ON IPASS.TRUCK_NO = TRIP.TRUCK_NO
+			JOIN TCS_SHA_CONFIG SHA
+			ON TRIP.SH_AGT_CODE = SHA.CUST_NO
+			WHERE TRIP.TRIP_ID = #PARAM#
+		]]>
+	</select>
+	
+	
+	<select id="checkCDPTruckRegistered" parameterClass="java.lang.String" resultClass="java.lang.String">
+		SELECT DECODE(COUNT(1), 0, 'N', 'Y') FROM IMP_CDP_TRUCK_REGISTRATION where TRUCK_NO = #truckNo#
+	</select>
+</sqlMap>

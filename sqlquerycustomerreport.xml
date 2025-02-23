@@ -1,0 +1,3718 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+	<!--
+		The SQL in these maps files has purposely been typed with more
+		verbosity than is actually required. For example, many of the selects
+		could have just used SELECT * FROM... instead of listing all of the
+		columns. This is to demonstrate that even complex SQL can be handled
+		and coded and formatted the way SQL was meant to be (i.e. not a bunch
+		of concatenated strings in a Java class).
+	-->
+	<!-- This XML file will hold only the queries which would be used for Customer module Reports -->
+	<!-- Added by Varadaraj Muni 01-Sep-2010 -->
+<sqlMap namespace="CustomReportModule">
+<!-- Added by Manorama for GTD Report::::21OCT11:::Starts -->
+<!--<select id="unLdgPtListEman"  parameterClass="cargo.cms.customs.report.bo.CreateGTDRept_544BO" resultClass="cargo.cms.customs.report.bo.CreateGTDRept_544BO">
+select off_point offPoint,ACFT_REG_NO acftRegNo from flt_opr_leg where flt_key = #fltNo# and sch_date = to_date(#fltDate#,'DDMONYY') 
+and flt_type = #fltType#
+</select>
+<select id="eman_flt_details"  parameterClass="cargo.cms.customs.report.bo.CreateGTDRept_544BO" resultClass="java.lang.Integer">
+select count(0) from eman_flt where flt_key = #fltNo# and flt_date = to_date(#fltDate#,'DDMONYY') and flt_type = #fltType#
+</select>
+
+<select id="awbList"  parameterClass="cargo.cms.customs.report.bo.CreateGTDRept_544BO" resultClass="cargo.cms.customs.report.bo.CreateGTDRept_544BO">
+select   lpad(ROW_NUMBER()
+OVER (ORDER BY s.awb_no),4, '0') serialNo,
+s.awb_no awbNo,
+to_char(s.awb_date,'DDMONYY') awbDate,
+decode(s.orig,null,'',s.orig)||decode(s.dest,null,'','/'||s.dest) orig,
+s.dest dest,
+decode(SHP_PCS,null,'',SHP_PCS)||decode(shp_wgt,null,'','/'||shp_wgt) shpPcs,
+shp_wgt shpWgt,
+sum(m.awb_pcs)||'/'||sum(m.awb_wgt) awbPcs,
+sum(m.awb_wgt) awbWgt,
+s.FLG_CONSOL cnsl,
+f.flt_key fltKey,
+f.flt_type fltType,
+to_char(f.flt_date,'DDMONYY') fltDate,
+s.CSGNE_NAME consignName,
+s.CSGNE_ADDR_1 cnsnAddr1,
+s.CSGNE_ADDR_2 cnsnAddr2,
+s.CSGNE_ADDR_3 cnsnAddr3,
+s.CSGNE_ADDR_4 cnsnAddr4,
+s.CSGNE_ADDR_5 cnsnAddr5,
+s.CSGNE_PLACE||' '||s.CSGNE_CTRY_CODE cnsnPlace,
+s.CSGNE_PIN_CODE cnsnPinCode,
+s.SHIPPER_NAME shprName,
+s.SHPR_ADDR_1 shprAddr1,
+s.SHPR_ADDR_2 shprAddr2,
+s.SHPR_ADDR_3 shprAddr3,
+s.SHPR_ADDR_4 shprAddr4,
+s.SHPR_ADDR_5 shprAddr5,
+s.SHPR_PLACE||' '||s.SHPR_CTRY_CODE shprPlace,
+s.content content,
+s.tr_no trNo,
+s.SHPR_PIN_CODE shprPinCode
+from eman_shp s left join eman_flt f
+on f.flt_key = s.flt_key and f.flt_date = s.flt_date and f.flt_type = s.flt_type 
+and f.tr_no = s.tr_no
+left join eman_mst_dtl m on m.awb_no = s.awb_no and m.awb_date = s.awb_date
+where f.flt_key = #fltNo# and f.flt_date = to_date(#fltDate#,'DDMONYY') and f.flt_type = #fltType# AND
+f.tr_no = (SELECT MAX(TR_NO) FROM EMAN_FLT WHERE flt_key = #fltNo# and flt_date = to_date(#fltDate#,'DDMONYY') and flt_type = #fltType#)
+group by s.awb_no, to_char(s.awb_date,'DDMONYY'), s.orig, s.dest, SHP_PCS, shp_wgt, s.FLG_CONSOL, f.flt_key,s.CSGNE_NAME,
+s.CSGNE_ADDR_1,
+s.CSGNE_ADDR_2,
+s.CSGNE_ADDR_3,
+s.CSGNE_ADDR_4,
+s.CSGNE_ADDR_5,
+s.CSGNE_PLACE,
+s.content,
+s.CSGNE_CTRY_CODE,
+s.CSGNE_PIN_CODE,
+s.SHPR_ADDR_1,
+s.SHPR_ADDR_2,
+s.SHPR_ADDR_3,
+s.SHPR_ADDR_4,
+s.SHPR_ADDR_5,
+s.tr_no,
+s.SHPR_PLACE,
+s.SHPR_CTRY_CODE,
+s.SHIPPER_NAME,
+s.SHPR_PIN_CODE,
+f.flt_date,f.flt_type
+order by s.dest
+</select>-->
+<select id="fltDesc"  parameterClass="cargo.cms.customs.report.bo.CreateGTDRept_544BO" resultClass="java.util.HashMap">
+	SELECT f.acft_reg_no REG_NO, (SELECT mc.code_desc FROM mast_carrier mc WHERE mc.code = f.carr_code) FLT_DESC
+	FROM flt_opr f
+	WHERE f.flt_key = #fltKey#
+	AND f.sch_date  = to_date(#fltDate#,'DDMONYY')
+	AND f.flt_type  = decode(#fltType#, 'E', 'D', 'I', 'A')
+</select>
+<!--<select id="hawbList"  parameterClass="cargo.cms.customs.report.bo.CreateGTDRept_544BO" resultClass="cargo.cms.customs.report.bo.CreateGTDRept_544BO">
+select h.hawb_no hawbNo,
+decode(h.hawb_pcs,null,'',h.hawb_pcs)||decode(h.hawb_wgt,null,'','/'||h.hawb_wgt) hawbPcs,
+h.hawb_wgt hawbWgt,
+h.orig ||'/'||h.dest hawbDest,
+count(h.hawb_no)||'    /   '||sum(h.hawb_pcs)||'    /  '||sum(h.hawb_wgt) sumHawb,
+h.CSGNE_NAME hawbCnName,s.awb_no awbNo,
+h.CSGNE_ADDR_1 hawbCnAddr1,
+h.CSGNE_ADDR_2 hawbCnAddr2,
+h.CSGNE_ADDR_3 hawbCnAddr3,
+h.CSGNE_ADDR_4 hawbCnAddr4,
+h.CSGNE_ADDR_5 hawbCnAddr5,
+h.CSGNE_PLACE||' '||h.CSGNE_CTRY_CODE hawbCnPlace,
+h.CSGNE_PIN_CODE hawbCnPinCode,
+h.SHPR_ADDR_1 hawbShprAdd1,
+h.SHPR_ADDR_2 hawbShprAdd2,
+h.SHPR_ADDR_3 hawbShprAdd3,
+h.SHPR_ADDR_4 hawbShprAdd4,
+h.SHPR_ADDR_5 hawbShprAdd5,
+h.SHPR_PLACE ||' '||h.SHPR_CTRY_CODE hawbShprPlace,
+h.content hawbcontent,
+h.SHPR_PIN_CODE hawbShprPinCode
+from eman_hawb h left join eman_shp s on h.awb_no = s.awb_no
+and h.awb_date = s.awb_date and h.flt_key = s.flt_key and h.flt_date = s.flt_date and h.flt_type = s.flt_type 
+and h.tr_no=s.tr_no
+where h.awb_no=#awbNo#
+and h.awb_date = to_date(#awbDate#,'DDMONYY')
+group by h.hawb_no, decode(h.hawb_pcs,null,'',h.hawb_pcs)||decode(h.hawb_wgt,null,'','/'||h.hawb_wgt), h.hawb_wgt, h.CSGNE_NAME, s.awb_no, h.CSGNE_ADDR_1, h.CSGNE_ADDR_2,
+h.CSGNE_ADDR_3, h.CSGNE_ADDR_4, h.CSGNE_ADDR_5, h.CSGNE_PLACE, h.CSGNE_CTRY_CODE,
+h.CSGNE_PIN_CODE, h.SHPR_ADDR_1, h.SHPR_ADDR_2, h.SHPR_ADDR_3, h.SHPR_ADDR_4, h.SHPR_ADDR_5,
+h.SHPR_PLACE, h.content, h.SHPR_CTRY_CODE, h.SHPR_PIN_CODE, h.dest, h.orig
+</select>
+<select id="hawbTtlDetailList"  parameterClass="cargo.cms.customs.report.bo.CreateGTDRept_544BO" resultClass="java.lang.String">
+select
+count(h.hawb_no)||'    /   '||sum(h.hawb_pcs)||'    /  '||sum(h.hawb_wgt) 
+from eman_hawb h left join eman_shp s on h.awb_no = s.awb_no
+and h.awb_date = s.awb_date and h.flt_key = s.flt_key and h.flt_date = s.flt_date and h.flt_type = s.flt_type 
+and h.tr_no=s.tr_no
+where h.awb_no=#awbNo#
+and h.awb_date = to_date(#awbDate#,'DDMONYY')
+</select>-->
+<select id="licenseList"  parameterClass="cargo.cms.customs.report.bo.CreateGTDRept_544BO" resultClass="java.lang.String">
+	select STRAGG(STRINGDELIM(license, ',')) licenses from eman_lic where tr_no = #trNo#
+</select>
+<!--<select id = "cnslOrnonCnslShipment" parameterClass="cargo.cms.customs.report.bo.CreateGTDRept_544BO" resultClass="java.lang.Integer">
+select count(awb_no) from eman_hawb where awb_no = #awbNo# and awb_date = to_date(#awbDate#,'DD-MON-YY') 
+</select> 
+<select id = "sumShipmentPcWt" parameterClass="cargo.cms.customs.report.bo.CreateGTDRept_544BO" resultClass="cargo.cms.customs.report.bo.CreateGTDRept_544BO">
+select sum(SHP_PCS) ttlShpPcs,sum(SHP_WGT) ttlShpWgt
+ from eman_shp 
+where flt_key = #fltNo# and flt_date = #fltDate#
+and flt_type = #fltType#
+</select>
+<select id = "sumHawbPcWt" parameterClass="cargo.cms.customs.report.bo.CreateGTDRept_544BO" resultClass="cargo.cms.customs.report.bo.CreateGTDRept_544BO">
+select distinct count(hawb_no) countHawb,sum(HAWB_PCS) ttlHawbPcs,sum(HAWB_WGT) ttlHawbWt
+from eman_hawb 
+where flt_key = #fltNo# and flt_date = #fltDate#
+and flt_type = #fltType#
+</select>
+<select id="noOfLicenseList"  parameterClass="cargo.cms.customs.report.bo.CreateGTDRept_544BO" resultClass="java.lang.String">
+select count(*) from eman_lic where tr_no in 
+<iterate property="trNoList" open="(" close=")" conjunction=",">
+	                 #trNoList[]#
+</iterate>	  
+</select>-->
+<select id="fetchEmanGtdReportDetails" parameterClass="cargo.cms.customs.report.bo.CreateGTDRept_544BO"  resultClass="cargo.cms.customs.report.bo.CreateGTDRept_544BO">
+	select  
+	  f.flt_key fltKey,
+	  f.flt_type fltType,
+	  to_char(f.flt_date,'DDMONYY') fltDate,
+	  '' unldgPt,
+	  es.awb_no awbNo,
+	  substr(es.awb_no,1,3)||'-'|| substr(es.awb_no,4) awbNoDisp,
+	  to_char(es.awb_date,'DDMONYY') awbDate,
+	  decode(awb.awb_type,'E','EXPORT CARGO','I','IMPORT CARGO','T','TRANSFER CARGO', null, '') awbType,
+	  awb.orig orig,
+	  awb.dest dest,
+	  nvl(es.shp_pcs, 0) mnfstPcs,
+	  nvl(es.shp_wgt, 0) mnfstWt,
+	  nvl(awb.awb_pcs, 0) awbPcs,
+	  nvl(awb.awb_wgt, 0) awbWt,
+	  decode((select count(ef.awb_no) from eman_hawb ef
+	          where ef.tr_no = f.tr_no
+	            and ef.awb_no=es.awb_no 
+	            and ef.awb_date =es.awb_date ),0,'N','Y')  cnslInd,
+	  '' marks,
+	  es.csgne_name consignName,
+	  es.CSGNE_ADDR_1 cnsnAddr1,
+	  es.CSGNE_ADDR_2 cnsnAddr2,
+	  es.CSGNE_ADDR_3 cnsnAddr3,
+	  es.CSGNE_ADDR_4 cnsnAddr4,
+	  es.CSGNE_ADDR_5 cnsnAddr5,
+	  es.CSGNE_PLACE||' '||es.CSGNE_CTRY_CODE cnsnPlace,
+	  es.CSGNE_PIN_CODE cnsnPinCode,
+	  es.SHIPPER_NAME shprName,
+	  es.SHPR_ADDR_1 shprAddr1,
+	  es.SHPR_ADDR_2 shprAddr2,
+	  es.SHPR_ADDR_3 shprAddr3,
+	  es.SHPR_ADDR_4 shprAddr4,
+	  es.SHPR_PLACE||' '||es.SHPR_CTRY_CODE shprPlace,
+	  es.SHPR_PIN_CODE shprPinCode,
+	  awb.content content,
+	  (select STRAGG(STRINGDELIM(epua.uld_bt_no, ',')) from exp_pmanifest_uld_awb epua where epua.awb_no=es.awb_no and epua.awb_date=es.awb_date) uld,
+	  '' splCode,
+	  '' awbCsCurr,
+	  '' awbCsVal,
+	  ef.hawb_no hawbNo,
+	  ef.orig hawbOrig,
+	  ef.dest hawbDest,
+	  nvl(ef.hawb_pcs, 0) hawbPcs,
+	  nvl(ef.hawb_wgt, 0) hawbWt,
+	  ef.csgne_name hawbConsignName,
+	  EF.CSGNE_ADDR_1 hawbCnsnAddr1,
+	  EF.CSGNE_ADDR_2 hawbCnsnAddr2,
+	  EF.CSGNE_ADDR_3 hawbCnsnAddr3,
+	  EF.CSGNE_ADDR_4 hawbCnsnAddr4,
+	  EF.CSGNE_ADDR_5 hawbCnsnAddr5,
+	  EF.CSGNE_PLACE||' '||EF.CSGNE_CTRY_CODE hawbCnsnPlace,
+	  EF.CSGNE_PIN_CODE hawbCnsnPinCode,
+	  EF.SHPR_NAME hawbShprName,
+	  EF.SHPR_ADDR_1 hawbShprAddr1,
+	  EF.SHPR_ADDR_2 hawbShprAddr2,
+	  EF.SHPR_ADDR_3 hawbShprAddr3,
+	  EF.SHPR_ADDR_4 hawbShprAddr4,
+	  EF.SHPR_ADDR_5 hawbShprAddr5,
+	  EF.SHPR_PLACE||' '||EF.SHPR_CTRY_CODE hawbShprPlace,
+	  EF.SHPR_PIN_CODE hawbShprPinCode,
+	  EF.CONTENT hawbContent,
+	  '' hawbCurrCd,
+	  '' hawbCsVal,
+	  (select count(*) from eman_hawb hawbocc where hawbocc.tr_no=f.tr_no and hawbocc.awb_no = awb.awb_no and hawbocc.awb_date=es.awb_date) hwbOcc,
+	  ''fltRef
+	from eman_shp es
+	join eman_mst_dtl awb  on awb.awb_no = es.awb_no and awb.awb_date = es.awb_date
+	join eman_flt f on f.tr_no= es.tr_no
+	left join eman_hawb ef on ef.tr_no = es.tr_no and ef.awb_no = es.awb_no and ef.awb_date = es.awb_date
+	where f.tr_no = #trNo#
+	order by unldgPt, awbType, awbNo
+</select>
+<!-- Added by Manorama for GTD Report::::21OCT11:::Ends -->
+<!--  UAT Bug:345 changed by Surendra Gollapalli on 30 Jan 2011 for Fax Hash Total Report START -->
+
+	<update id="update_flt_opr_events_FAX_HASH_TTL"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" >
+	  update flt_opr_events 
+	  set TR_TYPE = 'HSFAX',
+	  FAX_HASH_TTL = FAX_HASH_TTL + 1,
+	  LM_USER_ID = #userid#,
+	  LM_DATE = SYSDATE
+	  where flt_key = #fltNo# and sch_date = #dateFrom#  and flt_type = 'A'
+	</update>
+	  
+	<update id="update_flt_opr_events_PRINT_HASH_TTL"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" >
+	  update flt_opr_events 
+	  set TR_TYPE = 'HSPRN',
+	  PRINT_HASH_TTL = PRINT_HASH_TTL + 1
+	  where flt_key = #fltNo# and sch_date = #dateFrom#  and flt_type = 'A'
+	</update>
+
+	<update id="update_cst_subm_FAX_HASH_TTL"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" >
+	  update cst_subm set FAX_HASH_SEND = 'Y', LM_USER_ID = NVL(#userid#,'SYSTEM'), LM_DATE = SYSDATE where flt_key = NVL(#vesselFlightKey#,#fltNo#) and flt_date = NVL(#vesselFlightDate#,#dateFrom#)  and flt_type = 'I' 
+	</update>
+	
+	
+	<select id="cust_PaperManifestFlt_113_I"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+	 
+	select 
+	   substr(cns_hdr,9,2) as airlineCode,
+	   decode(substr(cns_hdr,1,8),null,'',substr(cns_hdr,1,8) || decode(substr(cns_hdr,23,4),null,' ','/'||substr(cns_hdr,23,4)))  as schDate,
+       substr(cns_hdr,9,9) as hfltNo,
+	   ltrim(substr(cns_hdr,18,2),0) as iniVersn,
+	   substr(cns_hdr,20,3) as coprCode,
+	   substr(cns_hdr,23,4) as schTime,	   
+	   decode(substr(cns_hdr,27,8),null,'',substr(cns_hdr,27,8) || decode(substr(cns_hdr,35,4),null,' ',nvl(substr(cns_hdr,35,4),'/'||substr(cns_hdr,35,4))))  AS arrDate,
+	   substr(cns_hdr,35,4) arrTime,
+	   substr(cns_hdr,39,3) ||'/'|| NVL(substr(cns_hdr,42,3),'/'||substr(cns_hdr,42,3)) || NVL(substr(cns_hdr,45,3),'/'||substr(cns_hdr,45,3))as lport,
+	   substr(cns_hdr,48,1) as pind,
+	   substr(cns_hdr,49,1) as aind,
+	   substr(cns_hdr,50,1) as crgInd,
+	   ltrim(substr(cns_hdr,51,5),0) as totAwb,
+	   ltrim(substr(cns_hdr,56,5),0) as totHawb,
+	   ltrim(substr(cns_hdr,61,5),0) as totScnr,
+	   ltrim(substr(cns_hdr,66,5),0) as totconscnr,
+	   ltrim(substr(cns_hdr,51,5),0) as totIcnr,
+	    upper(substr(b.cns_hash_tot,1,4)||' '||substr(b.cns_hash_tot,5,4)||' '||
+		substr(b.cns_hash_tot,9,4)||' '||substr(b.cns_hash_tot,13,4)||' '||
+		substr(b.cns_hash_tot,17,4)||' '||substr(b.cns_hash_tot,21,4)||' '||
+		substr(b.cns_hash_tot,25,4)||' '||substr(b.cns_hash_tot,29,4)) as hashTot1 ,
+
+		upper(substr(b.cns_hash_tot,33,4)||' '||substr(b.cns_hash_tot,37,4)||' '||
+		substr(b.cns_hash_tot,41,4)||' '||substr(b.cns_hash_tot,45,4)||' '||
+		substr(b.cns_hash_tot,49,4)||' '||substr(b.cns_hash_tot,53,4)||' '||
+		substr(b.cns_hash_tot,57,4)||' '||substr(b.cns_hash_tot,61)) as hashTot2,
+	   substr(cns_hdr,92,1) filler,		
+
+		upper(substr(b.cns_hash_tot,1,16)) as hashTotCode1,
+		upper(substr(b.cns_hash_tot,17,16)) as hashTotCode2,
+		upper(substr(b.cns_hash_tot,33,16)) as hashTotCode3,
+		upper(substr(b.cns_hash_tot,49)) as hashTotCode4
+
+	from cst_csgnm a,cst_subm b	
+		where a.flt_type=b.flt_type and a.flt_key=b.flt_key  and a.flt_date=b.flt_date and a.recv_rec_type=b.rec_type
+	  and a.ver_no=b.ver_no and a.flt_type='I' and a.flt_key=#fltNo#  and a.flt_date=#dateFrom#  and a.recv_rec_type=#iniType#
+	  and a.seq_no= 0 and a.ver_no=(select max(ver_no) from cst_csgnm 
+	  	  		   where flt_type='I' and flt_key=#fltNo#  and flt_date=#dateFrom# and recv_rec_type=#iniType#) 
+</select>	
+<select id="cust_PaperManifestFlt_113_IDtl"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+	   select	
+	   substr(cns_dtl,1,8) schDatedtl,
+	   substr(cns_dtl,9,2) arrCodedtl,
+	   substr(cns_dtl,11,7) as fltNodtl,
+	   substr(cns_dtl,18,2) intVerdtl,
+	   substr(cns_dtl,20,12) as awbNodtl,
+	   substr(cns_dtl,32,18) as hawbNodtl,
+	   substr(cns_dtl,50,3)||' '||substr(cns_dtl,53,3)||' '||substr(cns_dtl,56,3) as orig,
+	   substr(cns_dtl,53,3) as ldgPort,
+	   substr(cns_dtl,56,3) as dest,
+	   ltrim(substr(cns_dtl,59,6),0) as manfPc,
+	   trim(to_char(ltrim(substr(cns_dtl,65,9),0),'9999990.0')) manfWt,
+	   ltrim(substr(cns_dtl,74,6),0) as awbPc,
+	   trim(to_char(ltrim(substr(cns_dtl,80,9),0),'9999990.0')) awbWt,
+	   ltrim(substr(cns_dtl,89,265)) as cdesc,
+	    ltrim(substr(cns_dtl,354,3)) cdeclCurr,
+	   ltrim(substr(cns_dtl,357,12),0) as cdeclVal,
+	   substr(cns_dtl,369,70) as imptName,
+	   substr(cns_dtl,439,60) imptChname,
+	   ltrim(substr(cns_dtl,499,53)) as imptAddr1,
+	   ltrim(substr(cns_dtl,552,53)) as imptAddr2,
+	   ltrim(substr(cns_dtl,605,53)) as imptAddr3,
+	   ltrim(substr(cns_dtl,658,106)) as imptAddr4,           
+       ltrim(substr(cns_dtl,764,70)) notfyName,
+	   ltrim(substr(cns_dtl,834,60)) notfyChsName,
+	   ltrim(substr(cns_dtl,894,265)) notfyAddr,
+	   ltrim(substr(cns_dtl,1159,70)) as shpName,
+	   ltrim(substr(cns_dtl,1229,60)) shpChsName,	   
+	   ltrim(substr(cns_dtl,1289,53)) as shpAddr1,
+	   ltrim(substr(cns_dtl,1342,53)) as shpAddr2,
+	   ltrim(substr(cns_dtl,1395,53)) as shpAddr3,
+	   ltrim(substr(cns_dtl,1448,106)) as shpAddr4,
+	   ltrim(substr(cns_dtl,1554,1)||NVL(substr(cns_dtl,1555,1),'/'||substr(cns_dtl,1555,1))) as imptMixInd,
+	   ltrim(substr(cns_dtl,1556,3)||' '||substr(cns_dtl,1559,3))||' '||substr(cns_dtl,1562,3)||' '||substr(cns_dtl,1565,3)||' '||substr(cns_dtl,1568,3)||' '||substr(cns_dtl,1571,3) as splCode,
+	   ltrim(substr(cns_dtl,1574,35)) as cstRemarks,
+	   ltrim(substr(cns_dtl,1609,2)) frefAirCode,
+	   ltrim(substr(cns_dtl,1611,7)) frefNo,
+	   ltrim(substr(cns_dtl,1618,8)) frefDate,          
+	   ltrim(substr(cns_dtl,1626,44)) as containrNo,
+	   ltrim(substr(cns_dtl,1670,240)) as licnsNo,
+	   ltrim(substr(cns_dtl,1910,1)) as conslCrgInd,
+	   ltrim(substr(cns_dtl,1911,11)) splMark,
+	   ltrim(substr(cns_dtl,1922,3)) as crghndlrCode,
+	   ltrim(substr(cns_dtl,1925,4)) condnCode,
+	   ltrim(substr(cns_dtl,1929,1)) hubcsgnInd 		   
+	from cst_csgnm 
+	where flt_type='I' and flt_key=#fltNo#  and flt_date=#dateFrom# and recv_rec_type=#iniType#
+	and seq_no &gt;0 and seq_no &lt;99999 and ver_no=(select max(ver_no) 
+	  	  		    from cst_csgnm 
+					where flt_type='I' and flt_key=#fltNo#  and flt_date=#dateFrom# and recv_rec_type=#iniType#) 	
+  </select>
+  
+  <select id="cust_PaperManifestTruck_113_T"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+
+	select        
+	    substr(cns_hdr,1,8) as truckNo,
+           substr(cns_hdr,9,8) as schDate,
+           substr(cns_hdr,17,4) as schTime,
+           ltrim(substr(cns_hdr,21,2),0) as inaVersn,
+	   substr(cns_hdr,23,3) as coprCode,
+	   substr(cns_hdr,26,15) as clsRdPermit,
+           substr(cns_hdr,41,8) as crossDate,	  
+           substr(cns_hdr,49,4) as crossTime,	  
+           substr(cns_hdr,53,15) as sealNo,	  
+           substr(cns_hdr,68,15) as cntnrNo,	 
+           substr(cns_hdr,83,3) as ctrlPtCode,
+           substr(cns_hdr,86,3) as destPort,
+	    upper(substr(b.cns_hash_tot,1,4)||' '||substr(b.cns_hash_tot,5,4)||' '||
+		substr(b.cns_hash_tot,9,4)||' '||substr(b.cns_hash_tot,13,4)||' '||
+		substr(b.cns_hash_tot,17,4)||' '||substr(b.cns_hash_tot,21,4)||' '||
+		substr(b.cns_hash_tot,25,4)||' '||substr(b.cns_hash_tot,29,4)) as hashTot1 ,
+
+		upper(substr(b.cns_hash_tot,33,4)||' '||substr(b.cns_hash_tot,37,4)||' '||
+		substr(b.cns_hash_tot,41,4)||' '||substr(b.cns_hash_tot,45,4)||' '||
+		substr(b.cns_hash_tot,49,4)||' '||substr(b.cns_hash_tot,53,4)||' '||
+		substr(b.cns_hash_tot,57,4)||' '||substr(b.cns_hash_tot,61)) as hashTot2,
+	   substr(cns_hdr,92,1) filler,		
+
+		upper(substr(b.cns_hash_tot,1,16)) as hashTotCode1,
+		upper(substr(b.cns_hash_tot,17,16)) as hashTotCode2,
+		upper(substr(b.cns_hash_tot,33,16)) as hashTotCode3,
+		upper(substr(b.cns_hash_tot,49)) as hashTotCode4
+
+	from cst_csgnm a,cst_subm b	
+		where a.flt_type=b.flt_type and a.truck_no=b.truck_no  and a.sch_date=b.sch_date and a.recv_rec_type=b.rec_type
+	  and a.ver_no=b.ver_no and a.flt_type='T' and a.recv_rec_type in ('INA','AMA') and a.truck_no=#truckNo#  and a.sch_date=#dateFrom# and a.sch_time=#truckTime#  and a.recv_rec_type=#inaType#
+	  and a.seq_no= 0 and a.ver_no=(select max(ver_no) from cst_csgnm 
+	  	  		   where flt_type='T' and truck_no=#truckNo#  and sch_date=#dateFrom# and sch_time=#truckTime# and recv_rec_type=#inaType#) 
+</select>	
+<select id="cust_PaperManifestTruck_113_TDtl"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+       select
+          substr(cns_dtl,1,8) fltNodtl,
+          substr(cns_dtl,9,8) ||'/'|| substr(cns_dtl,17,2)||':'|| substr(cns_dtl,19,2) schDatedtl,
+          substr(cns_dtl,21,2) intVerdtl,
+          substr(cns_dtl,23,12) containrNo ,
+          substr(cns_dtl,35,8) frefDate,
+          substr(cns_dtl,43,2) frefAirCode,
+          substr(cns_dtl,45,7) frefNo,
+          substr(cns_dtl,52,12) awbNodtl,
+          substr(cns_dtl,64,18) hawbNodtl,
+          substr(cns_dtl,82,1) conslCrgInd,
+          substr(cns_dtl,83,1) shpmtMode,
+          substr(cns_dtl,84,3) orig,
+          substr(cns_dtl,87,3) ldgPort,
+          substr(cns_dtl,90,3) dest,
+          ltrim(substr(cns_dtl,93,6),0) as manfPc,
+          trim(to_char(ltrim(substr(cns_dtl,99,9),0),'9999990.0')) manfWt,
+          substr(cns_dtl,108,265) as cdesc,
+          substr(cns_dtl,373,70) imptName,
+          substr(cns_dtl,443,60) imptChname,
+          substr(cns_dtl,503,53) as imptAddr1,
+          substr(cns_dtl,556,53) as imptAddr2,
+          substr(cns_dtl,609,53) as imptAddr3,
+          substr(cns_dtl,662,53) as imptAddr4,
+          substr(cns_dtl,715,53) as imptAddr5,
+          substr(cns_dtl,768,70) notfyName,
+          substr(cns_dtl,838,60) notfyChsName,
+          substr(cns_dtl,898,265) notfyAddr,
+          substr(cns_dtl,1163,70) shpName,
+          substr(cns_dtl,1233,60) shpChsName,
+          substr(cns_dtl,1293,265) shpAddr1,
+          substr(cns_dtl,1293,265) shpAddr2,
+          substr(cns_dtl,1346,265) shpAddr3,
+          substr(cns_dtl,1399,265) shpAddr4,
+          substr(cns_dtl,1452,265) shpAddr5,
+          substr(cns_dtl,1558,35) cstRemarks,
+          substr(cns_dtl,1583,240) licnsNo	   
+	from cst_csgnm 
+	where flt_type='T' and truck_no=#truckNo#  and sch_date=#dateFrom#  and sch_time=#truckTime# and recv_rec_type=#inaType#
+	and seq_no &gt;0 and seq_no &lt;99999 and ver_no=(select max(ver_no) 
+	  	  		    from cst_csgnm 
+					where flt_type='T' and truck_no=#truckNo#  and sch_date=#dateFrom#  and sch_time=#truckTime# and recv_rec_type=#inaType#) 	
+  </select>
+  <select id="cust_PaperManifestFlt_113_LB"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+		
+	  select
+		substr(cns_hdr,1,8) as schDate,
+		substr(cns_hdr,9,2) as airlineCode,
+		substr(cns_hdr,9,9) as hfltNo,
+		ltrim(substr(cns_hdr,18,2),0) iniVersn,
+		substr(cns_hdr,20,3) as coprCode,
+		upper(substr(b.cns_hash_tot,1,4)||' '||substr(b.cns_hash_tot,5,4)||' '||
+		substr(b.cns_hash_tot,9,4)||' '||substr(b.cns_hash_tot,13,4)||' '||
+		substr(b.cns_hash_tot,17,4)||' '||substr(b.cns_hash_tot,21,4)||' '||
+		substr(b.cns_hash_tot,25,4)||' '||substr(b.cns_hash_tot,29,4)) as hashTot1 ,
+
+		upper(substr(b.cns_hash_tot,33,4)||' '||substr(b.cns_hash_tot,37,4)||' '||
+		substr(b.cns_hash_tot,41,4)||' '||substr(b.cns_hash_tot,45,4)||' '||
+		substr(b.cns_hash_tot,49,4)||' '||substr(b.cns_hash_tot,53,4)||' '||
+		substr(b.cns_hash_tot,57,4)||' '||substr(b.cns_hash_tot,61)) as hashTot2,
+	    substr(cns_hdr,92,1) filler,		
+
+		upper(substr(b.cns_hash_tot,1,16)) as hashTotCode1,
+		upper(substr(b.cns_hash_tot,17,16)) as hashTotCode2,
+		upper(substr(b.cns_hash_tot,33,16)) as hashTotCode3,
+		upper(substr(b.cns_hash_tot,49)) as hashTotCode4
+	from cst_csgnm a,cst_subm b
+	where a.flt_type=b.flt_type and a.flt_key=b.flt_key 
+	and	a.flt_date=b.flt_date
+	and a.recv_rec_type=b.rec_type and a.ver_no = b.ver_no
+	and b.msg_type='L' and a.flt_type='I' and a.flt_key=#fltNo#
+	and a.flt_date=#dateFrom# and a.recv_rec_type=#lbsType#
+	and a.seq_no= 0 and a.ver_no=#lbversionNo#
+	</select>
+	
+	<select id="cust_PaperManifestFlt_113_LBDtl"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+
+	  select	
+	   substr(cns_dtl,1,8) schDatedtl,
+	   substr(cns_dtl,9,2) arrCodedtl,
+	   substr(cns_dtl,11,7) as fltNodtl,
+	   substr(cns_dtl,18,2) intVerdtl,
+	   substr(cns_dtl,23,12) as awbNodtl,
+	   substr(cns_dtl,35,18) as hawbNodtl,
+	   substr(cns_dtl,53,3)||' '||substr(cns_dtl,56,3)||' '||substr(cns_dtl,59,3) as orig,
+	   substr(cns_dtl,56,3) as ldgPort,
+	   substr(cns_dtl,59,3) as dest,
+	   ltrim(substr(cns_dtl,62,6),0) as manfPc,
+	   trim(to_char(ltrim(substr(cns_dtl,68,9),0),'9999990.0')) manfWt,
+	   ltrim(substr(cns_dtl,77,6),0) as awbPc,
+	   trim(to_char(ltrim(substr(cns_dtl,83,9),0),'9999990.0')) awbWt,
+	   ltrim(substr(cns_dtl,92,175)) as cdesc,
+	   ltrim(substr(cns_dtl,267,3)) cdeclCurr,
+	   ltrim(substr(cns_dtl,270,12)) as cdeclVal,
+	   ltrim(substr(cns_dtl,282,70)) as imptName,
+	   ltrim(substr(cns_dtl,352,40)) imptChname,
+		
+	   ltrim(substr(cns_dtl,392,35)) as imptAddr1,
+	   ltrim(substr(cns_dtl,427,35)) as imptAddr2,
+	   ltrim(substr(cns_dtl,462,35)) as imptAddr3,
+	   ltrim(substr(cns_dtl,497,35)) as imptAddr4,
+	   ltrim(substr(cns_dtl,532,35)) as imptAddr5,
+	   
+	   ltrim(substr(cns_dtl,567,70)) notfyName,
+	   ltrim(substr(cns_dtl,637,40)) notfyChsName,
+	   ltrim(substr(cns_dtl,677,175)) notfyAddr,
+	   ltrim(substr(cns_dtl,852,70)) as shpName,
+	   ltrim(substr(cns_dtl,922,40)) shpChsName,
+		
+	   ltrim(substr(cns_dtl,962,35)) as shpAddr1,
+	   ltrim(substr(cns_dtl,997,35)) as shpAddr2,
+	   ltrim(substr(cns_dtl,1032,35)) as shpAddr3,
+	   ltrim(substr(cns_dtl,1067,35)) as shpAddr4,
+	   ltrim(substr(cns_dtl,1102,35)) as shpAddr5,
+	   
+	   ltrim(substr(cns_dtl,1137,1)||'/'||substr(cns_dtl,1138,1))as imptMixInd,
+	   ltrim(substr(cns_dtl,1139,3)||' '||substr(cns_dtl,1142,3)||' '||substr(cns_dtl,1145,3)||' '||substr(cns_dtl,1148,3)||' '||substr(cns_dtl,1151,3)||' '||substr(cns_dtl,1154,3)) as splCode,
+	   ltrim(substr(cns_dtl,1157,35)) as cstRemarks,
+	   ltrim(substr(cns_dtl,1192,2)) frefAirCode,
+	   ltrim(substr(cns_dtl,1194,7)) frefNo,
+	   ltrim(substr(cns_dtl,1201,8)) frefDate,
+	   ltrim(substr(cns_dtl,1209,44)) as containrNo,
+	   ltrim(substr(cns_dtl,1253,240)) as licnsNo,
+	   ltrim(substr(cns_dtl,1493,1)) as conslCrgInd,
+	   ltrim(substr(cns_dtl,1494,11)) splMark,
+	   ltrim(substr(cns_dtl,1505,3)) as crghndlrCode,
+	   ltrim(substr(cns_dtl,1508,4)) condnCode,
+	   ltrim(substr(cns_dtl,1512,1)) hubcsgnInd 	   
+	   from cst_csgnm 
+	where flt_type='I' and flt_key=#fltNo#  and flt_date=#dateFrom# and recv_rec_type=#lbsType#
+	and seq_no &gt;0 and seq_no &lt;99999 and ver_no=#lbversionNo#
+	
+ </select>
+ <!--  UAT Bug:345 changed by Surendra Gollapalli on 30 Jan 2011 for Fax Hash Total Report END -->
+	<select id="cust_PaperManifestFlt_113_A"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+	
+		select substr(cns_hdr,1,8) as schDate,
+	   substr(cns_hdr,9,2) as airlineCode,	   
+	   substr(cns_hdr,9,9) as hfltNo,
+	   ltrim(substr(cns_hdr,18,2),0)as iniVersn,
+	   decode(substr(cns_hdr,20,8),null,'',substr(cns_hdr,20,8) || decode(substr(cns_hdr,28,4),null,' ','/'||substr(cns_hdr,28,4))) as arrDate,
+	   substr(cns_hdr,28,4) as arrTime,
+	   substr(cns_hdr,32,3) ||'/'|| substr(cns_hdr,35,3) ||'/'||substr(cns_hdr,38,3) as lport,
+	   substr(cns_hdr,41,1) as pind,
+	   substr(cns_hdr,42,1) as aind,
+	    upper(substr(b.cns_hash_tot,1,4)||' '||substr(b.cns_hash_tot,5,4)||' '||
+		substr(b.cns_hash_tot,9,4)||' '||substr(b.cns_hash_tot,13,4)||' '||
+		substr(b.cns_hash_tot,17,4)||' '||substr(b.cns_hash_tot,21,4)||' '||
+		substr(b.cns_hash_tot,25,4)||' '||substr(b.cns_hash_tot,29,4)) as hashTot1 ,
+
+		upper(substr(b.cns_hash_tot,33,4)||' '||substr(b.cns_hash_tot,37,4)||' '||
+		substr(b.cns_hash_tot,41,4)||' '||substr(b.cns_hash_tot,45,4)||' '||
+		substr(b.cns_hash_tot,49,4)||' '||substr(b.cns_hash_tot,53,4)||' '||
+		substr(b.cns_hash_tot,57,4)||' '||substr(b.cns_hash_tot,61)) as hashTot2,
+	   substr(cns_hdr,92,1) filler,		
+
+		upper(substr(b.cns_hash_tot,1,16)) as hashTotCode1,
+		upper(substr(b.cns_hash_tot,17,16)) as hashTotCode2,
+		upper(substr(b.cns_hash_tot,33,16)) as hashTotCode3,
+		upper(substr(b.cns_hash_tot,49)) as hashTotCode4
+		from cst_csgnm a,cst_subm b
+		where a.flt_type=b.flt_type and a.flt_key=b.flt_key  and a.flt_date=b.flt_date and a.recv_rec_type=b.rec_type
+	  and a.ver_no=b.ver_no and a.flt_type='I' and a.flt_key=#fltNo#  and a.flt_date=#dateFrom# and a.recv_rec_type=#amdType#
+	  and a.seq_no= 0 and a.ver_no=(select max(ver_no) from cst_csgnm 
+		where flt_type='I' and flt_key=#fltNo#  and flt_date=#dateFrom# and recv_rec_type=#amdType#) 
+	
+		</select>
+		<select id="cust_PaperManifestFlt_113_ADtl"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+	select			  
+	   substr(cns_dtl,1,1) actype,
+	   substr(cns_dtl,2,8) schDatedtl,
+	   substr(cns_dtl,10,2) arrCodedtl,
+	   substr(cns_dtl,12,7) fltNodtl,
+	   substr(cns_dtl,19,2) intVerdtl,
+	   substr(cns_dtl,21,12) awbNodtl,
+	   substr(cns_dtl,33,18) hawbNodtl,
+	   substr(cns_dtl,51,3)||' '||substr(cns_dtl,54,3)||' '||substr(cns_dtl,57,3) orig,
+	   substr(cns_dtl,54,3) ldgPort,
+	   substr(cns_dtl,57,3) dest,
+	   ltrim(substr(cns_dtl,60,6),0) manfPc,
+	   trim(to_char(ltrim(substr(cns_dtl,66,9),0),'9999990.0')) manfWt,
+	   ltrim(substr(cns_dtl,75,6),0) awbPc,
+	   trim(to_char(ltrim(substr(cns_dtl,81,9),0),'9999990.0')) awbWt,
+	   ltrim(substr(cns_dtl,90,175)) cdesc,
+	   ltrim(substr(cns_dtl,265,3)) cdeclCurr,	   
+	   ltrim(substr(cns_dtl,268,12)) cdeclVal,
+	   ltrim(substr(cns_dtl,280,70)) imptName,
+	   ltrim(substr(cns_dtl,350,40)) imptChname,
+	
+	   ltrim(substr(cns_dtl,390,35)) imptAddr1,
+	   ltrim(substr(cns_dtl,425,35)) imptAddr2,
+	   ltrim(substr(cns_dtl,460,35)) imptAddr3,
+	   ltrim(substr(cns_dtl,495,35)) imptAddr4,
+	   ltrim(substr(cns_dtl,530,35)) imptAddr5,
+	
+	   ltrim(substr(cns_dtl,565,70)) notfyName,
+	   ltrim(substr(cns_dtl,635,40)) notfyChsName,
+	   ltrim(substr(cns_dtl,675,175)) notfyAddr,
+	   ltrim(substr(cns_dtl,850,70)) shpName,
+	   ltrim(substr(cns_dtl,920,40)) shpChsName,
+		   
+	   ltrim(substr(cns_dtl,960,35)) shpAddr1,
+	   ltrim(substr(cns_dtl,995,35)) shpAddr2,
+	   ltrim(substr(cns_dtl,1030,35)) shpAddr3,
+	   ltrim(substr(cns_dtl,1065,35)) shpAddr4,
+       ltrim(substr(cns_dtl,1100,35)) shpAddr5,
+	
+	   ltrim(substr(cns_dtl,1135,1)||'/'||substr(cns_dtl,1136,1)) imptMixInd,
+	   ltrim(substr(cns_dtl,1137,3)||' '||substr(cns_dtl,1140,3)||' '||substr(cns_dtl,1143,3)||' '||substr(cns_dtl,1146,3)||' '||substr(cns_dtl,1149,3)||' '||substr(cns_dtl,1152,3)) as splCode,
+	   ltrim(substr(cns_dtl,1155,35)) cstRemarks,
+	   ltrim(substr(cns_dtl,1190,2)) frefAirCode,
+	   ltrim(substr(cns_dtl,1192,7)) frefNo,
+	   ltrim(substr(cns_dtl,1199,8)) frefDate,	   
+       ltrim(substr(cns_dtl,1207,44)) containrNo,
+	   ltrim(substr(cns_dtl,1251,240)) licnsNo,
+	   ltrim(substr(cns_dtl,1491,1)) conslCrgInd,
+	   ltrim(substr(cns_dtl,1492,11)) splMark,
+	   ltrim(substr(cns_dtl,1503,3)) crghndlrCode,
+	   ltrim(substr(cns_dtl,1506,4)) condnCode,
+	   ltrim(substr(cns_dtl,1510,1)) hubcsgnInd   	   
+	   from cst_csgnm 
+	where flt_type='I' and flt_key=#fltNo#  and flt_date=#dateFrom# and recv_rec_type=#amdType#
+	and seq_no &gt;0 and seq_no &lt;99999 and ver_no=(select max(ver_no) 
+	  	  		    from cst_csgnm 
+					where flt_type='I' and flt_key=#fltNo#  and flt_date=#dateFrom# and recv_rec_type=#amdType#) 	
+	
+	</select>
+	
+	<select id="cust_PaperManifestTruck_113_A"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+	
+		select  substr(cns_hdr,1,8) as truckNo,
+           substr(cns_hdr,9,8) as schDate,
+           substr(cns_hdr,17,4) as schTime,
+           ltrim(substr(cns_hdr,21,2),0) as inaVersn,
+	   substr(cns_hdr,23,3) as coprCode,
+	   substr(cns_hdr,26,15) as clsRdPermit,
+           substr(cns_hdr,41,8) as crossDate,	  
+           substr(cns_hdr,49,4) as crossTime,	  
+           substr(cns_hdr,53,15) as sealNo,	  
+           substr(cns_hdr,68,15) as cntnrNo,	 
+           substr(cns_hdr,83,3) as ctrlPtCode,
+           substr(cns_hdr,86,3) as destPort,
+	    upper(substr(b.cns_hash_tot,1,4)||' '||substr(b.cns_hash_tot,5,4)||' '||
+		substr(b.cns_hash_tot,9,4)||' '||substr(b.cns_hash_tot,13,4)||' '||
+		substr(b.cns_hash_tot,17,4)||' '||substr(b.cns_hash_tot,21,4)||' '||
+		substr(b.cns_hash_tot,25,4)||' '||substr(b.cns_hash_tot,29,4)) as hashTot1 ,
+
+		upper(substr(b.cns_hash_tot,33,4)||' '||substr(b.cns_hash_tot,37,4)||' '||
+		substr(b.cns_hash_tot,41,4)||' '||substr(b.cns_hash_tot,45,4)||' '||
+		substr(b.cns_hash_tot,49,4)||' '||substr(b.cns_hash_tot,53,4)||' '||
+		substr(b.cns_hash_tot,57,4)||' '||substr(b.cns_hash_tot,61)) as hashTot2,
+	   substr(cns_hdr,92,1) filler,		
+
+		upper(substr(b.cns_hash_tot,1,16)) as hashTotCode1,
+		upper(substr(b.cns_hash_tot,17,16)) as hashTotCode2,
+		upper(substr(b.cns_hash_tot,33,16)) as hashTotCode3,
+		upper(substr(b.cns_hash_tot,49)) as hashTotCode4
+		from cst_csgnm a,cst_subm b
+		where a.flt_type=b.flt_type and a.truck_no=b.truck_no  and a.sch_date=b.sch_date and a.recv_rec_type=b.rec_type
+	  and a.ver_no=b.ver_no and a.flt_type='T' and a.recv_rec_type in ('INA','AMA') and a.truck_no=#truckNo#  and a.sch_date=#dateFrom# and a.sch_time=#truckTime# and a.recv_rec_type=#amaType#
+	  and a.seq_no= 0 and a.ver_no=(select max(ver_no) from cst_csgnm 
+		where flt_type='T' and truck_no=#truckNo#  and sch_date=#dateFrom# and sch_time=#truckTime# and recv_rec_type=#amaType#) 
+	
+		</select>
+		<select id="cust_PaperManifestTruck_113_ADtl"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+	select			  
+	   substr(cns_dtl,1,1) actype,
+          substr(cns_dtl,2,8) fltNodtl,
+          substr(cns_dtl,10,8) ||'/'|| substr(cns_dtl,17,2)||':'|| substr(cns_dtl,19,2) schDatedtl,
+          substr(cns_dtl,22,2) intVerdtl,
+          substr(cns_dtl,24,12) containrNo ,
+          substr(cns_dtl,36,8) frefDate,
+          substr(cns_dtl,44,2) frefAirCode,
+          substr(cns_dtl,46,7) frefNo,
+          substr(cns_dtl,53,12) awbNodtl,
+          substr(cns_dtl,65,18) hawbNodtl,
+          substr(cns_dtl,83,1) conslCrgInd,
+          substr(cns_dtl,84,1) shpmtMode,
+          substr(cns_dtl,85,3) orig,
+          substr(cns_dtl,88,3) ldgPort,
+          substr(cns_dtl,91,3) dest,
+          ltrim(substr(cns_dtl,94,6),0) as manfPc,
+          trim(to_char(ltrim(substr(cns_dtl,100,9),0),'9999990.0')) manfWt,
+          substr(cns_dtl,109,265) as cdesc,
+          substr(cns_dtl,374,70) imptName,
+          substr(cns_dtl,444,60) imptChname,
+          substr(cns_dtl,504,53) as imptAddr1,
+          substr(cns_dtl,557,53) as imptAddr2,
+          substr(cns_dtl,610,53) as imptAddr3,
+          substr(cns_dtl,663,53) as imptAddr4,
+          substr(cns_dtl,716,53) as imptAddr5,
+          substr(cns_dtl,769,70) notfyName,
+          substr(cns_dtl,839,60) notfyChsName,
+          substr(cns_dtl,899,265) notfyAddr,
+          substr(cns_dtl,1164,70) shpName,
+          substr(cns_dtl,1234,60) shpChsName,
+          substr(cns_dtl,1294,265) shpAddr1,
+          substr(cns_dtl,1295,265) shpAddr2,
+          substr(cns_dtl,1347,265) shpAddr3,
+          substr(cns_dtl,1400,265) shpAddr4,
+          substr(cns_dtl,1453,265) shpAddr5,
+          substr(cns_dtl,1559,35) cstRemarks,
+          substr(cns_dtl,1584,240) licnsNo 	   
+	   from cst_csgnm 
+	where flt_type='T' and truck_no=#truckNo#  and sch_date=#dateFrom#  and sch_time=#truckTime# and recv_rec_type=#amaType#
+	and seq_no &gt; 0 and seq_no &lt;99999 and ver_no=(select max(ver_no) 
+	  	  		    from cst_csgnm 
+					where flt_type='T' and truck_no=#truckNo#  and sch_date=#dateFrom#  and sch_time=#truckTime# and recv_rec_type=#amaType#) 	
+	
+	</select>
+	
+	<select id="cust_rept_116_flt_I"  parameterClass="cargo.cms.customs.report.bo.ConstraintCodeRept_116BO" resultClass="cargo.cms.customs.report.bo.ConstraintCodeRept_116BO">
+		
+     SELECT   flt_opr.tr_no AS trno, flt_opr.flt_key AS flightkey,
+         flt_opr.flt_type AS flighttype,
+         PKG_COMMON.get_flt_ata(flt_opr.FLT_KEY, flt_opr.SCH_DATE, 'A') AS acttime,
+         TO_CHAR (flt_opr.sch_date, 'DDMONYY') AS flightDate,
+         PKG_COMMON.get_flt_eta(flt_opr.FLT_KEY, flt_opr.SCH_DATE, 'A') AS estTime,
+         DECODE(flt_opr.sch_time, NULL, '', SUBSTR(TRIM(TO_CHAR(NVL(flt_opr.sch_time,0),'0000')),0,2)|| ':'|| SUBSTR(TRIM(TO_CHAR(NVL(flt_opr.sch_time,0),'0000')),3,4)) AS schTime,
+         cc.awb_no AS awbno, SUBSTR (cc.awb_no, 1, 3) AS awbnopfx,
+         SUBSTR (cc.awb_no, 4, 11) AS awbnosfx,
+         cc.hawb_no AS hawbno, cc.cc_code AS constcode,
+         cc.ver_no AS verno, 
+         nvl(h.ORG,imp_car_awb.awb_origin) AS orig,
+		 nvl(h.DES,imp_car_awb.awb_dest) AS dest,
+		 NVL(h.PCS, imp_car_awb.awb_pcs) AS awbpcs,
+         NVL(h.wgt, imp_car_awb.awb_wt) AS awbwt,
+         NVL(h.PCS, imp_car_shp.manifest_pcs) AS manfpcs,
+         NVL(h.wgt, imp_car_shp.manifest_wt) AS manfwt,
+         TO_CHAR (cc.recv_date, 'DDMONYY HH24:MI') AS recvdate
+    FROM flt_opr 
+	INNER JOIN v_cst_imp_cc_code_ALL cc ON flt_opr.flt_key = cc.flt_key
+                                   AND flt_opr.sch_date = cc.flt_date
+	JOIN mast_constraint_code mCC ON cc.cc_code = mCC.code                                 
+	left join cst_hawb h on cc.awb_no = h.awb_no and cc.hawb_no = h.hawb_no
+         INNER JOIN imp_car_shp ON cc.flt_key = imp_car_shp.flt_key
+                              AND cc.awb_no = imp_car_shp.awb_no
+                              AND cc.flt_date = imp_car_shp.flt_date
+         INNER JOIN imp_car_awb ON imp_car_shp.awb_no = imp_car_awb.awb_no
+                              AND imp_car_shp.awb_date = imp_car_awb.awb_date
+	WHERE flt_opr.flt_type = 'A'
+    	AND flt_opr.sch_date BETWEEN #startDate# AND #endDate#
+    	and exists (select null
+				  from (select sf.Sub_Function_code VAL
+					  from sec_role_sub_function sf
+					  join sec_user_role ur on ur.role_name = sf.role_code
+					  where sf.Sub_Function_code in ('CST_8_001', 'CST_8_002') and enable_yn = 'Y' and ur.user_id = #userID#) a
+				  where (a.VAL = 'CST_8_001' and 
+				  			   exists (select NULL from cst_recv where CONST_CODE in ('NF', 'EF') 
+							   		  and flt_key = cc.flt_key and flt_date = cc.flt_date and flt_type =cc.flt_type 
+									  and awb_no = cc.awb_no and hawb_no = cc.hawb_no))
+				  		or (a.VAL = 'CST_8_002' AND
+						   	   exists (select NULL from cst_recv where CONST_CODE in ('NH', 'EH', 'EM')
+							   		  and flt_key = cc.flt_key and flt_date = cc.flt_date and flt_type = cc.flt_type 
+									  and awb_no = cc.awb_no and hawb_no = cc.hawb_no))
+				  union all
+				  select null
+				  from (select count(1) VAL
+					  from sec_role_sub_function sf
+					  join sec_user_role ur on ur.role_name = sf.role_code
+					  where sf.Sub_Function_code in ('CST_8_001', 'CST_8_002') and enable_yn = 'Y' and ur.user_id = #userID#) a
+				  where a.VAL = 0
+				  )
+		<isNotEmpty property="loginCarrier">
+		AND	(flt_opr.CARR_CODE = #loginCarrier#
+			OR flt_opr.CARR_CODE IN (SELECT CARR_CODE FROM MAST_CARR_GRP WHERE GRP_CARR_CODE = #loginCarrier#))
+		</isNotEmpty>
+		<isNotEmpty prepend="AND" property="ccsevereThan">
+		(EXISTS(SELECT 1 FROM MAST_CONSTRAINT_CODE WHERE CODE = cc.CC_CODE
+				AND PRIORITY &gt; #ccsevereThan#) or 	cc.CC_CODE is null)	
+		</isNotEmpty>		
+		<isEqual property="actionTag" prepend="AND" compareValue="searchByFlight">
+			flt_opr.FLT_KEY=#sfltNo#
+		</isEqual>	
+		<isEqual property="actionTag" compareValue="searchByCarrCode">
+	 		<isNotEqual property="scarrier" compareValue="ALL">
+				AND flt_opr.CARR_CODE=NVL(#scarrier#, flt_opr.CARR_CODE)
+			</isNotEqual>	 
+		</isEqual>
+		<isNotEmpty prepend="AND" property="constCode1">
+			(TRIM(UPPER(cc.CC_CODE)) = TRIM(UPPER(#constCode1#))
+			<isNotEmpty prepend="OR" property="constCode2">
+				TRIM(UPPER(cc.CC_CODE)) = TRIM(UPPER(#constCode2#))
+			</isNotEmpty>
+			<isNotEmpty prepend="OR" property="constCode3">
+				TRIM(UPPER(cc.CC_CODE)) = TRIM(UPPER(#constCode3#))
+			</isNotEmpty>
+			<isNotEmpty prepend="OR" property="constCode4">
+				TRIM(UPPER(cc.CC_CODE)) = TRIM(UPPER(#constCode4#)) 
+			</isNotEmpty>
+			<isNotEmpty prepend="OR" property="constCode5">
+				TRIM(UPPER(cc.CC_CODE)) = TRIM(UPPER(#constCode5#)) 
+			</isNotEmpty>)
+		</isNotEmpty>
+		<isNotEmpty prepend="AND" property="cnstrPeriod">
+			cc.recv_date &lt; (sysdate-(#cnstrPeriod#/24)) AND nvl(mCC.CONSTRAINT,'N') = 'Y'
+		</isNotEmpty>
+	
+		<isNotEmpty prepend="AND" property="trfType">		
+			<isEqual property="trfType" compareValue="ALL">
+	 			(EXISTS(SELECT 1 FROM V_DDT_DTL WHERE FLT_KEY = flt_opr.flt_key AND FLT_DATE = flt_opr.sch_date AND AWB_NO= cc.awb_no AND shp_trf_type in ('TT','IF','QT','LD')))
+			</isEqual> 		
+			
+			<isEqual property="trfType" compareValue="TT/IF">
+	 			(EXISTS(SELECT 1 FROM V_DDT_DTL WHERE FLT_KEY = flt_opr.flt_key AND FLT_DATE = flt_opr.sch_date AND AWB_NO= cc.awb_no AND shp_trf_type in ('TT','IF')))
+			</isEqual> 	
+				
+			<isNotEqual property="trfType" compareValue="ALL">
+				<isNotEqual property="trfType" compareValue="TT/IF">
+					(EXISTS(SELECT 1 FROM V_DDT_DTL WHERE FLT_KEY = flt_opr.flt_key AND FLT_DATE = flt_opr.sch_date AND AWB_NO= cc.awb_no AND shp_trf_type in (#trfType#)))
+				</isNotEqual>
+			</isNotEqual>
+		</isNotEmpty>
+	
+	  ORDER BY cc.recv_date desc,flt_opr.flt_key asc, flt_opr.sch_date asc,  cc.awb_no asc, cc.hawb_no asc
+	</select>
+  	
+	
+	<select id="cust_rept_116_flt_E"  parameterClass="cargo.cms.customs.report.bo.ConstraintCodeRept_116BO" resultClass="cargo.cms.customs.report.bo.ConstraintCodeRept_116BO">
+ 		SELECT '1' AS trno, a.flt_key AS flightkey, a.flt_type AS flighttype,
+		       to_char(a.flt_date, 'DDMONYY') AS flightDate,
+		       pkg_common.get_flt_ata(a.flt_key, a.flt_date, 'E', 'DD') AS acttime,
+		       pkg_common.get_flt_eta(a.flt_key, a.flt_date, 'E', 'DD') AS estTime,
+		       DECODE(flt_opr.sch_time, NULL, '', SUBSTR(TRIM(TO_CHAR(NVL(flt_opr.sch_time,0),'0000')),0,2)|| ':'|| SUBSTR(TRIM(TO_CHAR(NVL(flt_opr.sch_time,0),'0000')),3,4)) AS schTime,
+		       a.awb_no AS awbno, substr(a.awb_no, 1, 3) AS awbnopfx,
+		       substr(a.awb_no, 4, 11) AS awbnosfx, a.hawb_no AS hawbno,
+		       a.cc_code AS constcode, a.ver_no AS verno, 
+		       nvl(fhawb.HAWB_ORG,awb.orig) AS orig,
+		  	   nvl(fhawb.HAWB_DEST,awb.dest) AS dest,
+		       nvl(awb.pcs, 0) AS awbpcs, nvl(awb.wt, 0) AS awbwt,
+		       nvl(b.pman_pcs, 0) AS manfpcs, nvl(b.pman_wt, 0) AS manfwt,
+		       to_char(a.recv_date, 'DDMONYY HH24:MI') AS recvdate
+		  FROM v_cst_cont_code_ALL a
+		  JOIN mast_constraint_code mCC ON a.cc_code = mCC.code    
+		  LEFT JOIN exp_pmanifest_awb b ON a.flt_key = b.flt_key AND a.awb_no = b.awb_no AND a.flt_date = b.flt_date
+		  LEFT JOIN awb ON a.awb_no = awb.awb_no
+		  LEFT JOIN flt_opr flt_opr ON a.flt_key = flt_opr.flt_key AND a.flt_date = flt_opr.sch_date AND a.flt_type = flt_opr.flt_type
+		  left join edi_fhl fhl on fhl.awb_no = awb.awb_no and fhl.awb_date = awb.awb_date
+          left join edi_fhl_hawb fhawb on fhawb.tr_no = fhl.tr_no and fhawb.hawb_no = a.hawb_no
+		 WHERE a.flt_type = 'D'
+		   AND ((a.flt_date BETWEEN to_date(#startDate#,'ddmonyy') AND 
+		to_date(#endDate#,'ddmonyy')) or
+		        (a.flt_date =to_date('01JAN1998','ddmonyyyy') and a.recv_date BETWEEN to_date(#startDate#,'ddmonyy')-1 AND 
+		to_date(#endDate#,'ddmonyy')+1 ))
+			and exists (select null
+				  from (select sf.Sub_Function_code VAL
+					  from sec_role_sub_function sf
+					  join sec_user_role ur on ur.role_name = sf.role_code
+					  where sf.Sub_Function_code in ('CST_8_001', 'CST_8_002') and enable_yn = 'Y' and ur.user_id = #userID#) a
+				  where (a.VAL = 'CST_8_001' and 
+				  			   exists (select NULL from cst_recv where CONST_CODE in ('NF', 'EF') 
+							   		  and flt_key = a.flt_key and flt_date = a.flt_date and flt_type = a.flt_type 
+									  and awb_no = a.awb_no and hawb_no = a.hawb_no))
+				  		or (a.VAL = 'CST_8_002' AND
+						   	   exists (select NULL from cst_recv where CONST_CODE in ('NH', 'EH', 'EM')
+							   		  and flt_key = a.flt_key and flt_date = a.flt_date and flt_type = a.flt_type 
+									  and awb_no = a.awb_no and hawb_no = a.hawb_no))
+				  union all
+				  select null
+				  from (select count(1) VAL
+					  from sec_role_sub_function sf
+					  join sec_user_role ur on ur.role_name = sf.role_code
+					  where sf.Sub_Function_code in ('CST_8_001', 'CST_8_002') and enable_yn = 'Y' and ur.user_id = #userID#) a
+				  where a.VAL = 0
+				  )
+				  
+		<isNotEmpty prepend="AND" property="ccsevereThan">
+		       (EXISTS(SELECT 1 FROM MAST_CONSTRAINT_CODE
+		                WHERE CODE = a.CC_CODE
+		                  AND PRIORITY BETWEEN 0 AND #ccsevereThan#)
+		                  or a.CC_CODE is null)
+		 </isNotEmpty>
+		 <isEqual property="actionTag" prepend="AND" compareValue="searchByFlight">
+		       a.FLT_KEY=#sfltNo#
+		 </isEqual>
+		 <isEqual property="actionTag" compareValue="searchByCarrCode">
+		    <isNotEqual property="scarrier" compareValue="ALL">
+		     	<isNotEmpty property="scarrier">
+		        	AND a.carr_code =NVL(#scarrier#, a.CARR_CODE)
+		        </isNotEmpty>
+		    </isNotEqual>
+		 </isEqual>
+		 <isNotEmpty prepend="AND" property="constCode1">
+		     TRIM(UPPER(a.CC_CODE)) = TRIM(UPPER(#constCode1#))
+		     <isNotEmpty prepend="OR" property="constCode2">
+		        TRIM(UPPER(a.CC_CODE)) = TRIM(UPPER(#constCode2#))
+		     </isNotEmpty>
+		     <isNotEmpty prepend="OR" property="constCode3">
+		        TRIM(UPPER(a.CC_CODE)) = TRIM(UPPER(#constCode3#))
+		     </isNotEmpty>
+		     <isNotEmpty prepend="OR" property="constCode4">
+		        TRIM(UPPER(a.CC_CODE)) = TRIM(UPPER(#constCode4#))
+		     </isNotEmpty>
+		     <isNotEmpty prepend="OR" property="constCode5">
+		        TRIM(UPPER(a.CC_CODE)) = TRIM(UPPER(#constCode5#))
+		     </isNotEmpty>
+		  </isNotEmpty>
+		  <isNotEmpty prepend="AND" property="cnstrPeriod">
+		     a.recv_date &lt; (sysdate-(#cnstrPeriod#/24))  AND nvl(mCC.CONSTRAINT,'N') = 'Y'
+		 </isNotEmpty>
+				  
+		  <isNotEmpty prepend="AND" property="trfType">		
+			<isEqual property="trfType" compareValue="ALL">
+	 			(EXISTS(SELECT 1 FROM V_DDT_DTL WHERE FLT_KEY = a.flt_key AND FLT_DATE = a.flt_date AND AWB_NO= a.awb_no AND shp_trf_type in ('TT','IF','QT','LD')))
+			</isEqual> 		
+			
+			<isEqual property="trfType" compareValue="TT/IF">
+	 			(EXISTS(SELECT 1 FROM V_DDT_DTL WHERE FLT_KEY = a.flt_key AND FLT_DATE = a.flt_date AND AWB_NO= a.awb_no AND shp_trf_type in ('TT','IF')))
+			</isEqual> 	
+				
+			<isNotEqual property="trfType" compareValue="ALL">
+				<isNotEqual property="trfType" compareValue="TT/IF">
+					(EXISTS(SELECT 1 FROM V_DDT_DTL WHERE FLT_KEY = a.flt_key AND FLT_DATE = a.flt_date AND AWB_NO= a.awb_no AND shp_trf_type in (#trfType#)))
+				</isNotEqual>
+			</isNotEqual>
+		</isNotEmpty>
+	
+		<isEmpty property="scarrier">
+			<isNotEmpty property="loginCarrier">
+				AND	(a.CARR_CODE = #loginCarrier#
+				OR a.CARR_CODE IN (SELECT CARR_CODE FROM MAST_CARR_GRP WHERE GRP_CARR_CODE = #loginCarrier#))
+			</isNotEmpty>
+		</isEmpty>
+		 ORDER BY a.recv_date desc,a.flt_key asc,a.flt_date asc,a.awb_no asc, a.hawb_no asc
+   	</select> 
+   	
+   	<select id="cust_rept_116_flt_T"  parameterClass="cargo.cms.customs.report.bo.ConstraintCodeRept_116BO" resultClass="cargo.cms.customs.report.bo.ConstraintCodeRept_116BO">
+		
+SELECT   trk_Flt.truck_no AS truckNo,
+         TO_CHAR (trk_Flt.TRUCK_FLT_DATE, 'DDMONYY') AS schDate,
+         trk_Flt.sch_time AS schTime, 
+         shp_data.awb_no AS awbno, SUBSTR (shp_data.awb_no, 1, 3) AS awbnopfx,
+         SUBSTR (shp_data.awb_no, 4, 11) AS awbnosfx,
+         shp_data.hawb_no AS hawbno, cc.cc_code AS constcode,
+         cc.ver_no AS verno,
+         nvl(fhawb.HAWB_ORG,shp_data.orig) AS orig,
+		 nvl(fhawb.HAWB_DEST,shp_data.dest) AS dest,
+         shp_data.HAWB_PCS AS awbpcs,
+         shp_data.HAWB_WT AS awbwt,
+         shp_data.TRK_MANF_PCS AS manfpcs,
+         shp_data.TRK_MANF_Wt AS manfwt,
+         TO_CHAR (cc.recv_date, 'DDMONYY HH24:MI') AS recvdate
+    FROM ITM_TRK_MANF_HD trk_Flt 
+  inner join ( SELECT A.tr_no, A.AWB_NO,A.AWB_DATE,B.HAWB_NO, B.TRK_MANF_PCS, B.TRK_MANF_WT , HAWB_PCS, HAWB_WT  , A.dest ,A.orig
+                        FROM ITM_TRK_MANF_SHP A, ITM_TRK_MANF_SHP_HAWB B
+                        WHERE A.tr_no = B.tr_no and A.DOC_LINE_NO = B.DTL_DOC_LINE_NO
+                        UNION
+                        SELECT A.tr_no, A.AWB_NO,A.AWB_DATE,LPAD('0',18,'0') HAWB_NO, A.TRK_MANF_PCS, A.TRK_MANF_WT     , null , null  , A.dest , A.orig
+                        FROM ITM_TRK_MANF_SHP A ) shp_data on  shp_data.tr_no = trk_Flt.tr_no
+  JOIN V_CST_TRUCK_CC_CODE_ALL cc ON trk_Flt.truck_No = cc.truck_No AND trk_Flt.TRUCK_FLT_DATE = cc.sch_date  AND trk_Flt.sch_TIME = cc.sch_TIME and  cc.hawb_no = shp_data.hawb_no
+  left join edi_fhl fhl on fhl.awb_no = shp_data.awb_no and fhl.awb_date = shp_data.awb_date
+  left join edi_fhl_hawb fhawb on fhawb.tr_no = fhl.tr_no and fhawb.hawb_no = shp_data.hawb_no
+   WHERE trk_Flt.status not in ('VOID') and trk_Flt.TRUCK_FLT_DATE BETWEEN #startDate# AND #endDate#        
+        <isNotEmpty prepend="AND" property="truckNo">
+           trk_Flt.truck_No = #truckNo#
+        </isNotEmpty>	
+	<isNotEmpty prepend="AND" property="ccsevereThan">
+		(EXISTS(SELECT 1 FROM MAST_CONSTRAINT_CODE WHERE CODE = cc.CC_CODE
+				AND PRIORITY &gt;= #ccsevereThan#) or 	cc.CC_CODE is null)	
+	</isNotEmpty>	
+	<isNotEmpty prepend="AND" property="constCode1">
+		(TRIM(UPPER(cc.CC_CODE)) = TRIM(UPPER(#constCode1#))
+		<isNotEmpty prepend="OR" property="constCode2">
+			TRIM(UPPER(cc.CC_CODE)) = TRIM(UPPER(#constCode2#))
+		</isNotEmpty>
+		<isNotEmpty prepend="OR" property="constCode3">
+			TRIM(UPPER(cc.CC_CODE)) = TRIM(UPPER(#constCode3#))
+		</isNotEmpty>
+		<isNotEmpty prepend="OR" property="constCode4">
+			TRIM(UPPER(cc.CC_CODE)) = TRIM(UPPER(#constCode4#)) 
+		</isNotEmpty>
+		<isNotEmpty prepend="OR" property="constCode5">
+			TRIM(UPPER(cc.CC_CODE)) = TRIM(UPPER(#constCode5#)) 
+		</isNotEmpty>)
+	</isNotEmpty>
+	<isNotEmpty prepend="AND" property="cnstrPeriod">
+		cc.recv_date &lt; (sysdate-(#cnstrPeriod#/24))
+	</isNotEmpty>
+	 ORDER BY  cc.recv_date desc,trk_Flt.truck_no asc,trk_Flt.TRUCK_FLT_DATE asc,shp_data.awb_no asc, shp_data.hawb_no asc		
+  	</select>
+   	
+<select id="examResultsListByAWB_119"  parameterClass="cargo.cms.customs.report.bo.EPExamResultRept_119BO" resultClass="cargo.cms.customs.report.bo.EPExamResultRept_119BO">
+	SELECT 
+        B.FLT_TYPE AS flightType, B.FLT_KEY AS flightKey, to_char(B.FLT_DATE, 'DDMONYY') AS flightDate, 
+        DECODE(B.rec_type,'E',B.EXAM_CODE,B.CONST_CODE) AS constCode, DECODE(B.rec_type,'E','Y','N') AS exam,
+        B.CTM_REF_NO AS refNo, nvl(B.EXAM_REP_PCS,0) AS relPc, 
+        nvl(B.EXAM_REP_WT,0) AS relWt, nvl(B.EXAM_DET_PCS,0) AS dtnPc, 
+        nvl(B.EXAM_DET_WT,0) AS dtnWt, to_char(B.RECV_DATE, 'DD-MON-YY HH24:mi:ss') AS recvDate,
+    B.EXAM_REM AS remarks,
+        substr(B.AWB_NO, 1,3) as awbNoPFX, 
+        substr(B.AWB_NO, 4,11) as awbNoSFX,
+        to_char(B.LM_DATE, 'DD-MON-YY HH24:mi:ss') AS lmDate,
+   <isEqual property="flightType" compareValue="E">
+            PKG_COMMON.get_flt_ata(#flightKey#, #flightDate#, 'D') AS ata,
+            PKG_COMMON.get_flt_eta(#flightKey#, #flightDate#, 'D') AS eta,
+   </isEqual>    
+   <isEqual property="flightType" compareValue="I">
+            PKG_COMMON.get_flt_ata(#flightKey#, #flightDate#, 'A') AS ata,
+            PKG_COMMON.get_flt_eta(#flightKey#, #flightDate#, 'A') AS eta,
+   </isEqual>   
+<isEqual property="flightType" compareValue="T">
+            PKG_COMMON.get_flt_ata(#flightKey#, #flightDate#, 'T') AS ata,
+            PKG_COMMON.get_flt_eta(#flightKey#, #flightDate#, 'T') AS eta,
+   </isEqual>               
+        B.AWB_NO AS awbNo,B.VER_NO AS verNo,
+        B.VER_NO AS submVerNo,
+        DECODE(SIGN(c.AWB_CNT - 1),1,'Y',DECODE(SIGN(c.CNR_CNT - c.AWB_CNT - c.HAWB_CNT),1,'Y','N')) AS amd, 
+        DECODE(B.REC_TYPE,'BDS','Y','N') AS breakDown,
+        DECODE(SIGN(C.HAWB_CNT),1,'Y','N') AS cnsl
+        FROM (select * from CST_RECV UNION ALL select * from cst_recv_old_awb) B,
+     (SELECT FLT_TYPE,FLT_KEY,FLT_DATE,AWB_NO,MAX(DECODE(HAWB_NO,'000000000000000000',RECV_DATE)) RECV_DATE,
+             SUM(DECODE(HAWB_NO,'000000000000000000',1,0)) AWB_CNT,
+             SUM(DECODE(HAWB_NO,'000000000000000000',0,1)) HAWB_CNT,
+             COUNT(HAWB_NO) CNR_CNT
+        FROM (select * from CST_RECV UNION ALL select * from cst_recv_old_awb) 
+       WHERE AWB_NO = #awbNo#
+       <isEqual property="codeType" prepend="AND" compareValue="A">
+             REC_TYPE IN ('C','E')
+       </isEqual>          
+       <isEqual property="codeType" prepend="AND" compareValue="ER">
+             REC_TYPE = 'E'
+       </isEqual>        
+       <isEqual property="codeType" prepend="AND" compareValue="NER">
+                 REC_TYPE NOT IN ('E')
+       </isEqual>    
+       GROUP BY FLT_TYPE,FLT_KEY,FLT_DATE,AWB_NO) C
+        WHERE B.FLT_KEY = C.FLT_KEY  AND B.FLT_DATE = C.FLT_DATE AND B.FLT_TYPE = C.FLT_TYPE
+          AND B.AWB_NO = C.AWB_NO AND B.HAWB_NO='000000000000000000' AND B.RECV_DATE = C.RECV_DATE 
+		  <isNotEmpty property="loginCarrier">
+			AND	B.CARR_CODE = #loginCarrier#
+		</isNotEmpty>
+				
+   	</select>  
+   	
+	<select id="examResultsListByFlight_119"  parameterClass="cargo.cms.customs.report.bo.EPExamResultRept_119BO" resultClass="cargo.cms.customs.report.bo.EPExamResultRept_119BO">
+
+   SELECT 
+        B.FLT_TYPE AS flightType, B.FLT_KEY AS flightKey, to_char(B.FLT_DATE, 'DDMONYY') AS flightDate, 
+        DECODE(B.rec_type,'E',B.EXAM_CODE,B.CONST_CODE) AS constCode, DECODE(B.rec_type,'E','Y','N') AS exam,
+        B.CTM_REF_NO AS refNo, nvl(B.EXAM_REP_PCS,0) AS relPc, 
+        nvl(B.EXAM_REP_WT,0) AS relWt, nvl(B.EXAM_DET_PCS,0) AS dtnPc, 
+        nvl(B.EXAM_DET_WT,0) AS dtnWt, to_char(B.RECV_DATE, 'DD-MON-YY HH24:mi:ss') AS recvDate,
+    B.EXAM_REM AS remarks,
+        substr(B.AWB_NO, 1,3) as awbNoPFX, 
+        substr(B.AWB_NO, 4,11) as awbNoSFX,
+        to_char(B.LM_DATE, 'DD-MON-YY HH24:mi:ss') AS lmDate,
+   <isEqual property="flightType" compareValue="E">
+            PKG_COMMON.get_flt_ata(#flightKey#, #flightDate#, 'D') AS ata,
+            PKG_COMMON.get_flt_eta(#flightKey#, #flightDate#, 'D') AS eta,
+   </isEqual>    
+   <isEqual property="flightType" compareValue="I">
+            PKG_COMMON.get_flt_ata(#flightKey#, #flightDate#, 'A') AS ata,
+            PKG_COMMON.get_flt_eta(#flightKey#, #flightDate#, 'A') AS eta,
+   </isEqual> 
+<isEqual property="flightType" compareValue="T">
+            PKG_COMMON.get_flt_ata(#flightKey#, #flightDate#, 'T') AS ata,
+            PKG_COMMON.get_flt_eta(#flightKey#, #flightDate#, 'T') AS eta,
+   </isEqual>                 
+        B.AWB_NO AS awbNo,B.VER_NO AS verNo,
+        B.VER_NO AS submVerNo,
+        (CASE
+    WHEN (SELECT COUNT(1)
+      FROM CST_SUBM cstSubm
+      JOIN CST_CSGNM cstCsgnm
+      ON cstCsgnm.flt_Type       = cstSubm.flt_Type
+      AND cstCsgnm.flt_Key       = cstSubm.flt_Key
+      AND cstCsgnm.flt_Date      = cstSubm.flt_Date
+      AND cstCsgnm.ver_no        = cstSubm.ver_no
+      AND cstCsgnm.recv_rec_type = cstSubm.rec_type
+      WHERE cstSubm.rec_type     = 'AMD'
+      AND send_status            = 'A'
+      AND cstSubm.flt_Type       = B.FLT_TYPE
+      AND cstSubm.flt_Key        = B.FLT_KEY
+      AND cstSubm.flt_Date       = B.FLT_DATE
+      AND cstCsgnm.awb_no        = B.AWB_NO ) > 0
+    THEN 'Y'
+    ELSE 'N'
+  END) AS amd, 
+        (CASE
+    WHEN (SELECT COUNT(1)
+      FROM CST_SUBM cstSubm
+      JOIN CST_CSGNM cstCsgnm
+      ON cstCsgnm.flt_Type       = cstSubm.flt_Type
+      AND cstCsgnm.flt_Key       = cstSubm.flt_Key
+      AND cstCsgnm.flt_Date      = cstSubm.flt_Date
+      AND cstCsgnm.ver_no        = cstSubm.ver_no
+      AND cstCsgnm.recv_rec_type = cstSubm.rec_type
+      WHERE cstSubm.rec_type     = 'BDS'
+      AND send_status            = 'A'
+      AND cstSubm.flt_Type       = B.FLT_TYPE
+      AND cstSubm.flt_Key        = B.FLT_KEY
+      AND cstSubm.flt_Date       = B.FLT_DATE
+      AND cstCsgnm.awb_no        = B.AWB_NO ) > 0
+    THEN 'Y'
+    ELSE 'N'
+  END) AS breakDown,
+        DECODE(SIGN(C.HAWB_CNT),1,'Y','N') AS cnsl
+        FROM (select * from CST_RECV UNION ALL select * from cst_recv_old_awb) B,
+     (SELECT FLT_TYPE,FLT_KEY,FLT_DATE,AWB_NO,MAX(DECODE(HAWB_NO,'000000000000000000',RECV_DATE)) RECV_DATE,
+             SUM(DECODE(HAWB_NO,'000000000000000000',1,0)) AWB_CNT,
+             SUM(DECODE(HAWB_NO,'000000000000000000',0,1)) HAWB_CNT,
+             COUNT(HAWB_NO) CNR_CNT
+        FROM (select * from CST_RECV UNION ALL select * from cst_recv_old_awb) 
+       WHERE FLT_TYPE = #flightType#
+             AND FLT_KEY = #flightKey#
+             AND FLT_DATE = to_date(#flightDate#,'ddmonyy')
+       <isEqual property="codeType" prepend="AND" compareValue="A">
+             REC_TYPE IN ('C','E')
+       </isEqual>          
+       <isEqual property="codeType" prepend="AND" compareValue="ER">
+             REC_TYPE = 'E'
+       </isEqual>        
+       <isEqual property="codeType" prepend="AND" compareValue="NER">
+                 REC_TYPE ='C'
+       </isEqual>    
+       GROUP BY FLT_TYPE,FLT_KEY,FLT_DATE,AWB_NO) C
+        WHERE B.FLT_KEY = C.FLT_KEY AND B.FLT_DATE = C.FLT_DATE AND B.FLT_TYPE = C.FLT_TYPE 
+          AND B.AWB_NO = C.AWB_NO AND B.HAWB_NO='000000000000000000' AND B.RECV_DATE = C.RECV_DATE
+		<isNotEmpty property="loginCarrier">
+			AND	B.CARR_CODE = #loginCarrier#
+		</isNotEmpty>
+		
+   	</select>	
+   	
+   	<select id="examResultsListByTruck_119"  parameterClass="cargo.cms.customs.report.bo.EPExamResultRept_119BO" resultClass="cargo.cms.customs.report.bo.EPExamResultRept_119BO">
+
+   SELECT 
+        B.FLT_TYPE AS flightType, B.FLT_KEY AS flightKey, to_char(B.FLT_DATE, 'DDMONYY') AS flightDate, 
+        B.truck_no AS truckNo, to_char(B.SCH_DATE, 'DDMONYY') AS schDate, B.SCH_TIME AS schTime,
+        DECODE(B.rec_type,'E',B.EXAM_CODE,B.CONST_CODE) AS constCode, DECODE(B.rec_type,'E','Y','N') AS exam,
+        B.CTM_REF_NO AS refNo, nvl(B.EXAM_REP_PCS,0) AS relPc, 
+        nvl(B.EXAM_REP_WT,0) AS relWt, nvl(B.EXAM_DET_PCS,0) AS dtnPc, 
+        nvl(B.EXAM_DET_WT,0) AS dtnWt, to_char(B.RECV_DATE, 'DD-MON-YY HH24:mi:ss') AS recvDate,
+        B.EXAM_REM AS remarks,
+        substr(B.AWB_NO, 1,3) as awbNoPFX, 
+        substr(B.AWB_NO, 4,11) as awbNoSFX,
+        to_char(B.LM_DATE, 'DD-MON-YY HH24:mi:ss') AS lmDate,           
+        B.AWB_NO AS awbNo,B.VER_NO AS verNo,
+        B.VER_NO AS submVerNo,
+        DECODE(SIGN(c.AWB_CNT - 1),1,'Y',DECODE(SIGN(c.CNR_CNT - c.AWB_CNT - c.HAWB_CNT),1,'Y','N')) AS amd, 
+        DECODE(B.REC_TYPE,'BDS','Y','N') AS breakDown,
+        DECODE(SIGN(C.HAWB_CNT),1,'Y','N') AS cnsl
+        FROM CST_RECV B,
+     (SELECT FLT_TYPE,truck_no,sch_DATE,sch_TIME,AWB_NO,MAX(DECODE(HAWB_NO,'000000000000000000',RECV_DATE)) RECV_DATE,
+             SUM(DECODE(HAWB_NO,'000000000000000000',1,0)) AWB_CNT,
+             SUM(DECODE(HAWB_NO,'000000000000000000',0,1)) HAWB_CNT,
+             COUNT(HAWB_NO) CNR_CNT
+        FROM CST_RECV 
+       WHERE FLT_TYPE = 'T'
+             AND truck_no = #truckNo#
+             AND sch_DATE = to_date(#schDate#,'ddmonyy')
+             AND sch_time = nvl(#schTime#,sch_time)
+       <isEqual property="codeType" prepend="AND" compareValue="A">
+             REC_TYPE IN ('C','E')
+       </isEqual>          
+       <isEqual property="codeType" prepend="AND" compareValue="ER">
+             REC_TYPE = 'E'
+       </isEqual>        
+       <isEqual property="codeType" prepend="AND" compareValue="NER">
+                 REC_TYPE ='C'
+       </isEqual>    
+       GROUP BY FLT_TYPE,truck_no,sch_DATE,sch_TIME,AWB_NO) C
+        WHERE B.truck_no = C.truck_no AND B.sch_DATE = C.sch_DATE AND B.sch_time = C.sch_time  AND B.FLT_TYPE = C.FLT_TYPE 
+          AND B.AWB_NO = C.AWB_NO AND B.HAWB_NO='000000000000000000' AND B.RECV_DATE = C.RECV_DATE
+
+   	</select>	
+   	<select id="fetchDSHistory_Rept_153"  parameterClass="cargo.cms.customs.report.bo.DiscSubmissionHistoryRept_153BO" resultClass="cargo.cms.customs.report.bo.DiscSubmissionHistoryRept_153BO">
+	   SELECT CONCAT(CONCAT(SUBSTR(AWB_NO,0,3),'-'), SUBSTR(AWB_NO,4)) awbNo, 
+					HAWB_NO as hawbNo, NVL(BRKDN_CODE,0) as discType,
+					NVL(OT_MAN_PCS,0) as manfPc , NVL(OT_MAN_WT,0) as manfWt, 
+					NVL(OT_BKDWN_PCS,0) as bkdnPc, NVL(OT_BKDWN_WT,0)as bkdnWt,
+					NVL(OT_SPE_PCS,0) as suppPc, NVL(OT_SPE_WT,0) as suppWt, 
+					NVL(OT_INV_PCS,0) as invPc, NVL(OT_INV_WT,0 )as invWt 
+		FROM CST_BD_DISC
+		WHERE FLT_KEY=#flightKey#  AND FLT_DATE = #flightDate#  AND VER_NO = #verNo# 
+		AND MSG_TYPE = 'B' AND FLT_TYPE = 'I' 
+   	 </select>
+	
+	<select id="cust_rept_657_I"  parameterClass="cargo.cms.customs.report.bo.maintainConstraintCodeRept_657BO" resultClass="cargo.cms.customs.report.bo.maintainConstraintCodeRept_657BO">
+	
+		SELECT T1.AWB_NO AS awbNo, SUBSTR(T1.AWB_NO, 1, 3) AS awbNoPFX,
+			SUBSTR(T1.AWB_NO, 4, 11) AS awbNoSFX, T1.FLT_KEY AS flightKey,
+			TO_CHAR(T1.FLT_DATE, 'DDMONYY') AS flightDate,
+			NVL(T2.FLT_TYPE, 'I') AS flightType, T1.CARR_CODE AS carrCode,
+			nvl(T2.HAWB_NO,T1.HAWB_NO) AS hawbNo, T2.CC_CODE AS constCode, trim(T2.REF_NO) AS refNo,
+			T2.CC_CODE AS old_constCode, trim(T2.REF_NO) AS old_refNo, T2.VER_NO AS verNo,
+			T2.LM_USER_ID AS lastUpdatedUserId,
+			TO_CHAR(T2.LM_DATE, 'DDMONYY HH24:mi') AS lastUpdatedDate
+		FROM (SELECT A.AWB_NO,A.AWB_DATE,B.HAWB_NO,A.FLT_KEY,A.FLT_DATE,A.CARR_CODE
+			FROM IMP_CAR_SHP A,
+			CST_HAWB B
+			WHERE A.AWB_NO = B.AWB_NO
+				AND A.AWB_DATE = B.AWB_DATE
+				AND A.FLT_KEY = #sflightKey#
+				AND A.FLT_DATE = TO_DATE(#sflightDate#, 'DDMONYY')
+				AND A.AWB_NO = NVL(#sawbNo#, A.AWB_NO)
+			UNION
+			SELECT A.AWB_NO,A.AWB_DATE,LPAD('0',18,'0') HAWB_NO,A.FLT_KEY,A.FLT_DATE,A.CARR_CODE
+			FROM IMP_CAR_SHP A
+			WHERE A.FLT_KEY = #sflightKey#
+				AND A.FLT_DATE = TO_DATE(#sflightDate#, 'DDMONYY')
+				AND A.AWB_NO = NVL(#sawbNo#, A.AWB_NO)) T1 
+		LEFT JOIN V_CST_IMP_CC_CODE T2 ON T1.FLT_KEY = T2.FLT_KEY AND T1.FLT_DATE = T2.FLT_DATE AND T1.AWB_NO = T2.AWB_NO AND T1.HAWB_NO = T2.HAWB_NO
+			 AND T2.AWB_NO = NVL(#sawbNo#, T2.AWB_NO)
+		JOIN IMP_CAR_AWB A ON T1.AWB_NO = A.AWB_NO AND T1.AWB_DATE = A.AWB_DATE
+		WHERE A.CATALOG NOT IN ('IO','TM')
+		and exists (select null
+				  from (select sf.Sub_Function_code VAL
+					  from sec_role_sub_function sf
+					  join sec_user_role ur on ur.role_name = sf.role_code
+					  where sf.Sub_Function_code in ('CST_9_001', 'CST_9_002') and enable_yn = 'Y' and ur.user_id = #userId#) a
+				  where (a.VAL = 'CST_9_001' and 
+				  			   exists (select NULL from cst_recv where CONST_CODE in ('NF', 'EF') 
+							   		  and flt_key = t2.flt_key and flt_date = t2.flt_date and flt_type = t2.flt_type 
+									  and awb_no = t2.awb_no and hawb_no = t2.hawb_no))
+				  		or (a.VAL = 'CST_9_002' AND
+						   	   exists (select NULL from cst_recv where CONST_CODE in ('NH', 'EH', 'EM')
+							   		  and flt_key = t2.flt_key and flt_date = t2.flt_date and flt_type = t2.flt_type 
+									  and awb_no = t2.awb_no and hawb_no = t2.hawb_no))
+				  union all
+				  select null
+				  from (select count(1) VAL
+					  from sec_role_sub_function sf
+					  join sec_user_role ur on ur.role_name = sf.role_code
+					  where sf.Sub_Function_code in ('CST_9_001', 'CST_9_002') and enable_yn = 'Y' and ur.user_id = #userId#) a
+				  where a.VAL = 0
+				  )	
+		ORDER BY t1.awb_no, NVL(t2.hawb_no,T1.HAWB_NO)
+		
+	</select>                                    
+	<select id="cust_rept_657_E"  parameterClass="cargo.cms.customs.report.bo.maintainConstraintCodeRept_657BO" resultClass="cargo.cms.customs.report.bo.maintainConstraintCodeRept_657BO">
+		
+	select t1.awb_no AS awbNo,  
+			substr(t1.awb_no, 1,3) as awbNoPFX, 
+			substr(t1.awb_no, 4,11) as awbNoSFX,
+			t2.flt_type AS flightType,	t2.flt_key as flightKey, to_char(t1.FLT_DATE, 'ddMONyy') as flightDate,	 
+			nvl(t2.hawb_no,'000000000000000000') AS hawbNo,  t2.cc_code AS constCode, t2.ref_no AS refNo, 
+			t2.cc_code AS old_constCode, t2.ref_no AS old_refNo, 		
+			t2.VER_NO AS verNo, t2.lm_user_id AS lastUpdatedUserId, to_char(t2.lm_date, 'DD MON YY HH24:mi') AS lastUpdatedDate
+		from   exp_pmanifest_awb t1, v_cst_exp_cc_code t2
+		where  t1.flt_key = t2.flt_key (+)
+		and    t1.flt_date = t2.flt_date (+)
+		and    t1.awb_no = t2.awb_no (+)
+		and    t1.flt_key = #sflightKey#
+		and    t1.flt_date = to_date(#sflightDate#, 'ddMONyy')
+		and    t1.AWB_NO = nvl(#sawbNo#, t1.awb_no)			
+		and exists (select null
+				  from (select sf.Sub_Function_code VAL
+					  from sec_role_sub_function sf
+					  join sec_user_role ur on ur.role_name = sf.role_code
+					  where sf.Sub_Function_code in ('CST_9_001', 'CST_9_002') and enable_yn = 'Y' and ur.user_id = #userId#) a
+				  where (a.VAL = 'CST_9_001' and 
+				  			   exists (select NULL from cst_recv where CONST_CODE in ('NF', 'EF') 
+							   		  and flt_key = t2.flt_key and flt_date = t2.flt_date and flt_type = t2.flt_type 
+									  and awb_no = t2.awb_no and hawb_no = t2.hawb_no))
+				  		or (a.VAL = 'CST_9_002' AND
+						   	   exists (select NULL from cst_recv where CONST_CODE in ('NH', 'EH', 'EM')
+							   		  and flt_key = t2.flt_key and flt_date = t2.flt_date and flt_type = t2.flt_type 
+									  and awb_no = t2.awb_no and hawb_no = t2.hawb_no))
+				  union all
+				  select null
+				  from (select count(1) VAL
+					  from sec_role_sub_function sf
+					  join sec_user_role ur on ur.role_name = sf.role_code
+					  where sf.Sub_Function_code in ('CST_9_001', 'CST_9_002') and enable_yn = 'Y' and ur.user_id = #userId#) a
+				  where a.VAL = 0
+				  )	
+		order by t1.awb_no, t2.hawb_no
+		
+		
+   	</select>  
+   	
+   	
+   	
+   	<select id="cust_rept_657_SouthBound"  parameterClass="cargo.cms.customs.report.bo.maintainConstraintCodeRept_657BO" resultClass="cargo.cms.customs.report.bo.maintainConstraintCodeRept_657BO">
+	
+		SELECT T1.AWB_NO AS awbNo, SUBSTR(T1.AWB_NO, 1, 3) AS awbNoPFX,
+			SUBSTR(T1.AWB_NO, 4, 11) AS awbNoSFX,to_char(T1.AWB_DATE,'DDMONYY') AS awbDate, T1.FLT_KEY AS flightKey,
+			TO_CHAR(T1.FLT_DATE, 'DDMONYY') AS flightDate,
+			NVL(T2.FLT_TYPE, 'I') AS flightType, T1.CARR_CODE AS carrCode,
+			NVL(T1.MANIFEST_PCS, 0) AS pcs, NVL(T1.MANIFEST_WT, 0)  AS wt,
+			nvl(T2.HAWB_NO,T1.HAWB_NO) AS hawbNo, T2.CC_CODE AS constCode, trim(T2.REF_NO) AS refNo,
+			T2.CC_CODE AS old_constCode, trim(T2.REF_NO) AS old_refNo, T2.VER_NO AS verNo,
+			T2.LM_USER_ID AS lastUpdatedUserId,
+			TO_CHAR(T2.LM_DATE, 'DDMONYY HH24:mi') AS lastUpdatedDate
+		FROM (SELECT A.AWB_NO,A.AWB_DATE,B.HAWB_NO,A.FLT_KEY,A.FLT_DATE,A.CARR_CODE,A.MANIFEST_PCS,A.MANIFEST_WT
+			FROM IMP_CAR_SHP A,
+			CST_HAWB B
+			WHERE A.AWB_NO = B.AWB_NO
+				AND A.AWB_DATE = B.AWB_DATE
+				AND A.FLT_KEY = #sflightKey#
+				AND A.FLT_DATE = TO_DATE(#sflightDate#, 'DDMONYY')
+				AND A.AWB_NO = NVL(#sawbNo#, A.AWB_NO)
+			UNION
+			SELECT A.AWB_NO,A.AWB_DATE,LPAD('0',18,'0') HAWB_NO,A.FLT_KEY,A.FLT_DATE,A.CARR_CODE,A.MANIFEST_PCS,A.MANIFEST_WT
+			FROM IMP_CAR_SHP A
+			WHERE A.FLT_KEY = #sflightKey#
+				AND A.FLT_DATE = TO_DATE(#sflightDate#, 'DDMONYY')
+				AND A.AWB_NO = NVL(#sawbNo#, A.AWB_NO)) T1 
+		LEFT JOIN V_CST_VSL_CC_CODE_AWB T2 ON T1.FLT_KEY = T2.FLT_KEY AND T1.FLT_DATE = T2.FLT_DATE AND T1.AWB_NO = T2.AWB_NO AND T1.HAWB_NO = T2.HAWB_NO
+			 AND T2.AWB_NO = NVL(#sawbNo#, T2.AWB_NO)
+		JOIN IMP_CAR_AWB A ON T1.AWB_NO = A.AWB_NO AND T1.AWB_DATE = A.AWB_DATE
+		WHERE A.CATALOG NOT IN ('IO','TM')
+		and exists (select null
+				  from (select sf.Sub_Function_code VAL
+					  from sec_role_sub_function sf
+					  join sec_user_role ur on ur.role_name = sf.role_code
+					  where sf.Sub_Function_code in ('CST_9_001', 'CST_9_002') and enable_yn = 'Y' and ur.user_id = #userId#) a
+				  where (a.VAL = 'CST_9_001' and 
+				  			   exists (select NULL from cst_recv where CONST_CODE in ('NF', 'EF') 
+							   		  and flt_key = t2.flt_key and flt_date = t2.flt_date and flt_type = t2.flt_type 
+									  and awb_no = t2.awb_no and hawb_no = t2.hawb_no))
+				  		or (a.VAL = 'CST_9_002' AND
+						   	   exists (select NULL from cst_recv where CONST_CODE in ('NH', 'EH', 'EM')
+							   		  and flt_key = t2.flt_key and flt_date = t2.flt_date and flt_type = t2.flt_type 
+									  and awb_no = t2.awb_no and hawb_no = t2.hawb_no))
+				  union all
+				  select null
+				  from (select count(1) VAL
+					  from sec_role_sub_function sf
+					  join sec_user_role ur on ur.role_name = sf.role_code
+					  where sf.Sub_Function_code in ('CST_9_001', 'CST_9_002') and enable_yn = 'Y' and ur.user_id = #userId#) a
+				  where a.VAL = 0
+				  )	
+		ORDER BY t1.awb_no, NVL(t2.hawb_no,T1.HAWB_NO)		
+	</select>
+   	
+   	<select id="cust_rept_657_NorthBound"  parameterClass="cargo.cms.customs.report.bo.maintainConstraintCodeRept_657BO" resultClass="cargo.cms.customs.report.bo.maintainConstraintCodeRept_657BO">
+		select t1.awb_no AS awbNo,  
+				substr(t1.awb_no, 1,3) as awbNoPFX, 
+				substr(t1.awb_no, 4,11) as awbNoSFX,
+				t2.flt_type AS flightType,	t2.flt_key as flightKey, to_char(t1.FLT_DATE, 'ddMONyy') as flightDate,	 
+				nvl(t2.hawb_no,'000000000000000000') AS hawbNo,  t2.cc_code AS constCode, t2.ref_no AS refNo, 
+				t2.cc_code AS old_constCode, t2.ref_no AS old_refNo, 		
+				t2.VER_NO AS verNo, t2.lm_user_id AS lastUpdatedUserId, to_char(t2.lm_date, 'DD MON YY HH24:mi') AS lastUpdatedDate,
+				NVL(t1.pman_pcs, 0) AS pcs,NVL(t1.pman_wt, 0) wt,to_char(t1.AWB_DATE,'DDMONYY') AS awbDate
+			from   exp_pmanifest_awb t1, V_CST_VSL_CC_CODE_AWB t2
+			where  t1.flt_key = t2.flt_key (+)
+			and    t1.flt_date = t2.flt_date (+)
+			and    t1.awb_no = t2.awb_no (+)
+			and    t1.flt_key = #sflightKey#
+			and    t1.flt_date = to_date(#sflightDate#, 'ddMONyy')
+			and    t1.AWB_NO = nvl(#sawbNo#, t1.awb_no)			
+			and exists (select null
+					  from (select sf.Sub_Function_code VAL
+						  from sec_role_sub_function sf
+						  join sec_user_role ur on ur.role_name = sf.role_code
+						  where sf.Sub_Function_code in ('CST_9_001', 'CST_9_002') and enable_yn = 'Y' and ur.user_id = #userId#) a
+					  where (a.VAL = 'CST_9_001' and 
+					  			   exists (select NULL from cst_recv where CONST_CODE in ('NF', 'EF') 
+								   		  and flt_key = t2.flt_key and flt_date = t2.flt_date and flt_type = t2.flt_type 
+										  and awb_no = t2.awb_no and hawb_no = t2.hawb_no))
+					  		or (a.VAL = 'CST_9_002' AND
+							   	   exists (select NULL from cst_recv where CONST_CODE in ('NH', 'EH', 'EM')
+								   		  and flt_key = t2.flt_key and flt_date = t2.flt_date and flt_type = t2.flt_type 
+										  and awb_no = t2.awb_no and hawb_no = t2.hawb_no))
+					  union all
+					  select null
+					  from (select count(1) VAL
+						  from sec_role_sub_function sf
+						  join sec_user_role ur on ur.role_name = sf.role_code
+						  where sf.Sub_Function_code in ('CST_9_001', 'CST_9_002') and enable_yn = 'Y' and ur.user_id = #userId#) a
+					  where a.VAL = 0
+					  )	
+			order by t1.awb_no, t2.hawb_no
+   	</select>    
+   <select id="cust_rept_657_T"  parameterClass="cargo.cms.customs.report.bo.maintainConstraintCodeRept_657BO" resultClass="cargo.cms.customs.report.bo.maintainConstraintCodeRept_657BO">
+	
+		SELECT trk_shp.AWB_NO AS awbNo, SUBSTR(trk_shp.AWB_NO, 1, 3) AS awbNoPFX,
+			SUBSTR(trk_shp.AWB_NO, 4, 11) AS awbNoSFX,to_char(trk_shp.AWB_DATE,'DDMONYY') AS awbDate, trk_Flt.truck_no AS truckNo,
+			TO_CHAR(trk_Flt.truck_flt_DATE, 'DDMONYY') AS schDate, trk_Flt.sch_time AS schTime,
+			t2.truck_No as flightKey, to_char(t2.sch_DATE, 'ddMONyy') ||'/'|| trk_Flt.sch_time as flightDate,	 
+			NVL(T2.FLT_TYPE, 'T') AS flightType, 
+			nvl(NVL(T1.TRK_MANF_PCS, trk_shp.TRK_MANF_PCS),0) AS pcs, nvl(NVL(T1.TRK_MANF_WT, trk_shp.TRK_MANF_WT),0)  AS wt,
+			nvl(T2.HAWB_NO,T1.HAWB_NO) AS hawbNo, T2.CC_CODE AS constCode, trim(T2.REF_NO) AS refNo,
+			T2.CC_CODE AS old_constCode, trim(T2.REF_NO) AS old_refNo, T2.VER_NO AS verNo,
+			T2.LM_USER_ID AS lastUpdatedUserId,
+			TO_CHAR(T2.LM_DATE, 'DDMONYY HH24:mi') AS lastUpdatedDate
+		FROM ITM_TRK_MANF_HD trk_Flt 
+                LEFT JOIN V_CST_TRUCK_CC_CODE T2 ON trk_Flt.truck_No = T2.truck_No
+                                           AND trk_Flt.TRUCK_FLT_DATE = T2.sch_date  AND trk_Flt.sch_TIME = T2.sch_TIME AND T2.AWB_NO = NVL(#sawbNo#, T2.AWB_NO)       
+              INNER JOIN ITM_TRK_MANF_SHP trk_shp ON T2.awb_no = trk_shp.awb_no
+									   and trk_Flt.tr_no = trk_shp.tr_no
+                                      and trk_Flt.truck_flt_no = trk_shp.truck_flt_no
+                                      AND trk_Flt.TRUCK_FLT_DATE = trk_shp.TRUCK_FLT_DATE        
+              left join ITM_TRK_MANF_SHP_HAWB T1 on T2.hawb_no = T1.hawb_no and trk_Flt.tr_no = T1.tr_no
+                            and trk_shp.DOC_LINE_NO = T1.DTL_DOC_LINE_NO
+              join awb  on trk_shp.AWB_NO   = awb.AWB_NO AND trk_shp.AWB_DATE  = awb.AWB_DATE  and awb.awb_type = 'T' and awb.AWB_CLOSED_YN = 'N' 
+		WHERE trk_Flt.status not in ('VOID') and exists (select null
+				  from (select sf.Sub_Function_code VAL
+					  from sec_role_sub_function sf
+					  join sec_user_role ur on ur.role_name = sf.role_code
+					  where sf.Sub_Function_code in ('CST_9_001', 'CST_9_002') and enable_yn = 'Y' and ur.user_id = #userId#) a
+				  where (a.VAL = 'CST_9_001' and 
+				  			   exists (select NULL from cst_recv where CONST_CODE in ('NF', 'EF') 
+							   		  and truck_no = t2.truck_no and sch_date = t2.sch_date  
+                                                                          and sch_time = t2.sch_time and flt_type = t2.flt_type 
+									  and awb_no = t2.awb_no and hawb_no = t2.hawb_no))
+				  		or (a.VAL = 'CST_9_002' AND
+						   	   exists (select NULL from cst_recv where CONST_CODE in ('NH', 'EH', 'EM')
+							   		  and truck_no = t2.truck_no and sch_date = t2.sch_date 
+                                                                          and sch_time = t2.sch_time and flt_type = t2.flt_type 
+									  and awb_no = t2.awb_no and hawb_no = t2.hawb_no))
+				  union all
+				  select null
+				  from (select count(1) VAL
+					  from sec_role_sub_function sf
+					  join sec_user_role ur on ur.role_name = sf.role_code
+					  where sf.Sub_Function_code in ('CST_9_001', 'CST_9_002') and enable_yn = 'Y' and ur.user_id =  #userId#) a
+				  where a.VAL = 0
+				  )
+                                  
+                                  
+                and trk_Flt.truck_no = nvl(#truckNo#,trk_Flt.truck_no)
+				AND trk_Flt.truck_flt_DATE  = TO_DATE(#schDate#, 'DDMONYY')
+                                and trk_Flt.sch_time = nvl(#schTime#,trk_Flt.sch_time)
+				AND trk_shp.AWB_NO = NVL(#sawbNo#, trk_shp.AWB_NO)                                  
+                                  
+		ORDER BY trk_shp.AWB_NO, NVL(t2.hawb_no,T1.HAWB_NO)
+		
+</select> 
+   	<!-- customs-eman starts-->
+   	<select id="cust_rept_750_flt"  parameterClass="cargo.cms.customs.report.bo.CargoEmanRept_750BO" resultClass="cargo.cms.customs.report.bo.CargoEmanRept_750BO">
+	 select
+	 	A.TR_NO as trNo, 
+    	A.flt_type as fltType,
+   		A.flt_key as fltNo,
+   		to_char(a.flt_date, 'DDMONYY') as fltDate,
+    	TO_CHAR(A.FLT_DATE, 'MM/DD/YYYY')||' '|| substr(lpad(ata_etd_time, 4, '0'), 1, 2)||':'||substr(ata_etd_time, -2)  as  fltDateTime,
+    	A.UMR_NO as umrNo,
+    	A.NIL_CARGO_YN	as nillFlight,
+    	'' as fltAmanded,
+    	A.carr_key as carrierId,
+    	(select ID_TYPE from EMAN_CAR_MAST where a.carr_key = carr_code) as carrierIdType,
+    	(select ID_NUMBER from EMAN_CAR_MAST where a.carr_key = carr_code) as carrierBRNo,
+    	(select CARR_NAME from EMAN_CAR_MAST where a.carr_key = carr_code) as carrierName,
+    	(select  decode(	ADDR1, null, '', 	ADDR1)
+               || decode(	ADDR2, null, '', 	','||ADDR2 )
+               || decode(	ADDR3, null, '', 	','||ADDR3)
+               || decode(	ADDR4, null, '', ','||	ADDR4)
+               || decode(	ADDR5, null, '', 	','||ADDR5)  from EMAN_CAR_MAST where a.carr_key = carr_code) as carrierAddress,
+    	(select STMNT_TYPE from EMAN_CAR_MAST where a.carr_key = carr_code) as specialStmt
+    	FROM EMAN_FLT A 
+    	WHERE A.FLT_TYPE = #fltType# AND A.FLT_DATE=#fltDate# AND A.FLT_KEY=#fltNo# and ata_etd_time = #ata1#
+   	</select> 
+   	<select id="getAwbDtlsFromEman_Shp"  parameterClass="cargo.cms.customs.report.bo.CargoEmanRept_750BO" resultClass="cargo.cms.customs.report.bo.CargoEmanRept_750BO">
+		select 
+      		awb_no as awbNo,
+      		to_char(awb_date, 'DDMONYY') as awbDate
+      		from EMAN_SHP
+      		where 
+      		flt_type = #fltType# and 
+      		flt_key  = #fltNo# and
+      		flt_date = #fltDate# and
+      		tr_no    = #trNo#
+   	</select> 
+   	<select id="cust_rept_750_mawb"  parameterClass="cargo.cms.customs.report.bo.CargoEmanRept_750BO" resultClass="cargo.cms.customs.report.bo.CargoEmanRept_750BO">
+		select  
+      		SUBSTR(es.awb_no, 1, 3)||'-'|| SUBSTR(es.awb_no, 4) as mawbNo,
+      		es.orig  as mastLoadingPort,
+      		'' as mastDischargePort,
+      		'' as mastReciptPort,
+      		es.dest as mastDestinationPort,
+      		'' as mastAmanded,
+      		es.shp_pcs as mastNoofPackages,
+      		'' as mastPackageType,
+      		es.shp_wgt as mastGrossWeight,
+      		'Kg' as mastWeightUnit,
+		    decode(es.FLG_CONSOL,null,'N','Y','Y','N','N') as mastContainerized,
+      		'' as mastTranshipment,
+      		es.FLG_CONSOL as mastConsolidated,
+      		'' as mastMarksNo,
+      		es.agent_name as mastFwdName,
+          	decode(	es.AGENT_ADDR_1, null, '', 	es.AGENT_ADDR_1)
+               || decode(	es.AGENT_ADDR_2, null, '', 	','||es.AGENT_ADDR_2 )
+               || decode(	es.AGENT_ADDR_3, null, '', 	','||es.AGENT_ADDR_3)
+               || decode(	es.AGENT_ADDR_4, null, '', ','||	es.AGENT_ADDR_4)
+               || decode(	es.AGENT_ADDR_5, null, '', 	','||es.AGENT_ADDR_5) as mastFwdAddress,
+      		es.SHIPPER_NAME as mastConsignorName,
+      		decode(	es.SHPR_ADDR_1, null, '', 	es.SHPR_ADDR_1)
+               || decode(	es.SHPR_ADDR_2, null, '', 	','||es.SHPR_ADDR_2 )
+               || decode(	es.SHPR_ADDR_3, null, '', 	','||es.SHPR_ADDR_3)
+               || decode(	es.SHPR_ADDR_4, null, '', ','||	es.SHPR_ADDR_4)
+               || decode(	es.SHPR_ADDR_5, null, '', 	','||es.SHPR_ADDR_5) as mastConsignorAddress,
+      		es.CSGNE_NAME as mastConsigneeName,
+          	decode(	es.CSGNE_ADDR_1, null, '', 	es.CSGNE_ADDR_1)
+               || decode(	es.CSGNE_ADDR_2, null, '', 	','||es.CSGNE_ADDR_2 )
+               || decode(	es.CSGNE_ADDR_3, null, '', 	','||es.CSGNE_ADDR_3)
+               || decode(	es.CSGNE_ADDR_4, null, '', ','||	es.CSGNE_ADDR_4)
+               || decode(	es.CSGNE_ADDR_5, null, '', 	','||es.CSGNE_ADDR_5) as mastConsigneeAddress,
+      		(select STRAGG(STRINGDELIM(el.license,',')) 
+      			from eman_lic el where el.tr_no=es.tr_no and el.awb_no = es.awb_no 
+      					  and el.awb_date = es.awb_date and el.hawb_no is null) as mastLicenseNotiDocNo,
+			es.content content 
+      	from EMAN_SHP es 
+        join EMAN_MST_DTL emd on emd.awb_no=es.awb_no and emd.awb_date=es.awb_date
+       	WHERE emd.awb_no =#awbNo#
+      	and   emd.awb_date = #awbDate#
+        and   es.tr_no=#trNo#
+        and   es.flt_key=#fltNo#
+        and   es.flt_type=#fltType#
+        and   es.flt_date=#fltDate#
+        and  (es.FLG_DEL is null or es.FLG_DEL ='N')
+      </select>  
+   	<select id="cust_rept_750_hawb"  parameterClass="cargo.cms.customs.report.bo.CargoEmanRept_750BO" resultClass="cargo.cms.customs.report.bo.CargoEmanRept_750BO">
+	select  
+		      eh.hawb_no as hawbNo,
+		      eh.orig  as hawbLoadingPort,
+		      '' as hawbDischargePort,
+		      '' as hawbReciptPort,
+		      eh.dest as hawbDestinationPort,
+		      '' as hawbAmanded,
+		      eh.HAWB_PCS as hawbNoofPackages,
+		      '' as hawbPackageType,
+		      eh.hawb_wgt as hawbGrossWeight,
+		      'Kg' as hawbWeightUnit,
+		      decode(es.FLG_CONSOL,null,'N','Y','Y','N','N') as hawbContainerized,
+		      '' as hawbFwdName,
+		      '' as hawbFwdAddress,
+		      decode(nvl(emd.awb_type, es.flt_type),'T', 'TRANSHIPMENT DUMMY', eh.SHPR_NAME) as hawbConsignorName,
+		      decode(nvl(emd.awb_type, es.flt_type),'T', 'TRANSHIPMENT DUMMY', 
+              		decode(eh.SHPR_ADDR_1, null, '', 	 eh.SHPR_ADDR_1) || decode(	eh.SHPR_ADDR_2, null, '', 	','||eh.SHPR_ADDR_2 ) 
+              				|| decode(	eh.SHPR_ADDR_3, null, '', 	','||eh.SHPR_ADDR_3) || decode(	eh.SHPR_ADDR_4, null, '', ','||	eh.SHPR_ADDR_4) 
+              				|| decode(	eh.SHPR_ADDR_5, null, '', 	','||eh.SHPR_ADDR_5)) as hawbConsignorAddress,
+		      decode(nvl(emd.awb_type, es.flt_type),'T', 'TRANSHIPMENT DUMMY', eh.CSGNE_NAME) as hawbConsigneeName,
+		      decode(nvl(emd.awb_type, es.flt_type),'T', 'TRANSHIPMENT DUMMY', 
+              		decode(eh.CSGNE_ADDR_1, null, '', eh.CSGNE_ADDR_1) || decode(eh.CSGNE_ADDR_2, null, '', ','||eh.CSGNE_ADDR_2 ) 
+              				|| decode(eh.CSGNE_ADDR_3, null, '', ','||eh.CSGNE_ADDR_3) || decode(eh.CSGNE_ADDR_4, null, '', ','||eh.CSGNE_ADDR_4)
+              				|| decode(eh.CSGNE_ADDR_5, null, '', ','||eh.CSGNE_ADDR_5)) as hawbConsigneeAddress,
+              (select STRAGG(STRINGDELIM(el.license,','))
+		      		  from eman_lic el where el.tr_no=eh.tr_no 
+		      		   and el.awb_no = eh.awb_no and el.awb_date = eh.awb_date 
+		      		   and el.hawb_no = eh.hawb_no) hawbLicenseNotiDocNo,
+		      eh.content content
+		    from EMAN_HAWB eh
+           	join EMAN_SHP es on eh.awb_no=es.awb_no and eh.awb_date=es.awb_date and  eh.flt_type= es.flt_type and 
+                            eh.flt_key= es.flt_key and eh.flt_date=es.flt_date and eh.tr_no=es.tr_no
+            join eman_mst_dtl emd on emd.awb_no=es.awb_no and emd.awb_date=es.awb_date
+           WHERE eh.awb_no   = #awbNo#
+		   and   eh.awb_date = #awbDate#
+		   and   eh.flt_type = #fltType#
+		   and   eh.flt_key  = #fltNo#
+		   and   eh.flt_date = #fltDate#
+		   and   eh.tr_no    = #trNo#
+       	   and   (es.FLG_DEL is null or es.FLG_DEL ='N')
+   	</select> 
+   	<select id="getFlightEvents_Eman750"  parameterClass="cargo.cms.customs.report.bo.CargoEmanRept_750BO" resultClass="cargo.cms.customs.report.bo.CargoEmanRept_750BO">
+		select to_char(t2.cr_date,'DDMONYY HH24:MI') as mvntDate,
+         	t2.cr_user_id as userNames, 
+         	( select des_tag from his_mst_itm where cod_his_seq_num=t1.cod_his_seq_num) as event,
+         	t1.des_his_dts as descDtl 
+   		from 
+      	   his_flt_evnt_dtl t1,his_flt_evnt t2
+  		WHERE  t2.flt_date=t1.flt_date and
+           t2.MODULE='E' 
+           <isEqual property="fltType" compareValue="E"> 
+				 AND t1.FLT_TYPE in ('D','E')
+				</isEqual>
+	      <isEqual property="fltType" compareValue="I"> 
+				 AND t1.FLT_TYPE in ('A','I')
+		   </isEqual>
+		   and t1.tr_no= t2.tr_no
+		   AND t2.cod_tra_seq_num = t1.cod_tra_seq_num 
+           and COD_HIS_TYP='E'
+		   and TO_CHAR(t1.flt_date,'ddMONYY') =  TO_DATE(#fltDate#,'ddMONYY')
+  		   and t1.FLT_KEY = #fltNo#  
+  		   <isNotEmpty property="trNo" prepend="AND">
+  		   		t1.tr_no=#trNo#
+  		   </isNotEmpty>
+		
+   	</select> 
+
+   	<select id="getEmanMailHeadr_586"  parameterClass="cargo.cms.customs.report.bo.EmanMailRept_586BO" resultClass="cargo.cms.customs.report.bo.EmanMailRept_586BO">
+	  SELECT  
+         	(Select code_desc from mast_code_dtl where code=eq.msg_typ and code_type ='EMAN_MSG_TYPE') as msgType,
+    		eq.QRY_REF_NO as queryRefNo,
+    		eq.OMA_NO AS omaNo,
+        	eq.MNFST_REF_NO as umrNo,
+        	eq.OIC_NO as oicNo,
+        	eq.FLT_TYPE as flightType,
+        	eq.FLT_KEY as flightNoKey,
+        	TO_CHAR(eq.FLT_DATE,'DDMONYY')as  flightDate,
+        	decode(eq.RPLD_DAT,null,'N','Y') as  repliedOn,
+        	eq.MNFST_REF_VER_NO as manifestVerNo,
+        	TO_CHAR(eq.CR_DATE,'MM/DD/YYYY HH:MM AM') as dateAndTimeOfPre,
+        	TO_CHAR(eq.RPLY_DUE_DAT,'MM/DD/YYYY HH:MM:SS AM')as  replyDueDate,
+        	eq.FST_HWB_NO AS fstHwbNo,
+        	eq.SECND_HWB_NO AS scndHwbNo,
+        	eq.THRD_HWB_NO AS thrdHwbNo,
+        	eq.AWB_NO AS awbNo,
+        	eq.PRV_QRY_NO AS prevItmNo,
+        	eq.PRV_QRY_ITM_NO AS previtmRefNo
+       	FROM  EMAN_QRY eq
+      	WHERE eq.TR_NO =#trNo#
+   	</select>  
+   	<select id="getEmanMailDetails_586"  parameterClass="cargo.cms.customs.report.bo.EmanMailRept_586BO" resultClass="cargo.cms.customs.report.bo.EmanMailRept_586BO">
+	 SELECT 
+        	eq.HEADER_INFO as headerInfoBytes,
+    		case 
+		         when eq.msg_typ='EMQU01' then eq.remarks_1 || eq.remarks_2 || eq.remarks_3 || eq.remarks_4 || eq.remarks_5
+		         when eq.msg_typ='EMOA01' then eq.gen_remarks
+		         when eq.msg_typ='EMAK01' then eq.gen_remarks
+		         when eq.msg_typ='ERRM01' then eq.error_desc_english
+		    end msgContent,
+    		eq.FOOTER_INFO as footerInfoBytes,
+        	eq.OFFICER_TITILE as govtSignId,
+        	eq.OFFICER_NAME as officerName,
+        	eq.OFFICE_NAME as officeName,
+        	ecm.CARR_CODE as carrier,
+        	ecm.CARR_NAME as carrierName,
+        	ecm.ADDR1||','||ecm.ADDR2||','||ecm.ADDR3||','||ecm.ADDR4||','||ecm.ADDR5 as carrierAdd,
+        	ecm.CONT_PER_NAME as contOfficerName,
+        	ecm.CONT_PER_TITLE as contOfficerTitle,
+        	ecm.CONT_PER_PHONE as contOfficerTelNo, 
+        	ecm.OFFC_NAME as contOfficeName,
+        	ecm.DEPT_NAME as contDeptName
+    	FROM   EMAN_QRY eq
+  		LEFT JOIN EMAN_CAR_MAST ecm ON ecm.CARR_CODE = #carrCode#
+	  	WHERE  eq.TR_NO = #trNo#
+   	</select> 
+   	<!-- customs-eman ends-->
+   	<!-- REPT_155-->
+   	
+   	 <select id="cust_rept_155" parameterClass="cargo.cms.customs.report.bo.ConsgStatusEnqRept_155BO" resultClass="cargo.cms.customs.report.bo.ConsgStatusEnqRept_155BO">
+  		 SELECT *
+		FROM
+		((SELECT (CASE WHEN A.REC_TYPE = 'BDS' AND MSG_TYPE IS NULL THEN 1
+		               WHEN A.REC_TYPE = 'BDS' AND MSG_TYPE ='L' THEN 2
+		   WHEN A.REC_TYPE = 'AMD' THEN 8
+		   WHEN A.REC_TYPE = 'INT' THEN 9
+		   WHEN A.REC_TYPE='EXP' THEN 10
+		   WHEN A.REC_TYPE='CFA' THEN 11
+		   WHEN A.REC_TYPE='CFE' THEN 12 END) ORD_I,
+		         (CASE WHEN A.REC_TYPE = 'BDS' AND MSG_TYPE='L' THEN 'BDS-LB'
+		               WHEN A.REC_TYPE = 'BDS' AND MSG_TYPE IS NULL THEN 'BDS'
+		   WHEN A.REC_TYPE = 'AMD' THEN 'AMD'
+		   WHEN A.REC_TYPE = 'INT' THEN 'INT'
+		   ELSE A.REC_TYPE END) AS type,
+		      A.VER_NO AS versionNo,
+		   TO_CHAR(A.SUBM_DATE,'DD MON YY HH24:mi')  AS submissionDate
+		   ,TO_CHAR(B.ACK_DATE,'DD MON YY HH24:mi')  as ackDate,
+		   (CASE WHEN A.SEND_STATUS IN('R','E') THEN 'Y' ELSE '' END) AS errMsg,
+		   F.FLT_KEY AS fltKey,to_char(F.SCH_DATE, 'DDMONYY') AS flightDate,
+		   DECODE(A.FLT_TYPE,'S','I','N','E',A.FLT_TYPE)  AS flightType,
+		   'Submission
+		'||DECODE(A.SEND_STATUS,'A','is accepted by customs','R','is rejected by customs','P','for this flight is in
+		process',
+		   'W','Pending','Rejected')  as status,
+		   A.SEND_STATUS AS sendStatus,
+		PKG_COMMON.get_flt_ata(F.FLT_KEY, F.SCH_DATE, F.FLT_TYPE) AS ata,
+		PKG_COMMON.get_flt_eta(F.FLT_KEY, F.SCH_DATE, F.FLT_TYPE) AS eta
+		FROM CST_SUBM A,
+		   CST_ACK  B,
+		   flt_opr F 
+		WHERE A.FLT_TYPE = B.FLT_TYPE(+) AND A.FLT_KEY = B.FLT_KEY(+)
+		   AND A.FLT_DATE = B.FLT_DATE(+) AND A.VER_NO = B.VER_NO(+) AND
+		A.REC_TYPE=B.ACK_REC_TYPE(+) AND
+		NVL(F.STFS_flt_key,F.flt_key)   = A.FLT_KEY AND NVL(F.STFS_flt_date,F.SCH_DATE)  = A.FLT_DATE AND F.FLT_TYPE = DECODE(A.FLT_TYPE, 'I','A','E','D')
+		   AND A.FLT_TYPE=  DECODE(#flightType#,'A','I','S','I','N','E',#flightType#)   AND A.FLT_KEY = #sfltNo# AND
+		A.FLT_DATE = TO_DATE(#sfltDate#,'DDMONYY') AND(
+		F.CARR_CODE = NVL(#loginCarrier#, F.CARR_CODE) OR F.CARR_CODE IN (SELECT CARR_CODE FROM MAST_CARR_GRP WHERE GRP_CARR_CODE =  NVL(#loginCarrier#, GRP_CARR_CODE))))
+		
+		UNION ALL
+		
+		SELECT DECODE(C.ACK_REC_TYPE,'CLP',3,'CLR',4,'MAN',5,'LBR',6,'BDC',7,'PAR',13,'ECC',14)
+		ORD_I,C.ACK_REC_TYPE  AS type,C.VER_NO  AS versionNo,
+		'' AS submissionDate,TO_CHAR(C.ACK_DATE,'DD MON YY HH24:mi')  as
+		ackDate,'' AS errMsg,
+		F.FLT_KEY AS fltKey,to_char(F.SCH_DATE, 'DDMONYY') AS flightDate,
+		DECODE(C.FLT_TYPE,'S','I','N','E',C.FLT_TYPE)  AS flightType,
+		'' AS status,
+		'' AS sendStatus,
+		PKG_COMMON.get_flt_ata(F.FLT_KEY, F.SCH_DATE, F.FLT_TYPE) AS ata,
+		PKG_COMMON.get_flt_eta(F.FLT_KEY, F.SCH_DATE, F.FLT_TYPE) AS eta
+		FROM CST_ACK C,
+		   flt_opr F 
+		WHERE NVL(F.STFS_flt_key,F.flt_key) = C.FLT_KEY AND NVL(F.STFS_flt_date,F.SCH_DATE) = C.FLT_DATE AND F.FLT_TYPE = DECODE(C.FLT_TYPE, 'I','A','D','E') AND
+		C.FLT_TYPE=  DECODE(#flightType#,'A','I','S','I','N','E',#flightType#) AND C.FLT_KEY = #sfltNo# AND
+		C.FLT_DATE = TO_DATE(#sfltDate#,'DDMONYY')
+		AND C.ACK_REC_TYPE IN ('CLP','CLR','PAR','MAN','ECC','LBR','BDC') AND
+		(F.CARR_CODE = NVL(#loginCarrier#, F.CARR_CODE) OR F.CARR_CODE IN (SELECT CARR_CODE FROM MAST_CARR_GRP WHERE GRP_CARR_CODE = NVL(#loginCarrier#, GRP_CARR_CODE))))
+		ORDER BY ORD_I, VERSIONNO desc
+		
+</select>
+ <select id="fetchConsignmentErrorMsg_222"  parameterClass="cargo.cms.customs.report.bo.ConsgStatusEnqRept_155BO" resultClass="cargo.cms.customs.report.bo.ConsgStatusEnqRept_155BO">
+		
+		SELECT '' as awbNoPFX, 
+			   '' as awbNoSFX, 
+		       '' AS hawbNo, 
+		       ERR_MSG AS errMsg 
+		  FROM CST_SUBM
+		WHERE 
+		FLT_DATE =  TO_DATE(#sfltDate#, 'DD-MM-YY') AND
+		FLT_KEY = #sfltNo# AND 
+		FLT_TYPE = #sfltType# AND 
+		REC_TYPE = substr(#type#,1,3)	AND 
+		VER_NO = #versionNo#		
+</select> 
+<!-- Added By swapneswari For List/Print DC LIst:Start -->
+<select id="exportDcListRept_126_E"  parameterClass="cargo.cms.customs.report.bo.ExpDCListRept_126BO"  resultClass="cargo.cms.customs.report.bo.ExpDCListRept_126BO">
+	<![CDATA[	
+
+	SELECT FLT_KEY AS fltNo, TO_CHAR(SCH_DATE,'DDMONYY')AS schDate,
+		   TO_CHAR(ACT_DATE,'DDMONYY')AS actDate,		
+		   DECODE(AWB_NO,null,'(NIL)','','(NIL)','(NIL)','(NIL)','CANCELLED','(CANCELLED)',SUBSTR(AWB_NO, 1, 3)||'-'|| SUBSTR(AWB_NO, 4)) AS awbNo,
+		   COMD_DESC AS descr,TTL_PCS AS ttlPcs,
+		   MAN_PCS AS manPcs,OFLD_PCS AS ofldPcs,
+	       RET_PCS AS retPcs,CF_PCS AS pcsCf,D_ORIG AS orig,
+		   D_DEST AS dest,D_CODE AS dcode,D_QTY AS qty,D_UNIT AS unit,
+	       D_PCS AS pcs,SHIPPER AS shipperName,LICENCE AS serialNo,
+			HAWB_NO as hawbNo,
+			PERMIT as permit, 
+			D_RMK as remark
+	FROM GT_DUT_GD_EXP 
+	order by SCH_DATE,fltNo, awb_no, nvl(hawb_no, '000000000000000000')
+
+	
+	]]>
+</select>
+<select id="importDcListRept_126_I"  parameterClass="cargo.cms.customs.report.bo.ImpDCListRept_126BO"  resultClass="cargo.cms.customs.report.bo.ImpDCListRept_126BO">   
+	 
+ select a.*, decode(orig, null, null, nvl(srecPcs,0) - nvl(spcsCf,0)) as srelPcs
+ from (select i.* , 
+	 		decode(orig, null, null, 
+				case when srf_awb is null then srecPcs 
+					 else decode(nullif(hawbNo, '000000000000000000'), null, nvl(cdif_pcs, 0), nvl(hcdif_pcs, 0)) end) spcsCf
+	 from (SELECT f.FLT_KEY as fltNo, TO_CHAR(f.SCH_DATE,'DDMONYY')AS schDate, f.SCH_DATE AS copySchDate,
+				DECODE(f.SCH_DATE,f.ACT_DATE,'',TO_CHAR(f.ACT_DATE,'DDMONYY')) AS actDate, 			 
+				DECODE(c.AWB_NO,NULL,'(NIL)',SUBSTR(c.AWB_NO, 1, 3)||'-'|| SUBSTR(c.AWB_NO, 4)) AS awbNo, 
+				nullif(c.HAWB_NO, '000000000000000000') hawbNo, 
+				decode(m.HAWB_NO, null, a.content, m.content) AS descr, 
+				nullif(decode(m.HAWB_NO, null, a.AWB_PCS, m.PCS), 0) AS sttlPcs, 
+				nullif(decode(m.HAWB_NO, null, s.RECD_PCS, m.PCS + decode(h.HCIR_PCS_TYPE, 'SL', -1 * h.HCIR_PCS, 'SP', 1 * h.HCIR_PCS, 0)), 0) AS srecPcs,
+				case when cd.cdif_pcs != 0 or hcd.hcdif_pcs != 0 or srf.awb_no is null then null else TO_CHAR(srf.SRF_DATE,'DDMONYY') end AS relDate, 
+				m.PCS hawb_pcs, cd.cdif_pcs, srf.awb_no srf_awb, hcd.hcdif_pcs,
+			    decode(m.HAWB_NO, null, a.AWB_ORIGIN, m.Org) as orig, 
+				decode(m.HAWB_NO, null, a.AWB_DEST, m.Des) as dest, 
+				DUT_CODE AS dcode, nullif(DECODE(C.TAG, 'EXPEMTED', S.MANIFEST_WT, DUT_QTY), 0) AS qty, 
+			    DECODE(C.TAG, 'EXPEMTED', 'KG', DUT_UNIT) AS unit, nullif(DECODE(C.TAG, 'EXPEMTED', S.MANIFEST_PCS, DUT_PCS), 0) AS spcs,
+			    decode(m.HAWB_NO, null, a.CSGNE_NAME, m.CSGNE_NAME) AS consignee , 
+				PKG_COMMON.get_permit(c.flt_key, c.flt_date, c.awb_no, c.hawb_no, s.awb_date, 'I') permit, DUT_RMK remark
+	     FROM flt_opr f  
+		 LEFT JOIN (select 'AWB' TAG, FLT_KEY, FLT_DATE, AWB_NO, '000000000000000000' HAWB_NO, '' DUT_CODE, 0 DUT_QTY, '' DUT_UNIT,
+					   0 DUT_PCS, '' DUT_RMK
+		 	  	   from imp_car_shp s 
+				   where not exists (select null 
+				   		 	 		from CST_DC_DTL d
+									left join CST_CODE_DTL c on d.AWB_NO = c.AWB_NO AND d.HAWB_NO = c.HAWB_NO 
+							 			  AND d.FLT_KEY = c.FLT_KEY AND d.FLT_DATE = c.FLT_DATE and d.SHPM_TYPE = c.FLT_TYPE
+									where d.SHPM_TYPE = 'I' and d.DUT_TYPE != 'E'
+										  and d.awb_no = s.awb_no and d.hawb_no = '000000000000000000'
+									  	  and d.flt_key = s.flt_key and d.flt_date = s.flt_date)
+					and exists (select null 
+							   		from CST_DC_DTL d
+									left join CST_CODE_DTL c on d.AWB_NO = c.AWB_NO AND d.HAWB_NO = c.HAWB_NO 
+							 			  AND d.FLT_KEY = c.FLT_KEY AND d.FLT_DATE = c.FLT_DATE and d.SHPM_TYPE = c.FLT_TYPE
+									where d.SHPM_TYPE = 'I' and d.DUT_TYPE != 'E'
+										  and d.awb_no = s.awb_no and d.hawb_no != '000000000000000000'
+									  	  and d.flt_key = s.flt_key and d.flt_date = s.flt_date)
+			   		union all
+					select 'CODE_DTL' TAG, d.FLT_KEY, d.FLT_DATE, d.AWB_NO, d.HAWB_NO, c.DUT_CODE, c.DUT_QTY, c.DUT_UNIT,
+					   c.DUT_PCS, c.DUT_RMK 
+					from CST_DC_DTL d
+					left join CST_CODE_DTL c on d.AWB_NO = c.AWB_NO AND d.HAWB_NO = c.HAWB_NO 
+			 			 AND d.FLT_KEY = c.FLT_KEY AND d.FLT_DATE = c.FLT_DATE and d.SHPM_TYPE = c.FLT_TYPE
+					where d.SHPM_TYPE = 'I' and d.DUT_TYPE != 'E'
+	   				) c ON f.FLT_KEY = c.FLT_KEY AND f.SCH_DATE = c.FLT_DATE
+	    LEFT JOIN IMP_CAR_SHP s ON s.AWB_NO = c.AWB_NO AND s.FLT_KEY = c.FLT_KEY AND s.FLT_DATE = c.FLT_DATE
+	    LEFT JOIN IMP_CAR_AWB a ON a.AWB_NO = s.AWB_NO AND a.AWB_DATE = s.AWB_DATE
+		LEFT JOIN CST_HAWB M ON a.AWB_NO = M.AWB_NO AND a.AWB_DATE = M.AWB_DATE AND C.HAWB_NO = M.HAWB_NO
+		LEFT JOIN IMP_HAWB_STRG_DTL h ON a.AWB_NO = h.AWB_NO AND a.AWB_DATE = h.AWB_DATE AND C.HAWB_NO = h.HAWB_NO 
+			 AND s.FLT_KEY = h.FLT_KEY AND s.FLT_DATE = h.FLT_DATE 
+	    LEFT JOIN (select sf.FLT_KEY, sf.FLT_DATE, s.AWB_NO, s.AWB_DATE, s.srf_date, sum(SRF_PCS) SRF_PCS, sum(SRF_PCS) SRF_WT
+			 	  from IMP_SRF s
+				  join imp_srf_flt sf on s.srf_no = sf.srf_no
+				  where s.Status ='POSTED'
+				  group by sf.FLT_KEY, sf.FLT_DATE, s.AWB_NO, s.AWB_DATE, s.srf_date) srf 
+			 on srf.AWB_NO = s.AWB_NO AND srf.AWB_DATE = s.AWB_DATE AND srf.FLT_KEY = s.FLT_KEY AND srf.FLT_DATE = s.FLT_DATE
+		left join (select c.FLT_KEY, c.FLT_DATE, c.AWB_NO, c.AWB_DATE, sum(LOCN_PCS) cdif_pcs, sum(LOCN_WT) cdif_wt
+			 	  from (select r.FLT_KEY, r.FLT_DATE, h.AWB_NO, h.AWB_DATE, c.srf_no, LOCN_PCS, LOCN_WT
+					  from awb_reloc_hd h
+				 	  join awb_reloc_recv r on h.tr_no = r.tr_no
+					  join imp_cdif c on c.cdif_no = r.cdif_no
+					  left join imp_srf s on s.srf_no = c.cdif_srf_no and s.status = 'POSTED'
+					  where h.RELOC_TYPE in ('CD', 'UTL') and c.VOID_USER is null and s.srf_no is null) c
+				  where not exists (select null from imp_cdif ci
+						  	  		 left join imp_srf si on si.srf_no = ci.cdif_srf_no and si.status = 'POSTED'
+									 where ci.cdif_srf_no = c.srf_no and si.srf_no is null)
+				  group by c.FLT_KEY, c.FLT_DATE, c.AWB_NO, c.AWB_DATE) cd
+			 on cd.AWB_NO = s.AWB_NO AND cd.AWB_DATE = s.AWB_DATE AND cd.FLT_KEY = s.FLT_KEY AND cd.FLT_DATE = s.FLT_DATE
+		left join (select hc.AWB_NO, hc.AWB_DATE, hc.hawb_no, 
+						sum(nvl(CDIF_UTL_PCS, 0)) + sum(nvl(CDIF_PS_PCS, 0)) + sum(nvl(CDIF_DT_PCS, 0)) hcdif_pcs
+			 	  from (select h.AWB_NO, h.AWB_DATE, d.hawb_no, h.srf_no, d.CDIF_UTL_PCS, d.CDIF_PS_PCS, d.CDIF_DT_PCS
+				 	  from imp_cdif h 
+				 	  join imp_cdif_hawb d on h.cdif_no = d.cdif_no
+					  left join imp_srf s on s.srf_no = h.cdif_srf_no and s.status = 'POSTED'
+					  where h.VOID_USER is null and s.srf_no is null) hc
+				  where not exists (select null from imp_cdif ci
+						  	  		 left join imp_srf si on si.srf_no = ci.cdif_srf_no and si.status = 'POSTED'
+									 where ci.cdif_srf_no = hc.srf_no and si.srf_no is null)
+				  group by hc.AWB_NO, hc.AWB_DATE, hc.hawb_no) hcd 
+			 on hcd.AWB_NO = s.AWB_NO AND hcd.AWB_DATE = s.AWB_DATE and nvl(hcd.hawb_no, '000000000000000000') = c.hawb_no 
+	    WHERE f.sch_date BETWEEN TO_DATE(TO_CHAR(#expDateFrom#),'DDMONYY') AND TO_DATE(TO_CHAR(#expDateTo#),'DDMONYY')
+			AND f.FLT_TYPE ='A'   and nvl(f.status,'*') != 'X' 
+			<isEqual property="carr" compareValue="AL">
+				And  f.carr_code != 'FX'
+			</isEqual>
+			<isNotEqual property="carr" compareValue="AL">
+				And  f.carr_code = #carr#
+			</isNotEqual>
+			<isNotEmpty property="loginCarrier">
+					AND (f.carr_code = #loginCarrier#
+					OR f.carr_code IN (SELECT CARR_CODE FROM MAST_CARR_GRP
+					WHERE GRP_CARR_CODE = #loginCarrier#))	 	
+			</isNotEmpty>
+	    union all
+	    SELECT f.FLT_KEY as fltNo, TO_CHAR(f.SCH_DATE,'DDMONYY')AS schDate, f.SCH_DATE AS copySchDate,
+				DECODE(f.SCH_DATE,f.ACT_DATE,'',TO_CHAR(f.ACT_DATE,'DDMONYY')) AS actDate, '(CANCELLED)' AS awbNo, '' as hawbNo, 
+				'' AS descr, null AS sttlPcs, null AS srecPcs, '' AS relDate, 
+				null hawb_pcs, null cdif_pcs, null srf_awb, null hcdif_pcs,
+				'' as orig, '' as dest ,'' AS dcode, null AS qty, '' AS unit, null AS spcs,'' AS consignee , '' permit, '' remark
+	    FROM flt_opr f
+	    WHERE f.sch_date BETWEEN TO_DATE(TO_CHAR(#expDateFrom#),'DDMONYY') AND TO_DATE(TO_CHAR(#expDateTo#),'DDMONYY')
+	    AND f.FLT_TYPE ='A'
+		and nvl(f.status,'*') = 'X' 
+
+		<isEqual property="carr" compareValue="AL">
+			And  f.carr_code != 'FX'
+		</isEqual>
+		<isNotEqual property="carr" compareValue="AL">
+			And  f.carr_code = #carr#
+		</isNotEqual>
+		<isNotEmpty property="loginCarrier">
+					AND (f.carr_code = #loginCarrier#
+					OR f.carr_code IN (SELECT CARR_CODE FROM MAST_CARR_GRP
+					WHERE GRP_CARR_CODE = #loginCarrier#))	 	
+		</isNotEmpty>
+		) i
+		) a
+ORDER BY copySchDate,fltNo, awbNo, nvl(hawbNo, '000000000000000000')
+
+</select>
+<select id="importDcListRept_126_Licence"  parameterClass="cargo.cms.customs.report.bo.ImpDCListRept_126BO"  resultClass="cargo.cms.customs.report.bo.ImpDCListRept_126BO">   
+	select RULE_VALUE as licenceNo from CMSRULES where RULE_CODE='CDCI'
+</select>
+<select id="exportDcListRept_126_Licence"  parameterClass="cargo.cms.customs.report.bo.ExpDCListRept_126BO"  resultClass="cargo.cms.customs.report.bo.ExpDCListRept_126BO">   
+	select RULE_VALUE as licenceNo from CMSRULES where RULE_CODE='CDCE'
+</select>
+<parameterMap id="getExpDcListMap" class="map" >
+		<parameter property="STRTDATE" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="ENDDATE" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>  		
+		<parameter property="CARR" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/> 
+	</parameterMap>
+	
+	<procedure id="getExpDcListMapProc" parameterMap="getExpDcListMap" >
+		{ call PRC_DC_EXP_REP(?,?,?)  }
+	</procedure>
+	<!-- Added By swapneswari For List/Print DC LIst:End -->
+	<!-- Added By swapneswari For Export Consignment Submission :Start -->
+	<select id="awbDetailList_158" parameterClass="cargo.cms.customs.report.bo.ExportConsgRept_158BO" resultClass="cargo.cms.customs.report.bo.ExportConsgRept_158BO" >
+	 select 	 
+	 #fltNo# as fltNo,
+	 #fltDate# as fltDate,
+	 ORIGIN awborg,
+	 DEST awbdest,
+	 PCS awbpc,
+	 WT awbwt,
+	 CONTENT awbcnt,	 
+	 awb_no awbNo,
+	 SUBSTR(AWB_NO, 1,3) AS awbNoPfx, 
+     SUBSTR(AWB_NO, 4,11) AS awbNoSfx, 
+     to_char(awb_date,'DDMONYY')  awbDate
+	      from   exp_car t1
+          where  catalog not in ('EO', 'TM')
+          and    exists (select null
+                         from   exp_pmanifest_awb t2
+                         where  flt_key = #fltNo#
+                         and    flt_date = #fltDate#
+                         and    t1.awb_no = t2.awb_no
+                         and    t1.awb_date = t2.awb_date)
+    </select>
+      
+	<select id="cust_rept_158" parameterClass="cargo.cms.customs.report.bo.ExportConsgRept_158BO" resultClass="cargo.cms.customs.report.bo.ExportConsgRept_158BO" >
+
+SELECT B.HAWB_NO                       AS hawbNo ,
+  B.HAWB_ORG                           AS origin ,
+  B.HAWB_DEST                          AS dest ,
+  B.HAWB_PCS                           AS pcs,
+  TO_CHAR(B.HAWB_NET_WT,'999999990.0') AS wt,
+  B.SHPR_NAME                          AS shpr,
+  B.MANIFEST_DESC                      AS content,
+  B.CSGNE_NAME                         AS consignee,
+  B.NFY_NAME                           AS notify,
+  B.FLT_KEY                            AS sfltNo,
+  #awbNo#                          AS awbNo,
+   TO_CHAR(B.FLT_DATE,'DDMONYY')        AS sfltDate
+FROM
+  (SELECT SI_TYPE,
+    MAX(TR_NO) TR_NO
+  FROM EDI_FHL
+  WHERE AWB_NO =#awbNo#
+ AND AWB_DATE = to_date(#awbDate#,'DDMONYY')
+  GROUP BY SI_TYPE
+  ) A,
+  EDI_FHL_HAWB B,
+  V_CST_LATEST_CC_CODE C
+WHERE A.TR_NO   = B.TR_NO
+AND B.HAWB_NO   = C.HAWB_NO(+)
+AND C.AWB_NO(+) = #awbNo#
+ORDER BY B.hawb_no 
+       
+</select>
+<select id="countOfHAWB" parameterClass="java.lang.String" resultClass="java.lang.Integer">
+select count(0) from EDI_FHL a join EDI_FHL_HAWB b on a.tr_no=b.tr_no where awb_no=#awbNo# and hawb_No is not null 
+
+</select>
+<!-- Added By swapneswari For Export Consignment Submission :End -->
+<!-- Added By swapneswari for List/Print DC WareHouse Returns Report:Start -->
+<select id="getDC_WH_RTN_CARR"  parameterClass="java.lang.String" resultClass="java.lang.String">
+		<![CDATA[		 
+			SELECT CODE_DESC FROM MAST_CODE_DTL WHERE CODE_TYPE = 'DC_WH_RTN_CARR' and code = #type#        ORDER BY     CODE_DESC       
+			]]>
+	</select>
+	<select id="expWarehouseReturnsListRept_252"  parameterClass="cargo.cms.customs.report.bo.DCWHReturnsRept_252BO" resultClass="cargo.cms.customs.report.bo.DCWHReturnsRept_252BO">
+     <![CDATA[		 
+		 SELECT 
+			 FLT_KEY AS fltKey, 
+			 TO_CHAR(FLT_DATE,'DDMONYY') AS fltDate, 
+			 AWB_NO AS awbNo,
+			 SUBSTR(AWB_NO, 1,3)||'-'||SUBSTR(AWB_NO,4,8)as dispAwbNo,  
+			 PCS AS dutyPcs, 
+			 WT AS dutyWt,  
+			 TO_CHAR(RCL_DATE,'DDMONYY') AS releaseOn, 
+			 PERMIT_LISTS AS pmtNo,  
+			 DC_REMARKS AS dutRmk 
+		 FROM 
+			 GT_CST_DC_WH_RETURNS_EXP
+			 ORDER BY FLT_DATE,RCL_DATE DESC		
+	]]>
+   </select>
+	
+	<select id="impWarehouseReturnsListRept_252"  parameterClass="cargo.cms.customs.report.bo.DCWHReturnsRept_252BO" resultClass="cargo.cms.customs.report.bo.DCWHReturnsRept_252BO">
+	<![CDATA[		 
+		SELECT FLT_KEY AS fltKey, 
+		TO_CHAR(FLT_DATE,'DDMONYY') AS fltDate,  
+		AWB_NO AS awbNo,
+		SUBSTR(AWB_NO, 1,3)||'-'||SUBSTR(AWB_NO,4,8) AS dispAwbNo,  
+		PCS	AS dutyPcs, 
+		DECODE(HAWB_NO, '000000000000000000', '', HAWB_NO) AS hawbNo,  
+		CF_PCS AS carryFwdPcs, 
+		REL_PCS	AS releasePcs, 
+		PERMIT_LISTS AS pmtNo, 
+		TO_CHAR(REL_ON,'DDMONYY') AS releaseOn,  
+		DC_REMARKS AS dutRmk 
+		FROM GT_CST_DC_WH_RETURNS_IMP	
+		ORDER BY FLT_DATE DESC	, AWB_NO
+		]]>
+   </select>
+   <parameterMap id="warehouseReturnsMapExp_252" class="map" >
+		<parameter property="RESULT" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT"/>
+		<parameter property="FLTTYPE" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+		<parameter property="FLTDATEFROM" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+		<parameter property="FLTDATETO" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+		<parameter property="CARRCODE" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+		<parameter property="OUTSTANDING" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+	</parameterMap>
+	<procedure id="pkg_cst_dc.get_dc_wh_returns_exp_252" parameterMap="warehouseReturnsMapExp_252" >
+		{? = call pkg_cst_dc.get_dc_wh_returns_exp(?,?,?,?,?)}
+	</procedure>
+
+	<parameterMap id="warehouseReturnsMapImp_252" class="map" >
+		<parameter property="RESULT" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT"/>
+		<parameter property="FLTTYPE" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+		<parameter property="FLTDATEFROM" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+		<parameter property="FLTDATETO" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+		<parameter property="CARRCODE" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+		<parameter property="OUTSTANDING" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>	
+	</parameterMap>
+	<procedure id="pkg_cst_dc.get_dc_wh_returns_imp_252" parameterMap="warehouseReturnsMapImp_252" >
+		{? = call pkg_cst_dc.get_dc_wh_returns_imp(?,?,?,?,?)}
+	</procedure>
+	
+	<!-- Enquir duitable commodities start -->
+	<select id="permitDetail706"  parameterClass="cargo.cms.customs.report.bo.Dcdetail706BO" resultClass="cargo.cms.customs.report.bo.Dcdetail706BO">
+		SELECT 
+			DUT_TYPE AS dcType,
+			pkg_cst_dc.get_awb_hawb_content(AWB_NO, AWB_DATE, HAWB_NO, SHPM_TYPE) AS dcContent
+		FROM  
+			CST_DC_DTL
+		WHERE  
+			   SHPM_TYPE = #flightType#
+           AND AWB_NO = #awbNo#
+           AND AWB_DATE = TO_DATE(#awbDate#,'DDMONYY')
+           AND HAWB_NO = #hawbNo#	
+           <isNotEmpty property="fltKey">	
+           	AND FLT_KEY = #fltKey#
+           	AND FLT_DATE = To_date(#fltDate#,'DDMONYY')	
+           </isNotEmpty>				
+	</select>	
+	<select id = "dutableDetail706" parameterClass="cargo.cms.customs.report.bo.Dcdetail706BO" resultClass="cargo.cms.customs.report.bo.Dcdetail706BO">		
+		select 
+			DUT_CODE as dcCode, 
+			DUT_QTY as dcQty, 
+			DUT_UNIT as dcUnit, 
+			DUT_PCS as dcPc,
+			HAWB_NO as hawbNo,
+			DUT_RMK as dcRemark		    
+		from 
+			CST_CODE_DTL 
+		where 
+				FLT_TYPE=#flightType# and AWB_NO= #awbNo#
+			and HAWB_NO=#hawbNo# 
+			<isNotEmpty property="fltKey">
+		    	and FLT_KEY =#fltKey#  and FLT_DATE = to_date(#fltDate#,'DDMONYY')
+		    </isNotEmpty>
+   	</select>
+   	<select id = "permitList706"  parameterClass="cargo.cms.customs.report.bo.Dcdetail706BO" resultClass="cargo.cms.customs.report.bo.Dcdetail706BO">			
+		    select 
+			pmt_no as permitTemp,to_char(DCP_DAT,'DDMONYY') dcpRecvDate,to_char(DCP_DAT,'HH24') dcpRecvTimeHr,to_char(DCP_DAT,'mi') dcpRecvTimeMin,DCP_QTY dcpQty,EPA_COMP epaComplYN from cst_permit_dtl 
+		where
+			flt_type = #flightType# and
+			awb_no = #awbNo# and
+			awb_date = to_date(#awbDate#,'DDMONYY') and
+			hawb_no = #hawbNo#
+			and DUT_CODE = #dcCode#
+			<isNotEmpty property="fltKey">
+		    	and FLT_KEY =#fltKey#  and FLT_DATE = to_date(#fltDate#,'DDMONYY')
+		    </isNotEmpty>
+			order by pmt_no
+	</select>	
+	<select id = "viewrecvDetail"  parameterClass="cargo.cms.customs.report.bo.Dcdetail706BO" resultClass="cargo.cms.customs.report.bo.Dcdetail706BO">
+			SELECT to_char(DCP_RCV_DAT,'DDMONYY') dcpRecvDate,to_char(DCP_RCV_DAT,'HH24') dcpRecvTimeHr,to_char(DCP_RCV_DAT,'mi') dcpRecvTimeMin,DCP_RCV_QTY qty,DCP_RCV_PCS pcs,DCP_RMK rmk,FLG_IND offloadYN,TR_NO trNo
+			FROM CST_RCV_DTL WHERE flt_type = #flightType# and
+			awb_no = #awbNo# and
+			hawb_no = #hawbNo#
+			and PMT_NO = #permitTemp#
+			<isNotEmpty property="fltKey">
+		    	and FLT_KEY =#fltKey#  and FLT_DATE = to_date(#fltDate#,'DDMONYY')
+		    </isNotEmpty>
+	</select>
+		<select id = "viewrelsDetail"  parameterClass="cargo.cms.customs.report.bo.Dcdetail706BO" resultClass="cargo.cms.customs.report.bo.Dcdetail706BO">
+			SELECT to_char(DCP_RLS_DAT,'DDMONYY') dcpRecvDate,to_char(DCP_RLS_DAT,'HH24') dcpRecvTimeHr,to_char(DCP_RLS_DAT,'mi') dcpRecvTimeMin,DCP_RLS_QTY qty,DCP_RLS_PCS pcs,DCP_RMK rmk,TR_NO trNo,DCP_RLS_TYP type 
+			FROM CST_RLS_DTL WHERE flt_type = #flightType# and
+			awb_no = #awbNo# and
+			hawb_no = #hawbNo#
+			and PMT_NO = #permitTemp#
+			<isNotEmpty property="fltKey">
+		    	and FLT_KEY =#fltKey#  and FLT_DATE = to_date(#fltDate#,'DDMONYY')
+		    </isNotEmpty>
+	</select>
+		<select id = "viewepaDetail"  parameterClass="cargo.cms.customs.report.bo.Dcdetail706BO" resultClass="cargo.cms.customs.report.bo.Dcdetail706BO">
+			SELECT to_char(EPA_DAT,'DDMONYY') dcpRecvDate,to_char(EPA_DAT,'HH24') dcpRecvTimeHr,to_char(EPA_DAT,'mi') dcpRecvTimeMin,EPA_QTY qty,EPA_PCS pcs,EPA_RMK rmk,TR_NO trNo,EPA_REF_NO refNo,EPA_TYP type
+			FROM CST_EPA_DTL WHERE flt_type = #flightType# and
+			awb_no = #awbNo# and
+			hawb_no = #hawbNo#
+			and PMT_NO = #permitTemp#
+			<isNotEmpty property="fltKey">
+		    	and FLT_KEY =#fltKey#  and FLT_DATE = to_date(#fltDate#,'DDMONYY')
+		    </isNotEmpty>
+	</select>
+	<select id="summary710" parameterClass="cargo.cms.customs.report.bo.CargoEman710BO" resultClass="cargo.cms.customs.report.bo.CargoEman710BO">
+		select a.CARR_KEY carr ,
+		count(a.FLT_KEY) totflt,
+		sum(CASE WHEN b.STATUS = 'Pending' THEN 1 WHEN b.STATUS is null THEN 1 ELSE 0 END) Pending ,
+		sum(CASE WHEN b.STATUS = 'Sent' THEN 1 ELSE 0 END) Sent ,
+		sum(CASE WHEN b.STATUS = 'Rejected' THEN 1 ELSE 0 END) Rejected ,
+		sum(CASE WHEN b.STATUS = 'Confirmed' THEN 1 ELSE 0 END) Confirmed,
+		sum(CASE WHEN a.nil_cargo_yn = 'Y' THEN 1 ELSE 0 END) nilCargo,
+    	sum(CASE WHEN a.nil_cargo_yn = 'N' THEN 1 ELSE 0 END) as notNilCargo
+		from EMAN_FLT a 
+		left join EMAN_CTRL b on a.FLT_TYPE=b.FLT_TYPE and a.FLT_KEY=b.FLT_KEY and a.FLT_DATE=b.FLT_DATE and a.TR_NO=b.TR_NO 			
+		where a.flt_type=#fltType#
+		<isNotEmpty property="carr">
+				    	and a.carr_key=#carr#
+		</isNotEmpty>
+		<isEmpty property="carr">	
+			<isNotEmpty property="loginCarrier">
+				AND	(a.CARR_KEY = #loginCarrier#
+					OR a.CARR_KEY IN (SELECT CARR_CODE FROM MAST_CARR_GRP WHERE GRP_CARR_CODE = #loginCarrier#))
+			</isNotEmpty>
+		</isEmpty>
+		<isNotEmpty property="submDateFrom">
+		<isNotEmpty property="submDateTo">
+		AND TO_CHAR(A.LST_SUB_DATE,'DDMONYY') Between To_Date(#submDateFrom#,'DDMONYY')	and TO_DATE(#submDateTo#,'DDMONYY')
+		</isNotEmpty></isNotEmpty>
+		<isNotEmpty property="startDate">
+		<isNotEmpty property="endDate">
+		and TO_CHAR(a.FLT_DATE,'DDMONYY') between NVL(TO_DATE(#startDate#,'DDMONYY'),a.FLT_DATE)
+		and NVL(TO_DATE(#endDate#,'DDMONYY'),NVL(TO_DATE(#startDate#,'DDMONYY'), a.FLT_DATE))
+		</isNotEmpty></isNotEmpty> 
+		group by a.carr_key
+</select>
+<select id="monthlyRept711" parameterClass="cargo.cms.customs.report.bo.CargoEman710BO" resultClass="cargo.cms.customs.report.bo.CargoEman710BO">
+		select
+		c.carr_code,
+		a.carr_key carr,
+		a.FLT_TYPE fltType,
+		a.FLT_KEY fltNo,
+		TO_CHAR(a.FLT_DATE,'DDMONYY') fltDate,
+		a.UMR_NO umrNo,
+		b.SUBM_DATE subDate,
+		a.NIL_CARGO_YN nilCargo,
+		TO_CHAR(c.SCH_DATE,'DDMONYY') schDate,
+		TO_CHAR(c.ACT_DATE,'DDMONYY') actDate
+		from 
+		EMAN_FLT a 
+		join eman_ctrl b on  b.FLT_TYPE=a.FLT_TYPE and b.FLT_KEY=a.FLT_KEY and b.FLT_DATE=to_char(a.FLT_DATE,'DDMONYY')
+		join flt_opr c on  c.FLT_TYPE=decode(a.FLT_TYPE,'E','D','I','A') and c.FLT_KEY=a.FLT_KEY and c.sch_date=to_char(a.FLT_DATE,'DDMONYY')
+		where to_char(b.subm_date,'MONYYYY') =#month#||#year#
+		<isNotEmpty property="carr">
+			and a.carr_key=#carr#
+		</isNotEmpty>
+		<isEmpty property="carr">	
+			<isNotEmpty property="loginCarrier">
+				AND	(c.carr_code = #loginCarrier#
+					OR c.carr_code IN (SELECT CARR_CODE FROM MAST_CARR_GRP WHERE GRP_CARR_CODE = #loginCarrier#))
+			</isNotEmpty>
+		</isEmpty>
+</select>
+<select id="getEmanTIDSubmt_751Dtl"  parameterClass="cargo.cms.customs.report.bo.CargoEmanTIDRept_751BO" resultClass="cargo.cms.customs.report.bo.CargoEmanTIDRept_751BO" >
+	  SELECT a.carr_key     AS carrKey,
+  			 a.umr_no       AS umarNo ,
+ 			 to_char(a.lst_sub_date,'DD-MON-YYYY') as submtDate				
+		FROM eman_flt a
+		WHERE a.flt_type=#fltType# 
+		AND a.flt_key  =#fltNo#  
+		AND a.flt_date =#fltDate#  
+		AND a.tr_no    =#trNo#
+</select>
+<select id="getEmanTIDSubmt_751AuthRepDtl"  parameterClass="cargo.cms.customs.report.bo.CargoEmanTIDRept_751BO" resultClass="cargo.cms.customs.report.bo.CargoEmanTIDRept_751BO" >
+	 select auth_agnt as authrised
+	   from eman_car_mast 
+	   	where carr_code=#carrKey#
+</select>
+<select id="getEmanTIDCarr_751Dtl"  parameterClass="cargo.cms.customs.report.bo.CargoEmanTIDRept_751BO" resultClass="cargo.cms.customs.report.bo.CargoEmanTIDRept_751BO" >
+	  select carr_name as carrName, 
+         	 cont_per_name as contactPerson,
+         	 cont_per_title as contactTitle
+	   from eman_car_mast 
+	   	 where carr_code=#carrKey#
+</select>
+
+<!-- HASH TOTAL CHANGES BY PAVAN START-->
+	<select id="cust_PaperManifestFlt_113_A_NEW"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+	 			select 	 			 	
+	 	TO_CHAR(a.flt_date, 'DD MON YY') as dateFrom, 
+	 	nvl(substr(cns_hdr,23,4),' ') as schTime,	
+      	nvl(substr(cns_hdr,9,9),' ') as hfltNo, 
+	    upper(substr(b.cns_hash_tot,1,4)||' '||substr(b.cns_hash_tot,5,4)||' '||
+		substr(b.cns_hash_tot,9,4)||' '||substr(b.cns_hash_tot,13,4)||' '||
+		substr(b.cns_hash_tot,17,4)||' '||substr(b.cns_hash_tot,21,4)||' '||
+		substr(b.cns_hash_tot,25,4)||' '||substr(b.cns_hash_tot,29,4)) as hashTot1 ,
+		
+		upper(substr(b.cns_hash_tot,33,4)||' '||substr(b.cns_hash_tot,37,4)||' '||
+		substr(b.cns_hash_tot,41,4)||' '||substr(b.cns_hash_tot,45,4)||' '||
+		substr(b.cns_hash_tot,49,4)||' '||substr(b.cns_hash_tot,53,4)||' '||
+		substr(b.cns_hash_tot,57,4)||' '||substr(b.cns_hash_tot,61)) as hashTot2,
+		
+	  	upper(substr(b.cns_hash_tot,1,16)) as hashTotCode1,
+		upper(substr(b.cns_hash_tot,17,16)) as hashTotCode2,
+		upper(substr(b.cns_hash_tot,33,16)) as hashTotCode3,
+		upper(substr(b.cns_hash_tot,49)) as hashTotCode4
+		
+	from cst_csgnm a,cst_subm b	
+	where a.flt_type=b.flt_type and a.flt_key=b.flt_key  and a.flt_date=b.flt_date and a.recv_rec_type=b.rec_type
+	and a.ver_no=b.ver_no and a.flt_type='I' and a.flt_key=#fltNo#  and a.flt_date=#dateFrom#  and a.recv_rec_type=#amdType#
+	and a.seq_no= 0 and a.ver_no=(select max(ver_no) from cst_csgnm 
+	where flt_type='I' and flt_key=#fltNo#  and flt_date=#dateFrom# and recv_rec_type=#amdType#) 
+</select>
+
+<select id="cust_PaperManifestFlt_113_LB_NEW"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+	 	select 	 			 
+	 	TO_CHAR(a.flt_date, 'DD MON YY') as dateFrom,
+	  	nvl(substr(cns_hdr,23,4),' ') as schTime,	
+      	nvl(substr(cns_hdr,9,9),' ') as hfltNo,       	
+        upper(substr(b.cns_hash_tot,1,4)||' '||substr(b.cns_hash_tot,5,4)||' '||
+		substr(b.cns_hash_tot,9,4)||' '||substr(b.cns_hash_tot,13,4)||' '||
+		substr(b.cns_hash_tot,17,4)||' '||substr(b.cns_hash_tot,21,4)||' '||
+		substr(b.cns_hash_tot,25,4)||' '||substr(b.cns_hash_tot,29,4)) as hashTot1 ,
+		
+		upper(substr(b.cns_hash_tot,33,4)||' '||substr(b.cns_hash_tot,37,4)||' '||
+		substr(b.cns_hash_tot,41,4)||' '||substr(b.cns_hash_tot,45,4)||' '||
+		substr(b.cns_hash_tot,49,4)||' '||substr(b.cns_hash_tot,53,4)||' '||
+		substr(b.cns_hash_tot,57,4)||' '||substr(b.cns_hash_tot,61)) as hashTot2,
+		
+	  	upper(substr(b.cns_hash_tot,1,16)) as hashTotCode1,
+		upper(substr(b.cns_hash_tot,17,16)) as hashTotCode2,
+		upper(substr(b.cns_hash_tot,33,16)) as hashTotCode3,
+		upper(substr(b.cns_hash_tot,49)) as hashTotCode4
+		
+	from cst_csgnm a,cst_subm b
+	where a.flt_type=b.flt_type and a.flt_key=b.flt_key 
+	and	a.flt_date=b.flt_date
+	and a.recv_rec_type=b.rec_type and a.ver_no = b.ver_no
+	and b.msg_type='L' and a.flt_type='I' and a.flt_key=#fltNo#
+	and a.flt_date=#dateFrom# and a.recv_rec_type=#lbsType#
+	and a.seq_no= 0 and a.ver_no=#lbversionNo#
+</select>
+<select id="cust_PaperManifestFlt_113_I_NEW"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+	 	select 
+	 	TO_CHAR(a.flt_date, 'DD MON YY') as dateFrom, 
+	 	nvl(substr(cns_hdr,23,4),' ') as schTime,	
+      	nvl(substr(cns_hdr,9,9),' ') as hfltNo,      	
+    
+	    upper(substr(b.cns_hash_tot,1,4)||' '||substr(b.cns_hash_tot,5,4)||' '||
+		substr(b.cns_hash_tot,9,4)||' '||substr(b.cns_hash_tot,13,4)||' '||
+		substr(b.cns_hash_tot,17,4)||' '||substr(b.cns_hash_tot,21,4)||' '||
+		substr(b.cns_hash_tot,25,4)||' '||substr(b.cns_hash_tot,29,4)) as hashTot1 ,
+		
+		upper(substr(b.cns_hash_tot,33,4)||' '||substr(b.cns_hash_tot,37,4)||' '||
+		substr(b.cns_hash_tot,41,4)||' '||substr(b.cns_hash_tot,45,4)||' '||
+		substr(b.cns_hash_tot,49,4)||' '||substr(b.cns_hash_tot,53,4)||' '||
+		substr(b.cns_hash_tot,57,4)||' '||substr(b.cns_hash_tot,61)) as hashTot2,
+		
+	  	upper(substr(b.cns_hash_tot,1,16)) as hashTotCode1,
+		upper(substr(b.cns_hash_tot,17,16)) as hashTotCode2,
+		upper(substr(b.cns_hash_tot,33,16)) as hashTotCode3,
+		upper(substr(b.cns_hash_tot,49)) as hashTotCode4
+		
+	from cst_csgnm a,cst_subm b	
+	where a.flt_type=b.flt_type and a.flt_key=b.flt_key  and a.flt_date=b.flt_date and a.recv_rec_type=b.rec_type
+	and a.ver_no=b.ver_no and a.flt_type='I' and a.flt_key=#fltNo#  and a.flt_date=#dateFrom#  and a.recv_rec_type=#iniType#
+	and a.seq_no= 0 and a.ver_no=(select max(ver_no) from cst_csgnm 
+	where flt_type='I' and flt_key=#fltNo#   and flt_date=#dateFrom# and recv_rec_type=#iniType#) 
+</select>
+<select id="cust_PaperManifestFlt_113_IDtl_hk"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+<!-- select sum(portconstl) hkconstl, sum(portconspc) hkconspc from (   
+select nvl(portconstl,0) portconstl, nvl(pcs,0) portconspc from (
+select a.ver_no, max(ver_no) max_ver_no, count(1) as portconstl, sum(decode(recv_rec_type,'AMD', nvl(ltrim(substr(cns_dtl,60,6),0),0),'INT', nvl(ltrim(substr(cns_dtl,59,6),0),0))) as Pcs 
+from cst_csgnm a, imp_car_shp b,  imp_car_awb c
+where
+a.flt_key = b.flt_key
+and a.flt_date = b.flt_date
+and a.awb_no = b.awb_no
+and b.awb_no = c.awb_no
+and b.awb_date = c.awb_date
+and a.recv_rec_type='INT'
+and c.awb_dest = 'HKG'
+and a.hawb_no ='000000000000000000'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = 'I'
+and a.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+and a.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+and a.ver_no = (SELECT MAX(ver_no)
+                FROM cst_csgnm
+                WHERE flt_type   ='I'
+                AND flt_key      =NVL(#vesselFlightKey#,#fltNo#)
+                AND flt_date     =NVL(#vesselFlightDate#,#dateFrom#)
+                AND recv_rec_type='INT')
+group by ver_no
+) 
+union
+select 0 portconstl, 0 portconspc from dual
+) -->
+<![CDATA[ 
+select sum(portconstl) hkconstl, sum(portconspc) hkconspc from (   
+select nvl(portconstl,0) portconstl, nvl(pcs,0) portconspc from (
+select a.ver_no, max(ver_no) max_ver_no, count(1) as portconstl, sum(decode(recv_rec_type,'AMD', nvl(ltrim(substr(cns_dtl,60,6),0),0),'INT', nvl(ltrim(substr(cns_dtl,59,6),0),0))) as Pcs 
+from  cst_csgnm a
+LEFT JOIN FLT_OPR f ON NVL(f.stfs_flt_key,f.FLT_KEY)= a.FLT_KEY AND NVL(f.stfs_flt_date,f.SCH_DATE) = a.FLT_DATE
+LEFT JOIN IMP_CAR_SHP s ON s.AWB_NO = a.AWB_NO AND s.FLT_KEY = f.FLT_KEY AND s.FLT_DATE = f.SCH_DATE
+LEFT JOIN IMP_CAR_AWB c ON c.AWB_NO = s.AWB_NO AND c.AWB_DATE = s.AWB_DATE
+WHERE  
+f.flt_key = s.flt_key
+and f.sch_date = s.flt_date
+and NVL(f.stfs_flt_key,f.flt_key) = a.flt_key
+and NVL(f.stfs_flt_date,f.sch_date) = a.flt_date
+and a.awb_no = s.awb_no
+and s.awb_no = c.awb_no
+and s.awb_date = c.awb_date
+and a.recv_rec_type='INT'
+and c.awb_dest = 'HKG'
+and a.hawb_no ='000000000000000000'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = 'I'
+and a.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+and a.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+and a.ver_no = (SELECT MAX(ver_no)
+                FROM cst_csgnm
+                WHERE flt_type   ='I'
+                AND flt_key      =NVL(#vesselFlightKey#,#fltNo#)
+                AND flt_date     =NVL(#vesselFlightDate#,#dateFrom#)
+                AND recv_rec_type='INT') 
+group by ver_no
+) 
+union
+select 0 portconstl, 0 portconspc from dual
+)
+]]>
+</select>
+
+
+
+
+
+<select id="cust_PaperManifestFlt_113_IDtl_hk_NB"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+<![CDATA[ 
+select sum(portconstl) hkconstl, sum(portconspc) hkconspc from (   
+select nvl(portconstl,0) portconstl, nvl(pcs,0) portconspc from (
+select a.ver_no, max(ver_no) max_ver_no, count(1) as portconstl, sum(decode(recv_rec_type,'AMD', nvl(ltrim(substr(cns_dtl,60,6),0),0),'INT', nvl(ltrim(substr(cns_dtl,59,6),0),0))) as Pcs 
+from  cst_csgnm a
+LEFT JOIN FLT_OPR f ON NVL(f.stfs_flt_key,f.FLT_KEY)= a.FLT_KEY AND NVL(f.stfs_flt_date,f.SCH_DATE) = a.FLT_DATE
+LEFT JOIN (select FLT_KEY,FLT_DATE,awb_no , awb_date from exp_pmanifest_awb UNION select FLT_KEY,FLT_DATE,awb_no , awb_date from exp_pman_tarmac_awb)s ON s.AWB_NO = a.AWB_NO AND s.FLT_KEY = f.FLT_KEY AND s.FLT_DATE = f.SCH_DATE
+LEFT JOIN AWB d ON d.AWB_NO = a.AWB_NO AND d.AWB_DATE = s.AWB_DATE
+WHERE  
+f.flt_key = s.flt_key
+and f.sch_date = s.flt_date
+and NVL(f.stfs_flt_key,f.flt_key) = a.flt_key
+and NVL(f.stfs_flt_date,f.sch_date) = a.flt_date
+and a.awb_no = s.awb_no
+and s.awb_no = d.awb_no
+and s.awb_date = d.awb_date
+and a.recv_rec_type='INT'
+and d.dest = 'HKG'
+and a.hawb_no ='000000000000000000'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+and a.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+and a.ver_no = (SELECT MAX(ver_no)
+                FROM cst_csgnm
+                WHERE   flt_key      =NVL(#vesselFlightKey#,#fltNo#)
+                AND flt_date     =NVL(#vesselFlightDate#,#dateFrom#)
+                AND recv_rec_type='INT') 
+group by ver_no
+) 
+union
+select 0 portconstl, 0 portconspc from dual
+)
+]]>
+</select>
+
+ <select id="cust_PaperManifestFlt_113_IDtl_tr"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+<!-- select sum(trconstl) trconstl, sum(trconspc) trconspc from (
+select nvl(portconstl,0) trconstl, nvl(pcs,0) trconspc from (
+select a.ver_no, max(ver_no) max_ver_no, count(1) as portconstl, sum(decode(recv_rec_type,'AMD', nvl(ltrim(substr(cns_dtl,60,6),0),0),'INT', nvl(ltrim(substr(cns_dtl,59,6),0),0))) as Pcs 
+from cst_csgnm a, imp_car_shp b,  imp_car_awb c
+where
+a.flt_key = b.flt_key
+and a.flt_date = b.flt_date
+and a.awb_no = b.awb_no
+and b.awb_no = c.awb_no
+and b.awb_date = c.awb_date
+and a.recv_rec_type='INT'
+and c.awb_dest <> 'HKG'
+and a.hawb_no ='000000000000000000'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = 'I'
+and a.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+and a.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+and a.ver_no = (SELECT MAX(ver_no)
+                FROM cst_csgnm
+                WHERE flt_type   ='I'
+                AND flt_key      =NVL(#vesselFlightKey#,#fltNo#)
+                AND flt_date     =NVL(#vesselFlightDate#,#dateFrom#)
+                AND recv_rec_type='INT')
+group by ver_no
+) 
+union
+select 0 portconstl, 0 portconspc from dual
+)	 -->
+<![CDATA[ 
+select sum(trconstl) trconstl, sum(trconspc) trconspc from (
+select nvl(portconstl,0) trconstl, nvl(pcs,0) trconspc from (
+select a.ver_no, max(ver_no) max_ver_no, count(1) as portconstl, sum(decode(recv_rec_type,'AMD', nvl(ltrim(substr(cns_dtl,60,6),0),0),'INT', nvl(ltrim(substr(cns_dtl,59,6),0),0))) as Pcs
+from  cst_csgnm a
+LEFT JOIN FLT_OPR f ON NVL(f.stfs_flt_key,f.FLT_KEY)= a.FLT_KEY AND NVL(f.stfs_flt_date,f.SCH_DATE) = a.FLT_DATE
+LEFT JOIN IMP_CAR_SHP s ON s.AWB_NO = a.AWB_NO AND s.FLT_KEY = f.FLT_KEY AND s.FLT_DATE = f.SCH_DATE
+LEFT JOIN IMP_CAR_AWB c ON c.AWB_NO = s.AWB_NO AND c.AWB_DATE = s.AWB_DATE
+WHERE  
+f.flt_key = s.flt_key
+and f.sch_date = s.flt_date
+and NVL(f.stfs_flt_key,f.flt_key) = a.flt_key
+and NVL(f.stfs_flt_date,f.sch_date) = a.flt_date
+and a.awb_no = s.awb_no
+and s.awb_no = c.awb_no
+and s.awb_date = c.awb_date
+and a.recv_rec_type='INT'
+and c.awb_dest <> 'HKG'
+and a.hawb_no ='000000000000000000'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = DECODE(#ftype#,'N','E','S','I','A','I','I')
+and a.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+and a.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+and a.ver_no = (SELECT MAX(ver_no)
+                FROM cst_csgnm
+                WHERE flt_type   =  DECODE(#ftype#,'N','E','S','I','A','I','I')
+                AND flt_key      =NVL(#vesselFlightKey#,#fltNo#)
+                AND flt_date     =NVL(#vesselFlightDate#,#dateFrom#)
+                AND recv_rec_type='INT')
+group by ver_no
+) 
+union
+select 0 portconstl, 0 portconspc from dual
+)	
+]]>
+</select>
+
+
+ <select id="cust_PaperManifestFlt_113_IDtl_tr_NB"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+	<![CDATA[ 
+			select sum(trconstl) trconstl, sum(trconspc) trconspc from (
+			select nvl(portconstl,0) trconstl, nvl(pcs,0) trconspc from (
+			select a.ver_no, max(ver_no) max_ver_no, count(1) as portconstl, sum(decode(recv_rec_type,'AMD', nvl(ltrim(substr(cns_dtl,60,6),0),0),'INT', nvl(ltrim(substr(cns_dtl,59,6),0),0))) as Pcs
+			from  cst_csgnm a
+			LEFT JOIN FLT_OPR f ON NVL(f.stfs_flt_key,f.FLT_KEY)= a.FLT_KEY AND NVL(f.stfs_flt_date,f.SCH_DATE) = a.FLT_DATE
+			LEFT JOIN (select FLT_KEY,FLT_DATE,awb_no , awb_date from exp_pmanifest_awb UNION select FLT_KEY,FLT_DATE,awb_no , awb_date from exp_pman_tarmac_awb)s
+							ON s.AWB_NO = a.AWB_NO AND s.FLT_KEY = f.FLT_KEY AND s.FLT_DATE = f.SCH_DATE
+			LEFT JOIN AWB c ON c.AWB_NO = s.AWB_NO AND c.AWB_DATE = s.AWB_DATE
+			WHERE  
+			f.flt_key = s.flt_key
+			and f.sch_date = s.flt_date
+			and NVL(f.stfs_flt_key,f.flt_key) = a.flt_key
+			and NVL(f.stfs_flt_date,f.sch_date) = a.flt_date
+			and a.awb_no = s.awb_no
+			and s.awb_no = c.awb_no
+			and s.awb_date = c.awb_date
+			and a.recv_rec_type='INT'	
+			and c.dest <> 'HKG'		
+			and a.hawb_no ='000000000000000000'
+			and a.seq_no NOT IN( 0, 99999)
+			and a.flt_type = DECODE(#ftype#,'N','E','S','I','A','I','I')
+			and a.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+			and a.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+			and a.ver_no = (SELECT MAX(ver_no)
+			                FROM cst_csgnm
+			                WHERE flt_type   =  DECODE(#ftype#,'N','E','S','I','A','I','I')
+			                AND flt_key      =NVL(#vesselFlightKey#,#fltNo#)
+			                AND flt_date     =NVL(#vesselFlightDate#,#dateFrom#)
+			                AND recv_rec_type='INT')
+			group by ver_no
+			) 
+			union
+			select 0 portconstl, 0 portconspc from dual
+			)	
+			]]>
+</select>
+
+
+<select id="cust_PaperManifestFlt_113_IDtl_port1"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">	
+    <![CDATA[ 
+			SELECT brd_point AS portname  FROM flt_opr_leg WHERE flt_key =  #fltNo# AND sch_date = #dateFrom# and flt_type = DECODE(#ftype#,'N','D','S','A','I','A','A') order by leg_ord
+	 ]]>
+</select>	
+
+<select id="cust_PaperManifestFlt_113_IDtl_port1_NB"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">	
+    <![CDATA[ 
+			SELECT off_point AS portname  FROM flt_opr_leg WHERE flt_key =  #fltNo# AND sch_date = #dateFrom# and flt_type = DECODE(#ftype#,'N','D','S','A','I','A','A') order by leg_ord
+	 ]]>
+</select>	
+
+<select id="cust_PaperManifestFlt_113_IDtl_port2_NB"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">	
+	<![CDATA[ 
+	select sum(portconstl) portconstl, sum(portconspc) portconspc from (   
+	select nvl(portconstl,0) portconstl, nvl(pcs,0) portconspc from (
+	select a.ver_no, max(ver_no) max_ver_no, count(1) as portconstl, sum(nvl(ltrim(substr(cns_dtl,59,6),0),0)) as Pcs
+	from  cst_csgnm a
+	LEFT JOIN FLT_OPR f ON NVL(f.stfs_flt_key,f.FLT_KEY)= a.FLT_KEY AND NVL(f.stfs_flt_date,f.SCH_DATE) = a.FLT_DATE
+	LEFT JOIN (select FLT_KEY,FLT_DATE,awb_no , awb_date, unldg_pt from exp_pmanifest_awb UNION select FLT_KEY,FLT_DATE,awb_no , awb_date,unldg_pt from exp_pman_tarmac_awb)s
+								ON s.AWB_NO = a.AWB_NO AND s.FLT_KEY = f.FLT_KEY AND s.FLT_DATE = f.SCH_DATE
+	WHERE  f.flt_key = s.flt_key and f.sch_date = s.flt_date
+	and NVL(f.stfs_flt_key,f.flt_key) = a.flt_key
+	and NVL(f.stfs_flt_date,f.sch_date) = a.flt_date
+	and a.awb_no = s.awb_no
+	and a.recv_rec_type='INT'	
+	and a.hawb_no ='000000000000000000'
+	and a.seq_no NOT IN( 0, 99999)
+	and a.flt_type = 'E'
+	and a.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+	and a.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+	and s.unldg_pt = #portval#
+	group by ver_no
+	) 
+	where ver_no = max_ver_no
+	group by  portconstl, pcs
+	union
+	select 0 portconstl, 0 portconspc from dual
+	)
+	]]>				
+</select>
+
+
+<select id="cust_PaperManifestFlt_113_IDtl_port2"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">	
+<!-- select sum(portconstl) portconstl, sum(portconspc) portconspc from (   
+select nvl(portconstl,0) portconstl, nvl(pcs,0) portconspc from (
+select a.ver_no, max(ver_no) max_ver_no, count(1) as portconstl, sum(nvl(ltrim(substr(cns_dtl,59,6),0),0)) as Pcs 
+from cst_csgnm a, imp_car_shp b,  imp_car_awb c
+where
+a.flt_key = b.flt_key
+and a.flt_date = b.flt_date
+and a.awb_no = b.awb_no
+and b.awb_no = c.awb_no
+and b.awb_date = c.awb_date
+and a.recv_rec_type='INT'
+and c.awb_dest = 'HKG'
+and a.hawb_no ='000000000000000000'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = 'I'
+and a.flt_key=#fltNo#
+and a.flt_date=#dateFrom#
+and B.LDG_POINT = #portval#
+group by ver_no
+) 
+where ver_no = max_ver_no
+group by  portconstl, pcs
+union
+select 0 portconstl, 0 portconspc from dual
+) -->
+<![CDATA[ 
+select sum(portconstl) portconstl, sum(portconspc) portconspc from (   
+select nvl(portconstl,0) portconstl, nvl(pcs,0) portconspc from (
+select a.ver_no, max(ver_no) max_ver_no, count(1) as portconstl, sum(nvl(ltrim(substr(cns_dtl,59,6),0),0)) as Pcs
+from  cst_csgnm a
+LEFT JOIN FLT_OPR f ON NVL(f.stfs_flt_key,f.FLT_KEY)= a.FLT_KEY AND NVL(f.stfs_flt_date,f.SCH_DATE) = a.FLT_DATE
+LEFT JOIN IMP_CAR_SHP s ON s.AWB_NO = a.AWB_NO AND s.FLT_KEY = f.FLT_KEY AND s.FLT_DATE = f.SCH_DATE
+LEFT JOIN IMP_CAR_AWB c ON c.AWB_NO = s.AWB_NO AND c.AWB_DATE = s.AWB_DATE
+WHERE  
+f.flt_key = s.flt_key
+and f.sch_date = s.flt_date
+and NVL(f.stfs_flt_key,f.flt_key) = a.flt_key
+and NVL(f.stfs_flt_date,f.sch_date) = a.flt_date
+and a.awb_no = s.awb_no
+and s.awb_no = c.awb_no
+and s.awb_date = c.awb_date
+and a.recv_rec_type='INT'
+and c.awb_dest = 'HKG'
+and a.hawb_no ='000000000000000000'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = 'I'
+and a.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+and a.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+and s.LDG_POINT = #portval#
+group by ver_no
+) 
+where ver_no = max_ver_no
+group by  portconstl, pcs
+union
+select 0 portconstl, 0 portconspc from dual
+)
+]]>				
+</select>
+  
+  <select id="cust_PaperManifestFlt_113_ADtl_hk"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+<!-- select sum(portconstl) hkconstl, sum(portconspc) hkconspc from (  
+	select nvl(sum(portconstl),0) portconstl, nvl(sum(pcs),0) portconspc from (
+select  awb_no, portconstl, pcs from (
+select a.awb_no, decode(a.recv_rec_type, 'INT', 0, a.ver_no) ver_no,  count(1) as portconstl, sum(decode(recv_rec_type,'AMD', nvl(ltrim(substr(cns_dtl,60,6),0),0),'INT', nvl(ltrim(substr(cns_dtl,59,6),0),0))) as Pcs 
+from cst_csgnm a, imp_car_shp b,  imp_car_awb c
+where
+a.flt_key = b.flt_key(+)
+and a.flt_date = b.flt_date(+)
+and a.awb_no = b.awb_no
+and b.awb_no = c.awb_no
+and b.awb_date = c.awb_date
+and a.recv_rec_type = 'AMD'
+and c.awb_dest = 'HKG'
+and a.hawb_no ='000000000000000000'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = 'I'
+and a.flt_key=#fltNo#
+and a.flt_date=#dateFrom#
+group by a.awb_no, a.recv_rec_type, ver_no
+) x
+where 
+ver_no = (
+select  max(decode(z.recv_rec_type, 'INT', 0, z.ver_no))
+from cst_csgnm z
+where z.recv_rec_type = 'AMD'
+and z.hawb_no ='000000000000000000'
+and z.seq_no NOT IN( 0, 99999)
+and z.flt_type = 'I'
+and z.flt_key=#fltNo#
+and z.flt_date=#dateFrom#
+and z.awb_no = x.awb_no
+) 
+group by  awb_No, portconstl, pcs
+) 	
+union
+select 0 portconstl, 0 portconspc from dual
+) -->
+<![CDATA[ 
+select sum(portconstl) hkconstl, sum(portconspc) hkconspc from (  
+	select nvl(sum(portconstl),0) portconstl, nvl(sum(pcs),0) portconspc from (
+select  awb_no, portconstl, pcs from (
+select a.awb_no, decode(a.recv_rec_type, 'INT', 0, a.ver_no) ver_no,  count(1) as portconstl, sum(decode(recv_rec_type,'AMD', nvl(ltrim(substr(cns_dtl,60,6),0),0),'INT', nvl(ltrim(substr(cns_dtl,59,6),0),0))) as Pcs
+from  cst_csgnm a
+LEFT JOIN FLT_OPR f ON NVL(f.stfs_flt_key,f.FLT_KEY)= a.FLT_KEY AND NVL(f.stfs_flt_date,f.SCH_DATE) = a.FLT_DATE
+LEFT JOIN IMP_CAR_SHP s ON s.AWB_NO = a.AWB_NO AND s.FLT_KEY = f.FLT_KEY AND s.FLT_DATE = f.SCH_DATE
+LEFT JOIN IMP_CAR_AWB c ON c.AWB_NO = s.AWB_NO AND c.AWB_DATE = s.AWB_DATE
+WHERE NVL(f.stfs_flt_key,f.flt_key) = a.flt_key
+and NVL(f.stfs_flt_date,f.sch_date) = a.flt_date
+and a.awb_no = s.awb_no
+and s.awb_no = c.awb_no
+and s.awb_date = c.awb_date
+and a.recv_rec_type='AMD'
+and c.awb_dest = 'HKG'
+and a.hawb_no ='000000000000000000'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = 'I'
+and a.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+and a.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+group by a.awb_no, a.recv_rec_type, ver_no
+) x
+where 
+ver_no = (
+select  max(decode(z.recv_rec_type, 'INT', 0, z.ver_no))
+from cst_csgnm z
+where z.recv_rec_type = 'AMD'
+and z.hawb_no ='000000000000000000'
+and z.seq_no NOT IN( 0, 99999)
+and z.flt_type = 'I'
+and z.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+and z.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+and z.awb_no = x.awb_no
+) 
+group by  awb_No, portconstl, pcs
+) 	
+union
+select 0 portconstl, 0 portconspc from dual
+)
+]]>
+  </select>
+
+    <select id="cust_PaperManifestFlt_113_ADtl_tr"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+<!-- select sum(portconstl) trconstl, sum(portconspc) trconspc from (  
+	select nvl(sum(portconstl),0) portconstl, nvl(sum(pcs),0) portconspc from (
+select  awb_no, portconstl, pcs from (
+select a.awb_no, decode(a.recv_rec_type, 'INT', 0, a.ver_no) ver_no,  count(1) as portconstl, sum(decode(recv_rec_type,'AMD', nvl(ltrim(substr(cns_dtl,60,6),0),0),'INT', nvl(ltrim(substr(cns_dtl,59,6),0),0))) as Pcs 
+from cst_csgnm a, imp_car_shp b,  imp_car_awb c
+where
+a.flt_key = b.flt_key(+)
+and a.flt_date = b.flt_date(+)
+and a.awb_no = b.awb_no
+and b.awb_no = c.awb_no
+and b.awb_date = c.awb_date
+and a.recv_rec_type = 'AMD'
+and c.awb_dest <> 'HKG'
+and a.hawb_no ='000000000000000000'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = 'I'
+and a.flt_key=#fltNo#
+and a.flt_date=#dateFrom#
+group by a.awb_no, a.recv_rec_type, ver_no
+) x
+where 
+ver_no = (
+select  max(decode(z.recv_rec_type, 'INT', 0, z.ver_no))
+from cst_csgnm z
+where z.recv_rec_type = 'AMD'
+and z.hawb_no ='000000000000000000'
+and z.seq_no NOT IN( 0, 99999)
+and z.flt_type = 'I'
+and z.flt_key=#fltNo#
+and z.flt_date=#dateFrom#
+and z.awb_no = x.awb_no
+) 
+group by  awb_No, portconstl, pcs
+) 	
+union
+select 0 portconstl, 0 portconspc from dual
+)	 -->
+<![CDATA[ 
+select sum(portconstl) trconstl, sum(portconspc) trconspc from (  
+	select nvl(sum(portconstl),0) portconstl, nvl(sum(pcs),0) portconspc from (
+select  awb_no, portconstl, pcs from (
+select a.awb_no, decode(a.recv_rec_type, 'INT', 0, a.ver_no) ver_no,  count(1) as portconstl, sum(decode(recv_rec_type,'AMD', nvl(ltrim(substr(cns_dtl,60,6),0),0),'INT', nvl(ltrim(substr(cns_dtl,59,6),0),0))) as Pcs 
+from  cst_csgnm a
+LEFT JOIN FLT_OPR f ON NVL(f.stfs_flt_key,f.FLT_KEY)= a.FLT_KEY AND NVL(f.stfs_flt_date,f.SCH_DATE) = a.FLT_DATE
+LEFT JOIN IMP_CAR_SHP s ON s.AWB_NO = a.AWB_NO AND s.FLT_KEY = f.FLT_KEY AND s.FLT_DATE = f.SCH_DATE
+LEFT JOIN IMP_CAR_AWB c ON c.AWB_NO = s.AWB_NO AND c.AWB_DATE = s.AWB_DATE
+WHERE  NVL(f.stfs_flt_key,f.flt_key) = a.flt_key
+and NVL(f.stfs_flt_date,f.sch_date) = a.flt_date
+and a.awb_no = s.awb_no
+and s.awb_no = c.awb_no
+and s.awb_date = c.awb_date
+and a.recv_rec_type='AMD'
+and c.awb_dest <> 'HKG'
+and a.hawb_no ='000000000000000000'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = 'I'
+and a.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+and a.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+group by a.awb_no, a.recv_rec_type, ver_no
+) x
+where 
+ver_no = (
+select  max(decode(z.recv_rec_type, 'INT', 0, z.ver_no))
+from cst_csgnm z
+where z.recv_rec_type = 'AMD'
+and z.hawb_no ='000000000000000000'
+and z.seq_no NOT IN( 0, 99999)
+and z.flt_type = 'I'
+and z.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+and z.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+and z.awb_no = x.awb_no
+) 
+group by  awb_No, portconstl, pcs
+) 	
+union
+select 0 portconstl, 0 portconspc from dual
+)	
+]]>
+</select>
+  
+<select id="cust_PaperManifestFlt_113_ADtl_port1"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">	
+	<![CDATA[ 
+		SELECT brd_point AS portname
+		  FROM flt_opr_leg
+		 WHERE flt_type = 'A' AND flt_key = #fltNo# AND sch_date = #dateFrom# order by leg_ord
+	]]>
+</select>
+
+    
+  <select id="cust_PaperManifestFlt_113_ADtl_port2"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">	
+			<!-- select sum(portconstl) portconstl, sum(portconspc) portconspc from (  
+				select nvl(sum(portconstl),0) portconstl, nvl(sum(pcs),0) portconspc from (
+			select a.awb_no,  a.ver_no ver_no,  count(1) as portconstl, sum(nvl(ltrim(substr(cns_dtl,60,6),0),0)) as Pcs 
+			from cst_csgnm a, imp_car_shp b,  imp_car_awb c
+			where
+			a.flt_key = b.flt_key(+)
+			and a.flt_date = b.flt_date(+)
+			and a.flt_type = b.flt_type(+)
+			and a.awb_no = b.awb_no
+			and b.awb_no = c.awb_no
+			and b.awb_date = c.awb_date
+			and a.recv_rec_type = 'AMD'
+			and c.awb_dest = 'HKG'
+			and a.hawb_no ='000000000000000000'
+			and a.seq_no NOT IN( 0, 99999)
+			and a.flt_type = 'I'
+			and a.flt_key=#fltNo# 
+			and a.flt_date=#dateFrom#
+			and b.LDG_POINT  = #portval#
+			and ver_no = (
+			select  max( z.ver_no)
+			from cst_csgnm z
+			where z.recv_rec_type = 'AMD'
+			and z.hawb_no ='000000000000000000'
+			and z.seq_no NOT IN( 0, 99999)
+			and z.flt_type = 'I'
+			and z.flt_key=#fltNo# 
+			and z.flt_date=#dateFrom#) group by a.awb_no, a.ver_no
+			
+			) x
+			union
+			select 0 portconstl, 0 portconspc from dual
+			) -->
+			<![CDATA[
+			select sum(portconstl) portconstl, sum(portconspc) portconspc from (  
+				select nvl(sum(portconstl),0) portconstl, nvl(sum(pcs),0) portconspc from (
+			select a.awb_no,  a.ver_no ver_no,  count(1) as portconstl, sum(nvl(ltrim(substr(cns_dtl,60,6),0),0)) as Pcs 
+			from  cst_csgnm a
+			LEFT JOIN FLT_OPR f ON NVL(f.stfs_flt_key,f.FLT_KEY)= a.FLT_KEY AND NVL(f.stfs_flt_date,f.SCH_DATE) = a.FLT_DATE
+			LEFT JOIN IMP_CAR_SHP s ON s.AWB_NO = a.AWB_NO AND s.FLT_KEY = f.FLT_KEY AND s.FLT_DATE = f.SCH_DATE
+			LEFT JOIN IMP_CAR_AWB c ON c.AWB_NO = s.AWB_NO AND c.AWB_DATE = s.AWB_DATE
+			WHERE NVL(f.stfs_flt_key,f.flt_key) = a.flt_key
+			and NVL(f.stfs_flt_date,f.sch_date) = a.flt_date
+			and a.awb_no = s.awb_no
+			and s.awb_no = c.awb_no
+			and s.awb_date = c.awb_date
+			and a.recv_rec_type='AMD'
+			and c.awb_dest = 'HKG'
+			and a.hawb_no ='000000000000000000'
+			and a.seq_no NOT IN( 0, 99999)
+			and a.flt_type = 'I'
+			and a.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+			and a.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+			and s.LDG_POINT  = #portval#
+			and ver_no = (
+			select  max( z.ver_no)
+			from cst_csgnm z
+			where z.recv_rec_type = 'AMD'
+			and z.hawb_no ='000000000000000000'
+			and z.seq_no NOT IN( 0, 99999)
+			and z.flt_type = 'I'
+			and z.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+			and z.flt_date=NVL(#vesselFlightDate#,#dateFrom#)) group by a.awb_no, a.ver_no
+			
+			) x
+			union
+			select 0 portconstl, 0 portconspc from dual
+			)
+			]]>
+  </select>
+<select id="cust_PaperManifestFlt_113_LBDtl_hk"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+		<![CDATA[ 
+		SELECT SUM (portconstl) hkconstl, SUM (portconspc) hkconspc
+		  FROM (  SELECT NVL (portconstl, 0) portconstl, NVL (pcs, 0) portconspc
+		            FROM (SELECT COUNT (1) AS portconstl,
+		                         SUM (NVL (SUBSTR (cns_dtl, 62, 6), 0)) AS Pcs
+		                    FROM cst_csgnm a, imp_car_shp b, imp_car_awb c
+		                   WHERE     a.flt_key = b.flt_key
+		                         AND a.flt_date = b.flt_date
+		                         AND a.awb_no = b.awb_no
+		                         AND b.awb_no = c.awb_no
+		                         AND b.awb_date = c.awb_date
+		                         AND a.recv_rec_type = 'BDS'
+		                         AND c.awb_dest = 'HKG'
+		                         AND a.hawb_no = '000000000000000000'
+		                         AND a.seq_no NOT IN (0, 99999)
+		                         AND a.flt_type = 'I'
+		                        and a.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+								and a.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+		                         AND a.ver_no = #lbversionNo#)
+		        GROUP BY portconstl, pcs
+		        UNION
+		        SELECT 0 portconstl, 0 portconspc FROM DUAL)
+		]]>					
+  </select>
+  
+  
+  
+  <select id="cust_PaperManifestFlt_113_LBDtl_hk_NB"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+		<![CDATA[ 
+		SELECT SUM (portconstl) hkconstl, SUM (portconspc) hkconspc
+		  FROM (  SELECT NVL (portconstl, 0) portconstl, NVL (pcs, 0) portconspc
+		            FROM (SELECT COUNT (1) AS portconstl,
+		                         SUM (NVL (SUBSTR (cns_dtl, 62, 6), 0)) AS Pcs
+		                    FROM cst_csgnm a,
+								(select FLT_KEY,FLT_DATE,awb_no , awb_date, unldg_pt from exp_pmanifest_awb 
+								    UNION select FLT_KEY,FLT_DATE,awb_no , awb_date,unldg_pt from exp_pman_tarmac_awb) b,								
+								AWB c,
+								flt_opr d
+								WHERE d.flt_key     = b.flt_key
+								AND d.sch_date      = b.flt_date
+								AND a.awb_no        = b.awb_no
+								AND b.awb_no        = c.awb_no
+								AND b.awb_date      = c.awb_date
+								AND a.recv_rec_type = 'BDS'
+								AND c.dest = 'HKG'
+								AND a.hawb_no       = '000000000000000000'
+								AND a.seq_no NOT   IN (0, 99999)
+								AND a.flt_type      = 'E'
+		                        and a.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+								and a.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+		                         AND a.ver_no = #lbversionNo#)
+		        GROUP BY portconstl, pcs
+		        UNION
+		        SELECT 0 portconstl, 0 portconspc FROM DUAL)
+		]]>					
+  </select>
+  
+  <select id="cust_PaperManifestFlt_113_LBDtl_tr"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+<!-- SELECT SUM (portconstl) trconstl, SUM (portconspc) trconspc
+  FROM (  SELECT NVL (portconstl, 0) portconstl, NVL (pcs, 0) portconspc
+            FROM (SELECT COUNT (1) AS portconstl,
+                         SUM (NVL (SUBSTR (cns_dtl, 62, 6), 0)) AS Pcs
+                    FROM cst_csgnm a, imp_car_shp b, imp_car_awb c
+                   WHERE     a.flt_key = b.flt_key
+                         AND a.flt_date = b.flt_date
+                         AND a.awb_no = b.awb_no
+                         AND b.awb_no = c.awb_no
+                         AND b.awb_date = c.awb_date
+                         AND a.recv_rec_type = 'BDS'
+                         AND c.awb_dest <> 'HKG'
+                         AND a.hawb_no = '000000000000000000'
+                         AND a.seq_no NOT IN (0, 99999)
+                         AND a.flt_type = 'I'
+                         AND a.flt_key = #fltNo#
+                         AND a.flt_date = #dateFrom#
+                         AND a.ver_no = #lbversionNo#)
+        GROUP BY portconstl, pcs
+        UNION
+        SELECT 0 portconstl, 0 portconspc FROM DUAL) -->
+		<![CDATA[
+		SELECT SUM (portconstl) trconstl, SUM (portconspc) trconspc
+		  FROM (  SELECT NVL (portconstl, 0) portconstl, NVL (pcs, 0) portconspc
+		            FROM (SELECT COUNT (1) AS portconstl,
+		                         SUM (NVL (SUBSTR (cns_dtl, 62, 6), 0)) AS Pcs
+		from  cst_csgnm a
+		LEFT JOIN FLT_OPR f ON NVL(f.stfs_flt_key,f.FLT_KEY)= a.FLT_KEY AND NVL(f.stfs_flt_date,f.SCH_DATE) = a.FLT_DATE
+		LEFT JOIN IMP_CAR_SHP s ON s.AWB_NO = a.AWB_NO AND s.FLT_KEY = f.FLT_KEY AND s.FLT_DATE = f.SCH_DATE
+		LEFT JOIN IMP_CAR_AWB c ON c.AWB_NO = s.AWB_NO AND c.AWB_DATE = s.AWB_DATE
+		WHERE  
+		f.flt_key = s.flt_key
+		and f.sch_date = s.flt_date
+		and NVL(f.stfs_flt_key,f.flt_key) = a.flt_key
+		and NVL(f.stfs_flt_date,f.sch_date) = a.flt_date
+		and a.awb_no = s.awb_no
+		and s.awb_no = c.awb_no
+		and s.awb_date = c.awb_date
+		and a.recv_rec_type='BDS'
+		AND c.awb_dest <> 'HKG'
+		and a.hawb_no ='000000000000000000'
+		and a.seq_no NOT IN( 0, 99999)
+		and a.flt_type = 'I'
+		and a.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+		and a.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+		AND a.ver_no = #lbversionNo#)
+		GROUP BY portconstl, pcs
+		UNION
+		SELECT 0 portconstl, 0 portconspc FROM DUAL)
+		]]>
+  </select>
+  
+  <select id="cust_PaperManifestFlt_113_LBDtl_tr_NB"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+			<![CDATA[
+					SELECT SUM (portconstl) trconstl, SUM (portconspc) trconspc
+					  FROM (  SELECT NVL (portconstl, 0) portconstl, NVL (pcs, 0) portconspc
+					            FROM (SELECT COUNT (1) AS portconstl,
+					                         SUM (NVL (SUBSTR (cns_dtl, 62, 6), 0)) AS Pcs
+					from  cst_csgnm a
+					LEFT JOIN FLT_OPR f ON NVL(f.stfs_flt_key,f.FLT_KEY)= a.FLT_KEY AND NVL(f.stfs_flt_date,f.SCH_DATE) = a.FLT_DATE
+					LEFT JOIN (select FLT_KEY,FLT_DATE,awb_no , awb_date, unldg_pt from exp_pmanifest_awb 
+					  UNION select FLT_KEY,FLT_DATE,awb_no , awb_date,unldg_pt from exp_pman_tarmac_awb)
+					  s ON s.AWB_NO = a.AWB_NO AND s.FLT_KEY = f.FLT_KEY AND s.FLT_DATE = f.SCH_DATE
+					LEFT JOIN AWB c ON c.AWB_NO = s.AWB_NO AND c.AWB_DATE = s.AWB_DATE
+					WHERE  
+					f.flt_key = s.flt_key
+					and f.sch_date = s.flt_date
+					and NVL(f.stfs_flt_key,f.flt_key) = a.flt_key
+					and NVL(f.stfs_flt_date,f.sch_date) = a.flt_date
+					and a.awb_no = s.awb_no
+					and s.awb_no = c.awb_no
+					and s.awb_date = c.awb_date
+					and a.recv_rec_type='BDS'
+					AND c.dest <> 'HKG'
+					and a.hawb_no ='000000000000000000'
+					and a.seq_no NOT IN( 0, 99999)
+					and a.flt_type = 'E'
+					and a.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+					and a.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+					AND a.ver_no = #lbversionNo#)
+					GROUP BY portconstl, pcs
+					UNION
+					SELECT 0 portconstl, 0 portconspc FROM DUAL)
+			]]>
+  </select>
+  
+  	
+  	
+
+    <select id="cust_PaperManifestFlt_113_LBDtl_port1"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">	
+		<![CDATA[ 
+			  SELECT brd_point AS portname FROM flt_opr_leg WHERE flt_key =  #fltNo# AND sch_date = #dateFrom#  
+			  and flt_type = DECODE(#ftype#,'N','D','S','A','I','A','A')
+			  order by leg_ord
+		]]> 
+    </select>
+	
+	
+	<select id="cust_PaperManifestFlt_113_LBDtl_port1_NB"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">	
+		<![CDATA[ 
+			  SELECT off_point AS portname FROM flt_opr_leg WHERE flt_key =  #fltNo# AND sch_date = #dateFrom#  
+			  and flt_type = DECODE(#ftype#,'N','D','S','A','I','A','A')
+			  order by leg_ord
+		]]> 
+    </select>
+    
+    <select id="cust_PaperManifestFlt_113_LBDtl_port2"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">	
+<!-- select sum(portconstl) portconstl, sum(portconspc) portconspc from (  
+select nvl(portconstl,0) portconstl, nvl(pcs,0) portconspc from (
+select  count(1) as portconstl, sum( nvl(substr(cns_dtl,62,6),0)) as Pcs 
+from cst_csgnm a, imp_car_shp b,  imp_car_awb c
+where
+a.flt_key = b.flt_key
+and a.flt_date = b.flt_date
+and a.awb_no = b.awb_no
+and b.awb_no = c.awb_no
+and b.awb_date = c.awb_date
+and a.recv_rec_type='BDS'
+and c.awb_dest = 'HKG'
+and a.hawb_no ='000000000000000000'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = 'I'
+and a.flt_key=#fltNo#
+and a.flt_date=#dateFrom#
+and B.LDG_POINT = #portval#
+and a.ver_no=#lbversionNo#
+) 
+group by  portconstl, pcs  
+union
+select 0 portconstl, 0 portconspc from dual -->
+<![CDATA[ 
+select sum(portconstl) portconstl, sum(portconspc) portconspc from (  
+select nvl(portconstl,0) portconstl, nvl(pcs,0) portconspc from (
+select  count(1) as portconstl, sum( nvl(substr(cns_dtl,62,6),0)) as Pcs 
+from  cst_csgnm a
+LEFT JOIN FLT_OPR f ON NVL(f.stfs_flt_key,f.FLT_KEY)= a.FLT_KEY AND NVL(f.stfs_flt_date,f.SCH_DATE) = a.FLT_DATE
+LEFT JOIN IMP_CAR_SHP s ON s.AWB_NO = a.AWB_NO AND s.FLT_KEY = f.FLT_KEY AND s.FLT_DATE = f.SCH_DATE
+LEFT JOIN IMP_CAR_AWB c ON c.AWB_NO = s.AWB_NO AND c.AWB_DATE = s.AWB_DATE
+WHERE  
+f.flt_key = s.flt_key
+and f.sch_date = s.flt_date
+and NVL(f.stfs_flt_key,f.flt_key) = a.flt_key
+and NVL(f.stfs_flt_date,f.sch_date) = a.flt_date
+and a.awb_no = s.awb_no
+and s.awb_no = c.awb_no
+and s.awb_date = c.awb_date
+and a.recv_rec_type='BDS'
+and c.awb_dest = 'HKG'
+and a.hawb_no ='000000000000000000'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = 'I'
+and a.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+and a.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+and s.LDG_POINT = #portval#
+and a.ver_no=#lbversionNo#
+) 
+group by  portconstl, pcs  
+union
+select 0 portconstl, 0 portconspc from dual 
+)
+]]>
+  </select>
+  
+  
+  
+<select id="cust_PaperManifestFlt_113_LBDtl_port2_NB"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">	
+			<![CDATA[ 
+			select sum(portconstl) portconstl, sum(portconspc) portconspc from (  
+			select nvl(portconstl,0) portconstl, nvl(pcs,0) portconspc from (
+			select  count(1) as portconstl, sum( nvl(substr(cns_dtl,62,6),0)) as Pcs 
+			from  cst_csgnm a
+			LEFT JOIN FLT_OPR f ON NVL(f.stfs_flt_key,f.FLT_KEY)= a.FLT_KEY AND NVL(f.stfs_flt_date,f.SCH_DATE) = a.FLT_DATE
+			LEFT JOIN
+			      (SELECT FLT_KEY,FLT_DATE,awb_no , awb_date,unldg_pt FROM exp_pmanifest_awb
+			      UNION
+			      SELECT FLT_KEY,FLT_DATE,awb_no , awb_date,unldg_pt FROM exp_pman_tarmac_awb
+			      )s
+			    ON s.AWB_NO    = a.AWB_NO
+			    AND s.FLT_KEY  = f.FLT_KEY
+			    AND s.FLT_DATE = f.SCH_DATE
+			    LEFT JOIN AWB c
+			    ON c.AWB_NO                         = s.AWB_NO
+			    AND c.AWB_DATE                      = s.AWB_DATE
+			WHERE  
+			f.flt_key = s.flt_key
+			and f.sch_date = s.flt_date
+			and NVL(f.stfs_flt_key,f.flt_key) = a.flt_key
+			and NVL(f.stfs_flt_date,f.sch_date) = a.flt_date
+			and a.awb_no = s.awb_no
+			and s.awb_no = c.awb_no
+			and s.awb_date = c.awb_date
+			and a.recv_rec_type='BDS'
+			and c.dest <> 'HKG'
+			and a.hawb_no ='000000000000000000'
+			and a.seq_no NOT IN( 0, 99999)
+			and a.flt_type = 'E'
+			and a.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+			and a.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+			and s.unldg_pt = #portval#
+			and a.ver_no=#lbversionNo#
+			) 
+			group by  portconstl, pcs  
+			union
+			select 0 portconstl, 0 portconspc from dual 
+			)
+			]]>
+  </select>
+  
+    <select id="cust_PaperManifestFlt_113_IADtl_hk"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+<!-- select sum(portconstl) hkconstl, sum(portconspc) hkconspc from (   
+select nvl(sum(portconstl),0) portconstl, nvl(sum(pcs),0) portconspc from (
+select  awb_no, portconstl, pcs from (
+select a.awb_no, decode(a.recv_rec_type, 'INT', 0, a.ver_no) ver_no,  count(1) as portconstl, sum(decode(recv_rec_type,'AMD', nvl(ltrim(substr(cns_dtl,60,6),0),0),'INT', nvl(ltrim(substr(cns_dtl,59,6),0),0))) as Pcs 
+from cst_csgnm a, imp_car_shp b,  imp_car_awb c
+where
+a.flt_key = b.flt_key(+)
+and a.flt_date = b.flt_date(+)
+and a.awb_no = b.awb_no
+and b.awb_no = c.awb_no
+and b.awb_date = c.awb_date
+and a.recv_rec_type in ('INT', 'AMD')
+and c.awb_dest = 'HKG'
+and a.hawb_no ='000000000000000000'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = 'I'
+and a.flt_key=#fltNo#
+and a.flt_date=#dateFrom#
+group by a.awb_no, a.recv_rec_type, ver_no
+) x
+where 
+ver_no = (
+select  max(decode(z.recv_rec_type, 'INT', 0, z.ver_no))
+from cst_csgnm z
+where z.recv_rec_type in ('INT', 'AMD')
+and z.hawb_no ='000000000000000000'
+and z.seq_no NOT IN( 0, 99999)
+and z.flt_type = 'I'
+and z.flt_key=#fltNo#
+and z.flt_date=#dateFrom#
+and z.awb_no = x.awb_no
+) 
+group by  awb_No, portconstl, pcs
+) 
+union
+select 0 portconstl, 0 portconspc from dual
+) -->
+<![CDATA[ 
+
+select sum(portconstl) hkconstl, sum(portconspc) hkconspc from (   
+select nvl(sum(portconstl),0) portconstl, nvl(sum(pcs),0) portconspc from (
+select  awb_no, portconstl, pcs from (
+select a.awb_no, decode(a.recv_rec_type, 'INT', 0, a.ver_no) ver_no,  count(1) as portconstl, sum(decode(recv_rec_type,'AMD', nvl(ltrim(substr(cns_dtl,60,6),0),0),'INT', nvl(ltrim(substr(cns_dtl,59,6),0),0))) as Pcs
+from  cst_csgnm a
+LEFT JOIN FLT_OPR f ON NVL(f.stfs_flt_key,f.FLT_KEY)= a.FLT_KEY AND NVL(f.stfs_flt_date,f.SCH_DATE) = a.FLT_DATE
+LEFT JOIN IMP_CAR_SHP s ON s.AWB_NO = a.AWB_NO AND s.FLT_KEY = f.FLT_KEY AND s.FLT_DATE = f.SCH_DATE
+LEFT JOIN IMP_CAR_AWB c ON c.AWB_NO = s.AWB_NO AND c.AWB_DATE = s.AWB_DATE
+WHERE  
+f.flt_key = s.flt_key(+)
+and f.sch_date = s.flt_date(+)
+and NVL(f.stfs_flt_key,f.flt_key) = a.flt_key
+and NVL(f.stfs_flt_date,f.sch_date) = a.flt_date
+and a.awb_no = s.awb_no
+and s.awb_no = c.awb_no
+and s.awb_date = c.awb_date
+and a.recv_rec_type in ('INT', 'AMD')
+and c.awb_dest = 'HKG'
+and a.hawb_no ='000000000000000000'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = 'I'
+and a.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+and a.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+group by a.awb_no, a.recv_rec_type, ver_no
+) x
+where 
+ver_no = (
+select  max(decode(z.recv_rec_type, 'INT', 0, z.ver_no))
+from cst_csgnm z
+where z.recv_rec_type in ('INT', 'AMD')
+and z.hawb_no ='000000000000000000'
+and z.seq_no NOT IN( 0, 99999)
+and z.flt_type = 'I'
+and z.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+and z.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+and z.awb_no = x.awb_no
+) 
+group by  awb_No, portconstl, pcs
+) 
+union
+select 0 portconstl, 0 portconspc from dual
+)
+]]>
+  </select>
+  <select id="cust_PaperManifestFlt_113_IADtl_tr"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+<!-- select sum(portconstl) trconstl, sum(portconspc) trconspc from (   
+select nvl(sum(portconstl),0) portconstl, nvl(sum(pcs),0) portconspc from (
+select  awb_no, portconstl, pcs from (
+select a.awb_no, decode(a.recv_rec_type, 'INT', 0, a.ver_no) ver_no,  count(1) as portconstl, sum(decode(recv_rec_type,'AMD', nvl(ltrim(substr(cns_dtl,60,6),0),0),'INT', nvl(ltrim(substr(cns_dtl,59,6),0),0))) as Pcs 
+from cst_csgnm a, imp_car_shp b,  imp_car_awb c
+where
+a.flt_key = b.flt_key(+)
+and a.flt_date = b.flt_date(+)
+and a.awb_no = b.awb_no
+and b.awb_no = c.awb_no
+and b.awb_date = c.awb_date
+and a.recv_rec_type in ('INT', 'AMD')
+and c.awb_dest <> 'HKG'
+and a.hawb_no ='000000000000000000'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = 'I'
+and a.flt_key=#fltNo#
+and a.flt_date=#dateFrom#
+group by a.awb_no, a.recv_rec_type, ver_no
+) x
+where 
+ver_no = (
+select  max(decode(z.recv_rec_type, 'INT', 0, z.ver_no))
+from cst_csgnm z
+where z.recv_rec_type in ('INT', 'AMD')
+and z.hawb_no ='000000000000000000'
+and z.seq_no NOT IN( 0, 99999)
+and z.flt_type = 'I'
+and z.flt_key=#fltNo#
+and z.flt_date=#dateFrom#
+and z.awb_no = x.awb_no
+) 
+group by  awb_No, portconstl, pcs
+) 
+union
+select 0 portconstl, 0 portconspc from dual
+) -->
+<![CDATA[ 
+select sum(portconstl) trconstl, sum(portconspc) trconspc from (   
+select nvl(sum(portconstl),0) portconstl, nvl(sum(pcs),0) portconspc from (
+select  awb_no, portconstl, pcs from (
+select a.awb_no, decode(a.recv_rec_type, 'INT', 0, a.ver_no) ver_no,  count(1) as portconstl, sum(decode(recv_rec_type,'AMD', nvl(ltrim(substr(cns_dtl,60,6),0),0),'INT', nvl(ltrim(substr(cns_dtl,59,6),0),0))) as Pcs
+from  cst_csgnm a
+LEFT JOIN FLT_OPR f ON NVL(f.stfs_flt_key,f.FLT_KEY)= a.FLT_KEY AND NVL(f.stfs_flt_date,f.SCH_DATE) = a.FLT_DATE
+LEFT JOIN IMP_CAR_SHP s ON s.AWB_NO = a.AWB_NO AND s.FLT_KEY = f.FLT_KEY AND s.FLT_DATE = f.SCH_DATE
+LEFT JOIN IMP_CAR_AWB c ON c.AWB_NO = s.AWB_NO AND c.AWB_DATE = s.AWB_DATE
+WHERE  
+f.flt_key = s.flt_key(+)
+and f.sch_date = s.flt_date(+)
+and NVL(f.stfs_flt_key,f.flt_key) = a.flt_key
+and NVL(f.stfs_flt_date,f.sch_date) = a.flt_date
+and a.awb_no = s.awb_no
+and s.awb_no = c.awb_no
+and s.awb_date = c.awb_date
+and a.recv_rec_type in ('INT', 'AMD')
+and c.awb_dest <> 'HKG'
+and a.hawb_no ='000000000000000000'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = 'I'
+and a.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+and a.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+group by a.awb_no, a.recv_rec_type, ver_no
+) x
+where 
+ver_no = (
+select  max(decode(z.recv_rec_type, 'INT', 0, z.ver_no))
+from cst_csgnm z
+where z.recv_rec_type in ('INT', 'AMD')
+and z.hawb_no ='000000000000000000'
+and z.seq_no NOT IN( 0, 99999)
+and z.flt_type = 'I'
+and z.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+and z.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+and z.awb_no = x.awb_no
+) 
+group by  awb_No, portconstl, pcs
+) 
+union
+select 0 portconstl, 0 portconspc from dual
+)
+]]>
+  </select>
+  
+<select id="cust_PaperManifestFlt_113_IADtl_port1"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">	
+<![CDATA[ 
+SELECT brd_point AS portname
+  FROM flt_opr_leg
+ WHERE flt_type = DECODE(#ftype#,'N','D','S','A','I','A','A')  AND flt_key =  #fltNo# AND sch_date =  #dateFrom# order by leg_ord
+]]>
+</select>
+   <select id="cust_PaperManifestFlt_113_IADtl_port2"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">	
+<!-- select sum(portconstl) portconstl, sum(portconspc) portconspc from (   
+select nvl(sum(portconstl),0) portconstl, nvl(sum(pcs),0) portconspc from (
+select  awb_no, portconstl, pcs from (
+select a.awb_no, decode(a.recv_rec_type, 'INT', 0, a.ver_no) ver_no,  count(1) as portconstl, sum(decode(recv_rec_type,'AMD', nvl(ltrim(substr(cns_dtl,60,6),0),0),'INT', nvl(ltrim(substr(cns_dtl,59,6),0),0))) as Pcs 
+from cst_csgnm a, imp_car_shp b,  imp_car_awb c
+where
+a.flt_key = b.flt_key(+)
+and a.flt_date = b.flt_date(+)
+and a.awb_no = b.awb_no
+and b.awb_no = c.awb_no
+and b.awb_date = c.awb_date
+and a.recv_rec_type in ('INT', 'AMD')
+and c.awb_dest = 'HKG'
+and a.hawb_no ='000000000000000000'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = 'I'
+and a.flt_key=#fltNo#
+and a.flt_date=#dateFrom#
+and B.LDG_POINT = #portval#
+group by a.awb_no, a.recv_rec_type, ver_no
+) x
+where 
+ver_no = (
+select  max(decode(z.recv_rec_type, 'INT', 0, z.ver_no))
+from cst_csgnm z
+where z.recv_rec_type in ('INT', 'AMD')
+and z.hawb_no ='000000000000000000'
+and z.seq_no NOT IN( 0, 99999)
+and z.flt_type = 'I'
+and z.flt_key=#fltNo#
+and z.flt_date=#dateFrom#
+and z.awb_no = x.awb_no
+) 
+group by  awb_No, portconstl, pcs
+) 
+union
+select 0 portconstl, 0 portconspc from dual
+) -->
+<![CDATA[ 
+select sum(portconstl) portconstl, sum(portconspc) portconspc from (   
+select nvl(sum(portconstl),0) portconstl, nvl(sum(pcs),0) portconspc from (
+select  awb_no, portconstl, pcs from (
+select a.awb_no, decode(a.recv_rec_type, 'INT', 0, a.ver_no) ver_no,  count(1) as portconstl, sum(decode(recv_rec_type,'AMD', nvl(ltrim(substr(cns_dtl,60,6),0),0),'INT', nvl(ltrim(substr(cns_dtl,59,6),0),0))) as Pcs
+from  cst_csgnm a
+LEFT JOIN FLT_OPR f ON NVL(f.stfs_flt_key,f.FLT_KEY)= a.FLT_KEY AND NVL(f.stfs_flt_date,f.SCH_DATE) = a.FLT_DATE
+LEFT JOIN IMP_CAR_SHP s ON s.AWB_NO = a.AWB_NO AND s.FLT_KEY = f.FLT_KEY AND s.FLT_DATE = f.SCH_DATE
+LEFT JOIN IMP_CAR_AWB c ON c.AWB_NO = s.AWB_NO AND c.AWB_DATE = s.AWB_DATE
+WHERE  
+f.flt_key = s.flt_key(+)
+and f.sch_date = s.flt_date(+)
+and NVL(f.stfs_flt_key,f.flt_key) = a.flt_key
+and NVL(f.stfs_flt_date,f.sch_date) = a.flt_date
+and a.awb_no = s.awb_no
+and s.awb_no = c.awb_no
+and s.awb_date = c.awb_date
+and a.recv_rec_type in ('INT', 'AMD')
+and c.awb_dest = 'HKG'
+and a.hawb_no ='000000000000000000'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = 'I'
+and a.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+and a.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+and s.LDG_POINT = #portval#
+group by a.awb_no, a.recv_rec_type, ver_no
+) x
+where 
+ver_no = (
+select  max(decode(z.recv_rec_type, 'INT', 0, z.ver_no))
+from cst_csgnm z
+where z.recv_rec_type in ('INT', 'AMD')
+and z.hawb_no ='000000000000000000'
+and z.seq_no NOT IN( 0, 99999)
+and z.flt_type = 'I'
+and z.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+and z.flt_date=NVL(#vesselFlightDate#,#dateFrom#)
+and z.awb_no = x.awb_no
+) 
+group by  awb_No, portconstl, pcs
+) 
+union
+select 0 portconstl, 0 portconspc from dual
+)
+]]>		
+  </select>
+<select id="cust_PaperManifestFlt_113_A_8027"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+	 			select 	 			 	
+	 	TO_CHAR(a.flt_date, 'DD MON YY') as dateFrom, 
+	 	nvl( PKG_COMMON.GET_FLT_ETA(a.flt_key,a.flt_date,'A','DD'),
+	 			 PKG_COMMON.get_flt_sta(a.flt_key,a.flt_date, 'A')) as schTime,
+      	nvl(substr(cns_hdr,9,9),' ') as hfltNo, 
+	    upper(substr(b.cns_hash_tot,1,4)||' '||substr(b.cns_hash_tot,5,4)||' '||
+		substr(b.cns_hash_tot,9,4)||' '||substr(b.cns_hash_tot,13,4)||' '||
+		substr(b.cns_hash_tot,17,4)||' '||substr(b.cns_hash_tot,21,4)||' '||
+		substr(b.cns_hash_tot,25,4)||' '||substr(b.cns_hash_tot,29,4)) as hashTot1 ,
+		
+		upper(substr(b.cns_hash_tot,33,4)||' '||substr(b.cns_hash_tot,37,4)||' '||
+		substr(b.cns_hash_tot,41,4)||' '||substr(b.cns_hash_tot,45,4)||' '||
+		substr(b.cns_hash_tot,49,4)||' '||substr(b.cns_hash_tot,53,4)||' '||
+		substr(b.cns_hash_tot,57,4)||' '||substr(b.cns_hash_tot,61)) as hashTot2,
+		
+	  	upper(substr(b.cns_hash_tot,1,16)) as hashTotCode1,
+		upper(substr(b.cns_hash_tot,17,16)) as hashTotCode2,
+		upper(substr(b.cns_hash_tot,33,16)) as hashTotCode3,
+		upper(substr(b.cns_hash_tot,49)) as hashTotCode4
+		
+	from cst_csgnm a,cst_subm b	
+	where a.flt_type=b.flt_type and a.flt_key=b.flt_key  and a.flt_date=b.flt_date and a.recv_rec_type=b.rec_type
+	and a.ver_no=b.ver_no and a.flt_type='I' and a.flt_key=NVL(#vesselFlightKey#,#fltNo#)  and a.flt_date=NVL(#vesselFlightDate#,#dateFrom#) and a.recv_rec_type=#amdType#
+	and a.seq_no= 0 and a.ver_no=(select max(ver_no) from cst_csgnm 
+	where flt_type='I' and flt_key=NVL(#vesselFlightKey#,#fltNo#) and flt_date=NVL(#vesselFlightDate#,#dateFrom#) and recv_rec_type=#amdType#) 
+</select>
+	<select id="cust_PaperManifestFlt_113_LB_8027"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+	 	select 	 			 
+	 	TO_CHAR(a.flt_date, 'DD MON YY') as dateFrom,
+	  	nvl( PKG_COMMON.GET_FLT_ETA(#fltNo#,#dateFrom#,DECODE(#ftype#,'N','D','S','A','I','A','A'),'DD'), 
+	  				PKG_COMMON.get_flt_sta(#fltNo#,#dateFrom#, DECODE(#ftype#,'N','D','S','A','I','A','A'))) as schTime,	
+      	nvl(substr(cns_hdr,9,9),' ') as hfltNo,       	
+        upper(substr(b.cns_hash_tot,1,4)||' '||substr(b.cns_hash_tot,5,4)||' '||
+		substr(b.cns_hash_tot,9,4)||' '||substr(b.cns_hash_tot,13,4)||' '||
+		substr(b.cns_hash_tot,17,4)||' '||substr(b.cns_hash_tot,21,4)||' '||
+		substr(b.cns_hash_tot,25,4)||' '||substr(b.cns_hash_tot,29,4)) as hashTot1 ,		
+		upper(substr(b.cns_hash_tot,33,4)||' '||substr(b.cns_hash_tot,37,4)||' '||
+		substr(b.cns_hash_tot,41,4)||' '||substr(b.cns_hash_tot,45,4)||' '||
+		substr(b.cns_hash_tot,49,4)||' '||substr(b.cns_hash_tot,53,4)||' '||
+		substr(b.cns_hash_tot,57,4)||' '||substr(b.cns_hash_tot,61)) as hashTot2,
+	  	upper(substr(b.cns_hash_tot,1,16)) as hashTotCode1,
+		upper(substr(b.cns_hash_tot,17,16)) as hashTotCode2,
+		upper(substr(b.cns_hash_tot,33,16)) as hashTotCode3,
+		upper(substr(b.cns_hash_tot,49)) as hashTotCode4
+	from cst_csgnm a,cst_subm b
+	where a.flt_type=b.flt_type and a.flt_key=b.flt_key 
+	and	a.flt_date=b.flt_date
+	and a.recv_rec_type=b.rec_type and a.ver_no = b.ver_no
+	and b.msg_type='L' and a.flt_type= DECODE(#ftype#,'N','E','S','I','A','I','I') and a.flt_key=NVL(#vesselFlightKey#,#fltNo#)
+	and a.flt_date=NVL(#vesselFlightDate#,#dateFrom#) and a.recv_rec_type=#lbsType#
+	and a.seq_no= 0 and a.ver_no=#lbversionNo#
+</select>
+<select id="cust_PaperManifestFlt_113_I_8027"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+	 	select 
+			ltrim(substr(cns_hdr,18,2),0) as iniVersn,
+			decode(substr(cns_hdr,1,8),null,'',substr(cns_hdr,1,8) || decode(substr(cns_hdr,23,4),null,' ','/'||substr(cns_hdr,23,4)))  as schDate,
+			decode(substr(cns_hdr,27,8),null,'',substr(cns_hdr,27,8) || decode(substr(cns_hdr,35,4),null,' ',nvl(substr(cns_hdr,35,4),'/'||substr(cns_hdr,35,4))))  AS arrDate,
+			substr(cns_hdr,39,3) ||'/'|| NVL(substr(cns_hdr,42,3),'/'||substr(cns_hdr,42,3)) || NVL(substr(cns_hdr,45,3),'/'||substr(cns_hdr,45,3))as lport,
+			substr(cns_hdr,48,1) as pind,
+			substr(cns_hdr,49,1) as aind,
+			ltrim(substr(cns_hdr,61,5),0) as totScnr,
+			ltrim(substr(cns_hdr,51,5),0) as totIcnr,
+			substr(cns_dtl,20,12) as awbNodtl,
+			substr(cns_dtl,32,18) as hawbNodtl,
+			ltrim(substr(cns_dtl,89,265)) as cdesc,
+			substr(cns_dtl,50,3)||' '||substr(cns_dtl,53,3)||' '||substr(cns_dtl,56,3) as orig,
+			ltrim(substr(cns_dtl,59,6),0) as manfPc,
+			trim(to_char(ltrim(substr(cns_dtl,65,9),0),'9999990.0')) manfWt,
+			ltrim(substr(cns_dtl,74,6),0) as awbPc,
+			trim(to_char(ltrim(substr(cns_dtl,80,9),0),'9999990.0')) awbWt,
+			'' as imptName,
+			'' as imptAddr1,
+			'' as imptAddr2,
+			'' as imptAddr3,
+			'' as imptAddr4,
+			'' as shpName,
+			'' as shpAddr1,
+			'' as shpAddr2,
+			'' as shpAddr3,
+			'' as shpAddr4,
+			'' as splCode, 
+			'' as cdeclVal,
+			'' as imptMixInd,
+			'' as cstRemarks,
+			'' as containrNo,
+			'' as licnsNo,
+			'' as conslCrgInd,
+			'' as crghndlrCode,
+			TO_CHAR(a.flt_date, 'DD MON YY') as dateFrom, 			
+			nvl( PKG_COMMON.GET_FLT_ETA(#fltNo#,#dateFrom#,DECODE(#ftype#,'N','D','S','A','I','A','A'),'DD'), 
+	  				PKG_COMMON.get_flt_sta(#fltNo#,#dateFrom#, DECODE(#ftype#,'N','D','S','A','I','A','A'))) as schTime,
+			nvl(substr(cns_hdr,9,9),' ') as hfltNo, 
+		    upper(substr(b.cns_hash_tot,1,4)||' '||substr(b.cns_hash_tot,5,4)||' '||
+			substr(b.cns_hash_tot,9,4)||' '||substr(b.cns_hash_tot,13,4)||' '||
+			substr(b.cns_hash_tot,17,4)||' '||substr(b.cns_hash_tot,21,4)||' '||
+			substr(b.cns_hash_tot,25,4)||' '||substr(b.cns_hash_tot,29,4)) as hashTot1 ,			
+			upper(substr(b.cns_hash_tot,33,4)||' '||substr(b.cns_hash_tot,37,4)||' '||
+			substr(b.cns_hash_tot,41,4)||' '||substr(b.cns_hash_tot,45,4)||' '||
+			substr(b.cns_hash_tot,49,4)||' '||substr(b.cns_hash_tot,53,4)||' '||
+			substr(b.cns_hash_tot,57,4)||' '||substr(b.cns_hash_tot,61)) as hashTot2,
+		  	upper(substr(b.cns_hash_tot,1,16)) as hashTotCode1,
+			upper(substr(b.cns_hash_tot,17,16)) as hashTotCode2,
+			upper(substr(b.cns_hash_tot,33,16)) as hashTotCode3,
+			upper(substr(b.cns_hash_tot,49)) as hashTotCode4		
+	from cst_csgnm a,cst_subm b	
+	where a.flt_type=b.flt_type and a.flt_key=b.flt_key  and a.flt_date=b.flt_date and a.recv_rec_type=b.rec_type
+	and a.ver_no=b.ver_no and a.flt_type= DECODE(#ftype#,'N','E','S','I','A','I','I') and a.flt_key=NVL(#vesselFlightKey#,#fltNo#)  and a.flt_date=NVL(#vesselFlightDate#,#dateFrom#)  and a.recv_rec_type=#iniType#
+	and a.seq_no= 0 and a.ver_no=(select max(ver_no) from cst_csgnm 
+	where flt_type= DECODE(#ftype#,'N','E','S','I','A','I','I') and flt_key=NVL(#vesselFlightKey#,#fltNo#)   and flt_date=NVL(#vesselFlightDate#,#dateFrom#) and recv_rec_type=#iniType#) 
+</select>
+
+<select id="cust_PaperManifestFlt_113_I_8027_Truck"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+	select        
+	    substr(cns_hdr,1,8) as hfltNo,
+	    substr(cns_hdr,1,8) as truckNo,
+           substr(cns_hdr,9,8) as schDate,
+           substr(cns_hdr,9,8) as dateFrom,
+           substr(cns_hdr,17,4) as schTime,
+           ltrim(substr(cns_hdr,21,2),0) as inaVersn,
+	   substr(cns_hdr,23,3) as coprCode,
+	   substr(cns_hdr,26,15) as clsRdPermit,
+           substr(cns_hdr,41,8) as crossDate,	  
+           substr(cns_hdr,49,4) as crossTime,	  
+           substr(cns_hdr,53,15) as sealNo,	  
+           substr(cns_hdr,68,15) as cntnrNo,	 
+           substr(cns_hdr,83,3) as ctrlPtCode,
+           substr(cns_hdr,86,3) as destPort,
+	    upper(substr(b.cns_hash_tot,1,4)||' '||substr(b.cns_hash_tot,5,4)||' '||
+		substr(b.cns_hash_tot,9,4)||' '||substr(b.cns_hash_tot,13,4)||' '||
+		substr(b.cns_hash_tot,17,4)||' '||substr(b.cns_hash_tot,21,4)||' '||
+		substr(b.cns_hash_tot,25,4)||' '||substr(b.cns_hash_tot,29,4)) as hashTot1 ,
+
+		upper(substr(b.cns_hash_tot,33,4)||' '||substr(b.cns_hash_tot,37,4)||' '||
+		substr(b.cns_hash_tot,41,4)||' '||substr(b.cns_hash_tot,45,4)||' '||
+		substr(b.cns_hash_tot,49,4)||' '||substr(b.cns_hash_tot,53,4)||' '||
+		substr(b.cns_hash_tot,57,4)||' '||substr(b.cns_hash_tot,61)) as hashTot2,
+	   substr(cns_hdr,92,1) filler,		
+
+		upper(substr(b.cns_hash_tot,1,16)) as hashTotCode1,
+		upper(substr(b.cns_hash_tot,17,16)) as hashTotCode2,
+		upper(substr(b.cns_hash_tot,33,16)) as hashTotCode3,
+		upper(substr(b.cns_hash_tot,49)) as hashTotCode4
+
+	from cst_csgnm a,cst_subm b	
+		where a.flt_type=b.flt_type and a.truck_no=b.truck_no  and a.sch_date=b.sch_date and a.recv_rec_type=b.rec_type
+	  and a.ver_no=b.ver_no and a.flt_type='T' and a.recv_rec_type in ('INA','AMA') and a.truck_no=#truckNo#  and a.sch_date=#dateFrom# and a.sch_time=#truckTime#  and a.recv_rec_type=#inaType#
+	  and a.seq_no= 0 and a.ver_no=(select max(ver_no) from cst_csgnm 
+	  	  		   where flt_type='T' and truck_no=#truckNo#  and sch_date=#dateFrom# and sch_time=#truckTime# and recv_rec_type=#inaType#) 
+</select>
+
+<select id="cust_PaperManifestFlt_113_TDtl_hk"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+<![CDATA[ 
+select sum(portconstl) hkconstl, sum(portconspc) hkconspc from (   
+select nvl(portconstl,0) portconstl, nvl(pcs,0) portconspc from (
+select a.ver_no, max(ver_no) max_ver_no, count(1) as portconstl, sum(decode(recv_rec_type,'AMA', nvl(ltrim(substr(cns_dtl,94,6),0),0),'INA', nvl(ltrim(substr(cns_dtl,93,6),0),0))) as Pcs 
+from cst_csgnm a, ITM_TRK_MANF_HD b,  ITM_TRK_MANF_SHP c
+where b.status not in ('VOID') 
+and a.truck_no = b.truck_no
+and a.sch_date = b.TRUCK_FLT_DATE
+and a.sch_time = b.sch_time
+and b.tr_no = c.tr_no
+and a.awb_no = c.awb_no
+and a.recv_rec_type='INA'
+and c.dest = 'HKG'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = 'T'
+and a.truck_No=#truckNo#
+and a.sch_date=#schDate#
+and a.sch_time=#schTime#
+group by ver_no
+) 
+where ver_no = max_ver_no
+group by  portconstl, pcs
+union
+select 0 portconstl, 0 portconspc from dual
+)
+]]>
+</select>
+
+ <select id="cust_PaperManifestFlt_113_TDtl_tr"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+<![CDATA[ 
+select sum(trconstl) trconstl, sum(trconspc) trconspc from (
+select nvl(portconstl,0) trconstl, nvl(pcs,0) trconspc from (
+select a.ver_no, max(ver_no) max_ver_no, count(1) as portconstl, sum(decode(recv_rec_type,'AMA', nvl(ltrim(substr(cns_dtl,94,6),0),0),'INA', nvl(ltrim(substr(cns_dtl,93,6),0),0))) as Pcs 
+from cst_csgnm a, ITM_TRK_MANF_HD b,  ITM_TRK_MANF_SHP c
+where b.status not in ('VOID') 
+and a.truck_no = b.truck_no
+and a.sch_date = b.TRUCK_FLT_DATE
+and a.sch_time = b.sch_time
+and b.tr_no = c.tr_no
+and a.awb_no = c.awb_no
+and a.recv_rec_type='INA'
+and c.dest <> 'HKG'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = 'T'
+and a.truck_No=#truckNo#
+and a.sch_date=#schDate#
+and a.sch_time=#schTime#
+group by ver_no
+) 
+where ver_no = max_ver_no
+group by  portconstl, pcs
+union
+select 0 portconstl, 0 portconspc from dual
+)	
+]]>
+</select>
+<select id="cust_PaperManifestFlt_113_TDtl_port1"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">	
+    <![CDATA[ 
+SELECT 'HKG' AS portname
+  FROM dual
+		]]>
+</select>	
+<select id="cust_PaperManifestFlt_113_TDtl_port2"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">	
+<![CDATA[ 
+select sum(portconstl) portconstl, sum(portconspc) portconspc from (   
+select nvl(portconstl,0) portconstl, nvl(pcs,0) portconspc from (
+select a.ver_no, max(ver_no) max_ver_no, count(1) as portconstl, sum(decode(recv_rec_type,'AMA', nvl(ltrim(substr(cns_dtl,94,6),0),0),'INA', nvl(ltrim(substr(cns_dtl,93,6),0),0))) as Pcs 
+from cst_csgnm a, ITM_TRK_MANF_HD b,  ITM_TRK_MANF_SHP c
+where b.status not in ('VOID') 
+and a.truck_no = b.truck_no
+and a.sch_date = b.TRUCK_FLT_DATE
+and a.sch_time = b.sch_time
+and b.tr_no = c.tr_no
+and a.awb_no = c.awb_no
+and a.recv_rec_type='INA'
+and c.dest = 'HKG'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = 'T'
+and a.truck_No=#truckNo#
+and a.sch_date=#schDate#
+and a.sch_time=#schTime#
+and B.UNLDG_PT = #portval#
+group by ver_no
+) 
+where ver_no = max_ver_no
+group by  portconstl, pcs
+union
+select 0 portconstl, 0 portconspc from dual
+)
+]]>				
+</select>
+
+<select id="cust_PaperManifestFlt_113_A_8027_Truck"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+	
+		select  substr(cns_hdr,1,8) as truckNo,
+           substr(cns_hdr,9,8) as schDate,
+           substr(cns_hdr,17,4) as schTime,
+           ltrim(substr(cns_hdr,21,2),0) as inaVersn,
+	   substr(cns_hdr,23,3) as coprCode,
+	   substr(cns_hdr,26,15) as clsRdPermit,
+           substr(cns_hdr,41,8) as crossDate,	  
+           substr(cns_hdr,49,4) as crossTime,	  
+           substr(cns_hdr,53,15) as sealNo,	  
+           substr(cns_hdr,68,15) as cntnrNo,	 
+           substr(cns_hdr,83,3) as ctrlPtCode,
+           substr(cns_hdr,86,3) as destPort,
+	    upper(substr(b.cns_hash_tot,1,4)||' '||substr(b.cns_hash_tot,5,4)||' '||
+		substr(b.cns_hash_tot,9,4)||' '||substr(b.cns_hash_tot,13,4)||' '||
+		substr(b.cns_hash_tot,17,4)||' '||substr(b.cns_hash_tot,21,4)||' '||
+		substr(b.cns_hash_tot,25,4)||' '||substr(b.cns_hash_tot,29,4)) as hashTot1 ,
+
+		upper(substr(b.cns_hash_tot,33,4)||' '||substr(b.cns_hash_tot,37,4)||' '||
+		substr(b.cns_hash_tot,41,4)||' '||substr(b.cns_hash_tot,45,4)||' '||
+		substr(b.cns_hash_tot,49,4)||' '||substr(b.cns_hash_tot,53,4)||' '||
+		substr(b.cns_hash_tot,57,4)||' '||substr(b.cns_hash_tot,61)) as hashTot2,
+	   substr(cns_hdr,92,1) filler,		
+
+		upper(substr(b.cns_hash_tot,1,16)) as hashTotCode1,
+		upper(substr(b.cns_hash_tot,17,16)) as hashTotCode2,
+		upper(substr(b.cns_hash_tot,33,16)) as hashTotCode3,
+		upper(substr(b.cns_hash_tot,49)) as hashTotCode4
+		from cst_csgnm a,cst_subm b
+		where a.flt_type=b.flt_type and a.truck_no=b.truck_no  and a.sch_date=b.sch_date and a.recv_rec_type=b.rec_type
+	  and a.ver_no=b.ver_no and a.flt_type='T' and a.recv_rec_type in ('INA','AMA') and a.truck_no=#truckNo#  and a.sch_date=#dateFrom# and a.sch_time=#truckTime# and a.recv_rec_type=#amaType#
+	  and a.seq_no= 0 and a.ver_no=(select max(ver_no) from cst_csgnm 
+		where flt_type='T' and truck_no=#truckNo#  and sch_date=#dateFrom# and sch_time=#truckTime# and recv_rec_type=#amaType#) 
+	
+		</select>
+		
+		<select id="cust_PaperManifestFlt_113_ADtl_hk_Truck"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+<![CDATA[ 
+select sum(portconstl) hkconstl, sum(portconspc) hkconspc from (  
+	select nvl(sum(portconstl),0) portconstl, nvl(sum(pcs),0) portconspc from (
+select  awb_no, portconstl, pcs from (
+select a.awb_no, decode(a.recv_rec_type, 'INT', 0, a.ver_no) ver_no,  count(1) as portconstl, sum(decode(recv_rec_type,'AMA', nvl(ltrim(substr(cns_dtl,94,6),0),0),'INA', nvl(ltrim(substr(cns_dtl,93,6),0),0))) as Pcs 
+from cst_csgnm a, ITM_TRK_MANF_HD b,  ITM_TRK_MANF_SHP c
+where b.status not in ('VOID') 
+and a.truck_no = b.truck_no(+)
+and a.sch_date = b.TRUCK_FLT_DATE(+)
+and a.sch_time = b.sch_time(+)
+and b.tr_no = c.tr_no
+and a.awb_no = c.awb_no
+and a.recv_rec_type = 'AMA'
+and c.dest = 'HKG'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = 'T'
+and a.truck_No=#truckNo#
+and a.sch_date=#schDate#
+and a.sch_time=#schTime#
+group by a.awb_no, a.recv_rec_type, ver_no
+) x
+where 
+ver_no = (
+select  max(decode(z.recv_rec_type, 'INA', 0, z.ver_no))
+from cst_csgnm z
+where z.recv_rec_type = 'AMA'
+and z.seq_no NOT IN( 0, 99999)
+and z.flt_type = 'T'
+and z.truck_No=#truckNo#
+and z.sch_date=#schDate#
+and z.sch_time=#schTime#
+and z.awb_no = x.awb_no
+) 
+group by  awb_No, portconstl, pcs
+) 	
+union
+select 0 portconstl, 0 portconspc from dual
+)
+]]>
+  </select>
+
+    <select id="cust_PaperManifestFlt_113_ADtl_tr_Truck"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">
+<![CDATA[ 
+select sum(portconstl) trconstl, sum(portconspc) trconspc from (  
+	select nvl(sum(portconstl),0) portconstl, nvl(sum(pcs),0) portconspc from (
+select  awb_no, portconstl, pcs from (
+select a.awb_no, decode(a.recv_rec_type, 'INT', 0, a.ver_no) ver_no,  count(1) as portconstl, sum(decode(recv_rec_type,'AMA', nvl(ltrim(substr(cns_dtl,94,6),0),0),'INA', nvl(ltrim(substr(cns_dtl,93,6),0),0))) as Pcs 
+from cst_csgnm a, ITM_TRK_MANF_HD b,  ITM_TRK_MANF_SHP c
+where b.status not in ('VOID') 
+and a.truck_no = b.truck_no(+)
+and a.sch_date = b.TRUCK_FLT_DATE(+)
+and a.sch_time = b.sch_time(+)
+and b.tr_no = c.tr_no
+and a.awb_no = c.awb_no
+and a.recv_rec_type = 'AMA'
+and c.dest <> 'HKG'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = 'T'
+and a.truck_No=#truckNo#
+and a.sch_date=#schDate#
+and a.sch_time=#schTime#
+group by a.awb_no, a.recv_rec_type, ver_no
+) x
+where 
+ver_no = (
+select  max(decode(z.recv_rec_type, 'INT', 0, z.ver_no))
+from cst_csgnm z
+where z.recv_rec_type = 'AMD'
+and z.seq_no NOT IN( 0, 99999)
+and z.flt_type = 'T'
+and z.truck_No=#truckNo#
+and z.sch_date=#schDate#
+and z.sch_time=#schTime#
+and z.awb_no = x.awb_no
+) 
+group by  awb_No, portconstl, pcs
+) 	
+union
+select 0 portconstl, 0 portconspc from dual
+)	
+]]>
+  </select>
+<select id="cust_PaperManifestFlt_113_ADtl_port1_Truck"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">	
+<![CDATA[ 
+SELECT HKG AS portname
+  FROM dual
+]]>
+</select>
+
+    
+  <select id="cust_PaperManifestFlt_113_ADtl_port2_Truck"  parameterClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO" resultClass="cargo.cms.customs.report.bo.PaperManifestFltRept_113BO">	
+<![CDATA[
+select sum(portconstl) portconstl, sum(portconspc) portconspc from (  
+	select nvl(sum(portconstl),0) portconstl, nvl(sum(pcs),0) portconspc from (
+select  awb_no, portconstl, pcs from (
+select a.awb_no, decode(a.recv_rec_type, 'INT', 0, a.ver_no) ver_no,  count(1) as portconstl, sum(decode(recv_rec_type,'AMA', nvl(ltrim(substr(cns_dtl,94,6),0),0),'INA', nvl(ltrim(substr(cns_dtl,93,6),0),0))) as Pcs 
+from cst_csgnm a, ITM_TRK_MANF_HD b,  ITM_TRK_MANF_SHP c
+where b.status not in ('VOID') 
+and a.truck_no = b.truck_no(+)
+and a.sch_date = b.TRUCK_FLT_DATE(+)
+and a.sch_time = b.sch_time(+)
+and b.tr_no = c.tr_no
+and a.awb_no = c.awb_no
+and a.recv_rec_type = 'AMA'
+and c.dest = 'HKG'
+and a.seq_no NOT IN( 0, 99999)
+and a.flt_type = 'T'
+and a.truck_No=#truckNo#
+and a.sch_date=#schDate#
+and a.sch_time=#schTime#
+group by a.awb_no, a.recv_rec_type, ver_no
+) x
+where 
+ver_no = (
+select  max(decode(z.recv_rec_type, 'INT', 0, z.ver_no))
+from cst_csgnm z
+where z.recv_rec_type = 'AMA'
+and z.seq_no NOT IN( 0, 99999)
+and z.flt_type = 'T'
+and z.truck_No=#truckNo#
+and z.sch_date=#schDate#
+and z.sch_time=#schTime#
+and z.awb_no = x.awb_no
+) 
+group by  awb_No, portconstl, pcs
+) 	
+union
+select 0 portconstl, 0 portconspc from dual
+)
+]]>
+  </select>
+
+  <!-- HASH TOTAL CHANGES END -->
+  
+	<select id="sqlFltSuffixIndicatorForReport" parameterClass="java.util.Map" resultClass="java.lang.String">
+		select NO_FLT_SFX from(SELECT NO_FLT_SFX FROM CST_SUBM WHERE FLT_KEY = #FLT_KEY# AND TO_CHAR(FLT_DATE, 'DDMONYY') = #FLT_DATE# AND REC_TYPE = 'INT' order by subm_date desc) where rownum=1
+	</select>
+  
+</sqlMap> 

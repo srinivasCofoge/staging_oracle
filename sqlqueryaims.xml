@@ -1,0 +1,3037 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Aims">
+	<!-- mofs start -->
+	<parameterMap id="extmofsMap" class="map" >
+		<parameter property="RESULT"  jdbcType="VARCHAR"	javaType="java.lang.String"	mode="OUT"/>
+		<parameter property="RHOID"  jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="FLTKEY"  jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="FDATE"  jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="TDATE"  jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="WHLEVEL"  jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="STATUS"  jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+	</parameterMap>
+	<procedure id="sqlvalgetmofsext" parameterMap="extmofsMap" >
+		{? = call pkg_exp_uld.get_mofs_summary_aims(?,?,?,?,?,?)  }
+	</procedure>
+	
+	<select id="sqlmofssummarydtlsext" parameterClass="cargo.cms.external.bo.MOFSBO" resultClass="cargo.cms.external.bo.MOFSBO" >
+		SELECT 
+			FLT_KEY as fltNo,
+			TO_CHAR(FLT_DATE,'DDMONYY') as fltDate,
+			SCH_TIME as std,
+			EST_DATE as etdate,
+			EST_TIME as etd,
+			BAY as bay,
+			FLT_STATUS as fltStatus,     
+			ALLOTMENT as updatedAllotment,
+			HANDOVER_STATUS as handoverStatus,
+			RHO_ID as rhoId
+			FROM GT_MOFS_SUMMARY
+			ORDER BY FLT_DATE DESC, SCH_TIME DESC   
+	</select>
+	
+	<select id="sqlcheckoutlistext" parameterClass="map" resultClass="cargo.cms.external.bo.MOFSBO">	
+	<!--select uld_key||decode(contr_code, null, '', '/'||contr_code) as uldKey,
+	   pkg_exp_val.get_uld_allot(substr(uld_key, 1, 3)) type,
+	   eic_yn as eic,
+	   empty_yn as mty,
+	   spl_codes as splcode,
+       wh_dest||decode(loc_code, null, '', '/'||loc_code) stagingArea,
+	   mofs_sent_time as sentTime,
+	   mofs_rem1_time as firstReminder,
+	   mofs_rem2_time as secondReminder,
+	   ramp_time as hoTime,
+	   ramp_user as hobyAAT,
+	   ramp_recv_user as rhoStaff,
+	   ramp_rmk as remarks
+	from v_exp_checkout_dtl
+	where  flt_key = #FLTKEY#
+		   and flt_date = #FLTDATE# -->
+	select uld_key as uldKey, 
+	   uld_key_contr as uldKeyContr,
+	   allot_type type,
+	   eic_yn as eic,
+	   empty_yn as mty,
+	   spl_codes as splcode,      
+	   notify_send_time as sentTime,
+	   remind_1_send_time as firstReminder,
+	   remind_2_send_time as secondReminder,
+	   ramp_time as hoTime,
+	   ramp_user_id as hobyAAT,
+	   rho_user_id as rhoStaff,
+	   ramp_rmk as remarks
+	from v_exp_mofs
+	where  flt_key = #FLTKEY#
+		   and flt_date = to_date(#FLTDATE#,'DDMONYY') 
+	</select>	
+	
+	<select id="mofs_total_man_gross_weight_ext" parameterClass="map" resultClass="cargo.cms.external.bo.MOFSBO"> 
+		select  sum(man_wt) totalManfWt,
+				sum(gross_wt) totalGrossWt
+		from exp_flt_uld 
+		where  flt_key = #FLTKEY#
+			and flt_date = #FLTDATE#
+	</select>
+	
+	<select id="mofs_total_allotment_osiremarks_ext" parameterClass="map" resultClass="cargo.cms.external.bo.MOFSBO"> 
+		select pkg_exp_val.get_uld_allot_summary(flt_key, flt_date) totalAllotment,
+			   pkg_exp_val.get_notify_times(flt_key, flt_date) notificationDetails,	
+			osi_rmk as osiRemarks
+		from   exp_chkout_hd
+		where  flt_key = #FLTKEY#
+			and flt_date = #FLTDATE#
+	</select>
+	
+	<!-- mofs end -->
+	
+	
+	<!-- >>>>>>>>>>>>>>>>>>>>>    SID : START <<<<<<<<<<<<<<<<<<-->
+	<!--
+	<select id="CheckforDuplicateUldKeyMrcl"  parameterClass="java.lang.String"  
+		resultClass="java.lang.String">
+	<![CDATA[
+    select (SELECT   count(*)
+		   	FROM EXP_PRE_RCL_HD hd
+			WHERE  
+			 	 hd.ULD_KEY = #uldKey#
+				 	 AND UPPER(hd.STATUS) <> 'EXPIRED'
+
+			) +
+	 
+	 
+	 (SELECT  count(*) 
+	 		  FROM EXP_PRE_RCL_HD hd, EXP_PRE_RCL_DTL dtl 
+			  	 WHERE 
+				  hd.PRE_RCL_NO = dtl.PRE_RCL_NO AND
+				  dtl.ULD_KEY = #uldKey#   
+				  AND UPPER(hd.STATUS) <> 'EXPIRED'
+	 ) from dual
+	]]>
+   	</select>	
+	 -->
+
+		
+
+	<select id="extgetCountryCode" parameterClass="map" resultClass="java.lang.String">
+		SELECT code FROM MAST_COUNTRY 
+		WHERE upper(CODE_DESC) = upper(#countryName#)
+	</select>
+	
+	<select id="checkRecordInAWBForSID" parameterClass="cargo.cms.external.bo.SIDBO" resultClass="java.lang.String">
+		SELECT count(1) FROM AWB WHERE awb_no = #saveAwbNo# and
+		TO_CHAR(AWB_DATE,'DDMONYY') = #awbDate# and awb_type = 'E' and
+		awb_closed_yn = 'N'	    
+	</select>
+
+	<select id="extdoesChargeCodeExist" parameterClass="map" resultClass="java.lang.String">
+		SELECT TO_CHAR(COUNT(*)) FROM MAST_CODE_DTL
+		WHERE CODE_TYPE = 'OTHER_CHARGE_CODE'
+			AND UPPER(CODE) = UPPER(#chargeCode#)
+	</select>
+
+	<select id="extdoesCurrencyCodeExist" parameterClass="map" resultClass="java.lang.String">
+		SELECT TO_CHAR(COUNT(*)) FROM MAST_CURRENCY
+		WHERE CODE = #currencyCode#
+	</select>
+
+	<select id="extdoesRateClassExist" parameterClass="map" resultClass="java.lang.String">
+    SELECT TO_CHAR(COUNT(*)) from mast_rate_cls
+    where code = #rateClass#
+	</select>
+
+	<parameterMap id="extgetSIDrecordNumberMap" class="map" >
+		<parameter property="RESULT"  jdbcType="VARCHAR"	javaType="java.lang.String"	mode="OUT"/>
+	</parameterMap>
+	<procedure id="extgetSIDrecordNumber" parameterMap="extgetSIDrecordNumberMap" >
+		{? = call fun_get_tr_no('SI')  }
+	</procedure>
+	
+	<select id="getSidNumber" parameterClass="java.lang.String" resultClass="java.lang.String">
+    	select lpad(EXP_SID_SEQ.nextval,5, '0') as sidNo from dual
+	</select>
+	
+
+	<insert id="extinsertSID" parameterClass="cargo.cms.external.bo.SIDBO">
+		INSERT INTO EXP_SID(
+			SID_NO,
+			AWB_NO,
+			AWB_DATE,
+			BRD_POINT_NAME,
+			OFF_POINT,
+			SHPM_DESC_C,
+			PCS,
+			WT,
+			FLT_CARR1,
+			FLT_NO1,
+			FLT_DATE1,
+			FLT_KEY1,
+			FLT_CARR2,
+			FLT_NO2,
+			FLT_DATE2,
+			FLT_KEY2,
+			ROUTE_AIRP_CODE,
+			ROUTE_CARR_CODE,
+			ONW_AIRP_CODE,
+			ONW_CARR_CODE,
+			SHPR_NAME,
+			SHPR_AC_NO,
+			SHPR_ADDR1,
+			SHPR_ADDR2,
+			SHPR_ADDR3,
+			SHPR_ADDR4,
+			SHPR_PLACE,
+			SHPR_CTRY_CODE,
+			SHPR_PIN_CODE,
+			SHPR_CONT_N1,
+			SHPR_TEL,
+			SHPR_FAX,
+			CSGNE_NAME,
+			CSGNE_AC_NO,
+			CSGNE_ADDR1,
+			CSGNE_ADDR2,
+			CSGNE_ADDR3,
+			CSGNE_ADDR4,
+			CSGNE_PLACE,
+			CSGNE_CTRY_CODE,
+			CSGNE_PIN_CODE,
+			CSGNE_CONT_N1,
+			CSGNE_TEL,
+			CSGNE_FAX,
+			AGENT_AC_NO,
+			AGENT_NAME,
+			AGENT_ICODE,
+			AGENT_CASS_ADDR,
+			AGENT_PLACE,
+			SPL_SVC_REQ1,
+			SPL_SVC_REQ2,
+			SPL_SVC_REQ3,
+			OTHER_SVC_INFO1,
+			OTHER_SVC_INFO2,
+			DECLN_CURR_CODE,
+			DECLN_CHRG_CODE,
+			DECLN_WT_VALN_PPCC_I,
+			DECLN_OTHER_CHRG_PPCC_I,
+			DECLN_CARR,
+			DECLN_CTM,
+			DECLN_INSURCE,
+			PPCC_WT_CHRG,
+			PPCC_VALN_CHRG,
+			CC_VALN_CHRG,
+			PPCC_TAXES,
+			CC_TAXES,
+			PPCC_OTHER_CHRG_DUE_AGENT,
+			CC_OTHER_CHRG_DUE_AGENT,
+			PPCC_OTHER_CHRG_DUE_CARR,
+			CC_OTHER_CHRG_DUE_CARR,
+			PPCC_PP_TOTAL_CHRG,
+			PPCC_CC_TOTAL_CHRG,
+			SHPR_CERTN,
+			EXECN_DATE,
+			EXECN_PLACE,
+			EXECN_SIGN,
+			CC_CHRG_DESTN_CURR,
+			CC_DESTN_CHRG,
+			CC_TOTAL_DESTN_CHRG,
+			STATUS,
+			CR_USER_ID,
+			CR_DATE,
+			LM_USER_ID,
+			LM_DATE,
+			SLAC,
+			AIRP_CODE_DESC,
+			TR_TYPE,
+			REF_NO,
+			SPL_CUST_INFO1,
+			SPL_CUST_INFO2)
+		values(
+			#referenceNumber#,
+			#saveAwbNo#,
+			#awbDate#,
+			#departureAirportName#,
+			#finalAirportCode#,
+			'1',
+			#totalPcs#,
+			#totalWt#,
+			#leg1CarrierPrefix#,
+			#leg1CarrierSuffix#,
+			TO_DATE(#leg1FlightDate#, 'DDMONYY'),
+			#leg1CarrierPrefix# || #leg1CarrierSuffix#,
+			#finalFlightCarrier1#,
+			#finalFlightNumber1#,
+			TO_DATE(#finalFlightDate1#, 'DDMONYY'),
+			#finalFlightCarrier1# || #finalFlightNumber1#,
+			#leg2CarrierPrefix#,
+			#leg2AirportCode#,
+			#leg3CarrierPrefix#,
+			#leg3AirportCode#,
+			#shipperName#,
+			#shipperAccountNumber#,
+			#shipperAddress1#,
+			#shipperAddress2#,
+			#shipperAddress3#,
+			#shipperState#,
+			#shipperCityName#,
+			#shipperCountryCode#,
+			#shipperPostalCode#,
+			#shipperContact#,
+			#shipperTelephoneNumber#,
+			#shipperFaxNumber#,
+			#consigneeName#,
+			#consigneeAccountNumber#,
+			#consigneeAddress1#,
+			#consigneeAddress2#,
+			#consigneeAddress3#,
+			#consigneeState#,
+			#consigneeCityName#,
+			#consigneeCountryCode#,
+			#consigneePostalCode#,
+			#consigneeContact#,
+			#consigneeTelephoneNumber#,
+			#consigneeFaxNumber#,
+			#agentAccountNumber#,
+			#agentName#,
+			#agentIataCode#,
+			#agentAddress1#,
+			#agentCityName#,
+			#handlingInformation1#,
+			#handlingInformation2#,
+			#handlingInformation3#,
+			#handlingInformation4#,
+			#handlingInformation5#,
+			#currencyCodeCustoms#,
+			#declaredChargeCode#,
+			<isNotEmpty property="picesWeightPP">
+				nvl(#picesWeightPP#,0),
+			</isNotEmpty>
+			<isEmpty property="picesWeightPP">
+				nvl(#piecesWeightColl#,0),
+			</isEmpty>
+			<isNotEmpty property="piecesOtherPP">
+				nvl(#piecesOtherPP#,0),
+			</isNotEmpty>
+			<isEmpty property="piecesOtherPP">
+				nvl(#piecesOtherColl#,0),
+			</isEmpty>
+			nvl(#declaredValueCarriage#,0),
+			nvl(#declaredValueCustoms#,0),
+			nvl(#insuranceAmount#,0),
+			 <isNotEmpty property="picesWeightPP">
+					nvl(#totalWeightChargePrepaid#,0),
+			</isNotEmpty>
+			<isEmpty property="picesWeightPP">
+					nvl(#totalWeightCharge#,0),
+			</isEmpty>	
+			<!-- 
+			<isEqual compareValue="PP" property="declaredChargeCode">
+				nvl(#totalWeightChargePrepaid#,0),
+			</isEqual>
+			<isEqual compareValue="PC" property="declaredChargeCode">
+				nvl(#totalWeightChargePrepaid#,0),
+			</isEqual>
+			<isEqual compareValue="CP" property="declaredChargeCode">
+				nvl(#totalWeightCharge#,0),
+			</isEqual>
+			<isEqual compareValue="CC" property="declaredChargeCode">
+				nvl(#totalWeightCharge#,0),
+			</isEqual> -->			
+			nvl(#valuationChargePrepaid#,0),
+			nvl(#valuationCharge#,0),
+			nvl(#taxChargePrepaid#,0),
+			nvl(#taxCharge#,0),
+			nvl(#agentChargePrepaid#,0),
+			nvl(#agentCharge#,0),
+			nvl(#carrierChargePrepaid#,0),
+			nvl(#carrierCharge#,0),
+			nvl(#totalCollectCharge#,0),
+			nvl(#totalCollectChargePrepaid#,0),
+			#shipperSignature#,
+			#date#,
+			#place#,
+			#carrierSignature#,
+			#currencyCode#,
+			nvl(#destinationCharges#,0),
+			nvl(#currencyConversionCharges#,0),
+			'CREATED',
+			'',
+			sysdate,
+			'',
+			sysdate,
+			#slac#,
+			#finalAirportName#,
+			'SI',
+			#refNo#,
+			#splCustInfo1#,
+			#splCustInfo2#)
+	</insert>
+
+	<insert id="extinsertSIDOtherCharges" parameterClass="map">
+		insert into EXP_SID_OTH_CHARGES(
+			SID_NO,	
+			OTH_PC_I,
+			OTH_CHRG_C,
+			OTH_ENTLEMT_C,
+			OTH_CHRG)
+		VALUES(
+			#SIDNumber#,
+			#prepaidOrCollectIndicator#,
+			#chargeCode#,
+			#agentOrCarrierIndicator#,
+			#charge#)
+	</insert>
+
+	<insert id="extinsertSIDRates" parameterClass="map">
+		insert into EXP_SID_RATE(
+			SID_NO,
+			RATE_PCS,
+			RATE_GORSS_WT_C,
+			RATE_GROSS_WT,
+			RATE_CLASS_C,
+			RATE_COMM_N,
+			RATE_CHRGBLE_WT,
+			RATE_CHRG_RATE,
+			RATE_CHRG_A,
+			RATE_GOODS_NATR,
+			DOC_LINE_NO)
+		VALUES(
+			#SIDNumber#,
+			#rcpPieces#,
+			#weightType#,
+			nvl(#grossWeight#,0),
+			#rateClass#,
+			#itemNumber#,
+			nvl(#chargeableWeight#,0),
+			#rateChargeDiscount#,
+			nvl(#totalCharge#,0),
+			#goodsDescription#,
+			nvl(#docLineNo#,1))
+	</insert>
+	
+	<select id="getListOfSIDToBeExp" parameterClass="cargo.cms.external.bo.SIDListBO" resultClass="cargo.cms.external.bo.SIDListBO">
+		select sid_no as sidNumber from exp_sid where STATUS IN ('CREATED','MODIFIED') and sysdate > CR_DATE + (SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'SID_EXP_DAYS')
+	</select>
+	
+	<update id="updateStatusExp" parameterClass="cargo.cms.external.bo.SIDListBO">
+		update EXP_SID SET STATUS = 'EXPIRED' where sid_no = #sidNumber#
+	</update>
+	
+	<select id="chkAwbReserved" parameterClass="cargo.cms.external.bo.SIDBO" resultClass="java.lang.String">
+		SELECT COUNT(1) FROM EXP_AWB_BOOKING WHERE awb_no = #saveAwbNo#
+		<!-- AND shipper_name = #shipperName#-->
+	</select>
+	
+	<select id="chkAwbReservedInternal" parameterClass="map" resultClass="java.lang.String">
+		SELECT COUNT(1) FROM EXP_AWB_BOOKING WHERE awb_no = #AWB_NO#
+	</select>
+	
+	<select id="extgetSIDList" parameterClass="cargo.cms.external.bo.SIDSearchBO" resultClass="cargo.cms.external.bo.SIDListBO">
+		SELECT 
+			SID_NO AS sidNumber,
+			AWB_NO AS awbNumber,
+			BRD_POINT_NAME AS origin,
+			OFF_POINT AS destination,
+			PCS AS totalPieces,
+			WT AS totalWeight,
+			SHPR_NAME AS shipperName,
+			STATUS AS status
+		FROM EXP_SID
+		WHERE	
+			CR_DATE BETWEEN TO_DATE(#dateFrom#, 'DDMONYY') AND TO_DATE(#dateTo#, 'DDMONYY')+1
+			<isNotEmpty prepend="AND" property="shipperName">
+				UPPER(SHPR_NAME) LIKE UPPER(#shipperName#) 
+			</isNotEmpty>
+			<isNotEmpty prepend="AND" property="sidStatus">
+				STATUS = #sidStatus#
+			</isNotEmpty>
+	</select>
+
+	<delete id="extdeleteSID" parameterClass="map">
+		delete from exp_sid where sid_no = #sidNumber#
+	</delete>
+
+	<delete id="extdeleteSIDOtherCharges" parameterClass="map">
+		delete from exp_sid_oth_charges where sid_no = #sidNumber#
+	</delete>
+
+	<delete id="extdeleteSIDRate" parameterClass="map">
+		delete from exp_sid_rate where sid_no = #sidNumber#
+	</delete>
+
+	<select id="extgetSIDDetails" parameterClass="map" resultClass="cargo.cms.external.bo.SIDBO">
+		SELECT 
+			SID_NO AS referenceNumber,
+			BRD_POINT_NAME AS departureAirportName,
+			OFF_POINT AS finalAirportCode,
+			PCS AS hiddenTotalPieces,
+			WT AS hiddenTotalWeight,
+			FLT_CARR1 AS finalFlightCarrier2,
+			FLT_CARR1 AS leg1CarrierPrefix,
+			FLT_NO1 AS leg1CarrierSuffix,
+			FLT_NO1 AS finalFlightNumber2,
+			TO_CHAR(FLT_DATE1, 'DDMONYY') AS finalFlightDate2,
+			FLT_CARR2 AS finalFlightCarrier1,
+			FLT_NO2 AS finalFlightNumber1,
+			TO_CHAR(FLT_DATE2, 'DDMONYY') AS finalFlightDate1,
+			ROUTE_AIRP_CODE AS leg2CarrierPrefix,
+			ROUTE_CARR_CODE AS leg2AirportCode,
+			ONW_AIRP_CODE AS leg3CarrierPrefix,
+			ONW_CARR_CODE AS leg3AirportCode,
+			SHPR_NAME AS  shipperName,
+			SHPR_AC_NO AS shipperAccountNumber,
+			SHPR_ADDR1 AS shipperAddress1,
+			SHPR_ADDR2 AS shipperAddress2,
+			SHPR_ADDR3 AS shipperAddress3,
+			SHPR_ADDR4 AS shipperState,
+			SHPR_PLACE AS shipperCityName,
+			(SELECT CODE_DESC FROM Mast_Country  WHERE CODE = SHPR_CTRY_CODE)   AS shipperCountryName,
+			SHPR_PIN_CODE AS shipperPostalCode,
+			SHPR_CONT_N1 AS shipperContact,
+			SHPR_TEL AS shipperTelephoneNumber,
+			SHPR_FAX AS shipperFaxNumber,
+			CSGNE_NAME AS consigneeName,
+			CSGNE_AC_NO AS consigneeAccountNumber,
+			CSGNE_ADDR1 AS consigneeAddress1,
+			CSGNE_ADDR2 AS consigneeAddress2,
+			CSGNE_ADDR3 AS consigneeAddress3,
+			CSGNE_ADDR4 AS consigneeState,
+			CSGNE_PLACE AS consigneeCityName,
+			(SELECT CODE_DESC FROM Mast_Country  WHERE CODE = CSGNE_CTRY_CODE) AS consigneeCountryName,
+			CSGNE_PIN_CODE AS consigneePostalCode,
+			CSGNE_CONT_N1 AS consigneeContact,
+			CSGNE_TEL AS consigneeTelephoneNumber,
+			CSGNE_FAX AS consigneeFaxNumber,
+			AGENT_AC_NO AS agentAccountNumber,
+			AGENT_NAME AS agentName,
+			AGENT_ICODE AS agentIataCode,
+			AGENT_CASS_ADDR AS agentAddress1,
+			AGENT_PLACE AS agentCityName,
+			SPL_SVC_REQ1 AS handlingInformation1,
+			SPL_SVC_REQ2 AS handlingInformation2,
+			SPL_SVC_REQ3 AS handlingInformation3,
+			OTHER_SVC_INFO1 AS handlingInformation4,
+			OTHER_SVC_INFO2 AS handlingInformation5,
+			DECLN_CURR_CODE AS currencyCodeCustoms,
+			DECLN_CHRG_CODE AS declaredChargeCode,
+			decode(DECLN_WT_VALN_PPCC_I,'P','P',null) AS picesWeightPP,
+			decode(DECLN_WT_VALN_PPCC_I,'C','C',null) AS piecesWeightColl,
+			decode(DECLN_OTHER_CHRG_PPCC_I,'P','P',null) AS piecesOtherPP,
+			decode(DECLN_OTHER_CHRG_PPCC_I,'C','C',null) AS piecesOtherColl,			
+			decode(DECLN_WT_VALN_PPCC_I,'P',PPCC_WT_CHRG) as totalWeightChargePrepaid,
+			decode(DECLN_WT_VALN_PPCC_I,'C',PPCC_WT_CHRG) as totalWeightCharge,
+			<!-- 
+			decode(DECLN_CHRG_CODE,'PP',PPCC_WT_CHRG,'PC',PPCC_WT_CHRG) as totalWeightChargePrepaid,
+			decode(DECLN_CHRG_CODE,'CP',PPCC_WT_CHRG,'CC',PPCC_WT_CHRG) as totalWeightCharge,
+			 -->
+			DECLN_CARR AS declaredValueCarriage,
+			DECLN_CTM AS declaredValueCustoms,
+			DECLN_INSURCE AS insuranceAmount	,
+			PPCC_VALN_CHRG AS valuationChargePrepaid,
+			CC_VALN_CHRG AS valuationCharge,
+			PPCC_TAXES AS taxChargePrepaid,
+			CC_TAXES AS taxCharge,
+			PPCC_OTHER_CHRG_DUE_AGENT AS agentChargePrepaid,
+			CC_OTHER_CHRG_DUE_AGENT AS agentCharge,
+			PPCC_OTHER_CHRG_DUE_CARR AS carrierChargePrepaid,
+			CC_OTHER_CHRG_DUE_CARR AS carrierCharge,
+			PPCC_PP_TOTAL_CHRG AS totalCollectCharge,
+			PPCC_CC_TOTAL_CHRG AS totalCollectChargePrepaid,
+			SHPR_CERTN AS shipperSignature,
+			TO_CHAR(EXECN_DATE, 'DDMONYY') AS "date",
+			EXECN_PLACE AS place,
+			EXECN_SIGN AS carrierSignature,
+			CC_CHRG_DESTN_CURR AS currencyCode,
+			CC_DESTN_CHRG AS destinationCharges,
+			CC_TOTAL_DESTN_CHRG AS currencyConversionCharges,
+			SLAC as slac,
+			AIRP_CODE_DESC as finalAirportName
+		FROM EXP_SID                                    
+		WHERE
+			SID_NO = #sidNumber#
+	</select>
+
+	<update id="extupdateSID" parameterClass="cargo.cms.external.bo.SIDBO">
+		UPDATE EXP_SID SET
+			BRD_POINT_NAME = #departureAirportName#,
+			OFF_POINT = #finalAirportCode#,
+			PCS = #hiddenTotalPieces#,
+			WT = #hiddenTotalWeight#,
+			FLT_CARR1 = #finalFlightCarrier2#,
+			FLT_NO1 = #finalFlightNumber2#,
+			FLT_KEY1 = #finalFlightCarrier1# || #finalFlightNumber1#,
+			FLT_DATE1 = TO_DATE(#finalFlightDate2#, 'DDMONYY'),
+			FLT_CARR2 = #finalFlightCarrier1#,
+			FLT_NO2 = #finalFlightNumber1#,
+			FLT_KEY2 = #finalFlightCarrier2# || #finalFlightNumber2#,
+			FLT_DATE2 = TO_DATE(#finalFlightDate1#, 'DDMONYY'),
+			ROUTE_AIRP_CODE = #leg2CarrierPrefix#,
+			ROUTE_CARR_CODE = #leg2AirportCode#,
+			ONW_AIRP_CODE = #leg3CarrierPrefix#,
+			ONW_CARR_CODE = #leg3AirportCode#,
+			SHPR_NAME =  #shipperName#,
+			SHPR_AC_NO = #shipperAccountNumber#,
+			SHPR_ADDR1 = #shipperAddress1#,
+			SHPR_ADDR2 = #shipperAddress2#,
+			SHPR_ADDR3 = #shipperAddress3#,
+			SHPR_ADDR4 = #shipperState#,
+			SHPR_PLACE = #shipperCityName#,
+			SHPR_CTRY_CODE = #shipperCountryCode#,
+			SHPR_PIN_CODE = #shipperPostalCode#,
+			SHPR_CONT_N1 = #shipperContact#,
+			SHPR_TEL = #shipperTelephoneNumber#,
+			SHPR_FAX = #shipperFaxNumber#,
+			CSGNE_NAME = #consigneeName#,
+			CSGNE_AC_NO = #consigneeAccountNumber#,
+			CSGNE_ADDR1 = #consigneeAddress1#,
+			CSGNE_ADDR2 = #consigneeAddress2#,
+			CSGNE_ADDR3 = #consigneeAddress3#,
+			CSGNE_ADDR4 = #consigneeState#,
+			CSGNE_PLACE = #consigneeCityName#,
+			CSGNE_CTRY_CODE = #consigneeCountryCode#,
+			CSGNE_PIN_CODE = #consigneePostalCode#,
+			CSGNE_CONT_N1 = #consigneeContact#,
+			CSGNE_TEL = #consigneeTelephoneNumber#,
+			CSGNE_FAX = #consigneeFaxNumber#,
+			AGENT_AC_NO = #agentAccountNumber#,
+			AGENT_NAME = #agentName#,
+			AGENT_ICODE = #agentIataCode#,
+			AGENT_CASS_ADDR = #agentAddress1#,
+			AGENT_PLACE = #agentCityName#,
+			SPL_SVC_REQ1 = #handlingInformation1#,
+			SPL_SVC_REQ2 = #handlingInformation2#,
+			SPL_SVC_REQ3 = #handlingInformation3#,
+			OTHER_SVC_INFO1 = #handlingInformation4#,
+			OTHER_SVC_INFO2 = #handlingInformation5#,
+			DECLN_CURR_CODE = #currencyCodeCustoms#,
+			DECLN_CHRG_CODE = #declaredChargeCode#,
+
+			DECLN_WT_VALN_PPCC_I =
+				<isNotEmpty property="picesWeightPP">
+					nvl(#picesWeightPP#,0),
+				</isNotEmpty>
+				<isEmpty property="picesWeightPP">
+					nvl(#piecesWeightColl#,0),
+				</isEmpty>
+
+			DECLN_OTHER_CHRG_PPCC_I =
+				<isNotEmpty property="piecesOtherPP">
+					nvl(#piecesOtherPP#,0),
+				</isNotEmpty>
+				<isEmpty property="piecesOtherPP">
+					nvl(#piecesOtherColl#,0),
+				</isEmpty>
+
+			PPCC_WT_CHRG = 
+			 <isNotEmpty property="picesWeightPP">
+					nvl(#totalWeightChargePrepaid#,0),
+			</isNotEmpty>
+			<isEmpty property="picesWeightPP">
+					nvl(#totalWeightCharge#,0),
+			</isEmpty>	
+			<!-- 
+				<isEqual compareValue="PP" property="declaredChargeCode">
+					nvl(#totalWeightChargePrepaid#,0),
+				</isEqual>
+				<isEqual compareValue="PC" property="declaredChargeCode">
+					nvl(#totalWeightChargePrepaid#,0),
+				</isEqual>
+				<isEqual compareValue="CP" property="declaredChargeCode">
+					nvl(#totalWeightCharge#,0),
+				</isEqual>
+				<isEqual compareValue="CC" property="declaredChargeCode">
+					nvl(#totalWeightCharge#,0),
+				</isEqual> -->
+			DECLN_CARR = #declaredValueCarriage#,
+			DECLN_CTM = #declaredValueCustoms#,
+			DECLN_INSURCE = #insuranceAmount#,
+			PPCC_VALN_CHRG = nvl(#valuationChargePrepaid#, 0),
+			CC_VALN_CHRG = nvl(#valuationCharge#, 0),
+			PPCC_TAXES = nvl(#taxChargePrepaid#, 0),
+			CC_TAXES = nvl(#taxCharge#,0),
+			PPCC_OTHER_CHRG_DUE_AGENT = nvl(#agentChargePrepaid#, 0),
+			CC_OTHER_CHRG_DUE_AGENT = nvl(#agentCharge#, 0),
+			PPCC_OTHER_CHRG_DUE_CARR = nvl(#carrierChargePrepaid#, 0),
+			CC_OTHER_CHRG_DUE_CARR = nvl(#carrierCharge#, 0),
+			PPCC_PP_TOTAL_CHRG = nvl(#totalCollectCharge#, 0),
+			PPCC_CC_TOTAL_CHRG = nvl(#totalCollectChargePrepaid#, 0),
+			SHPR_CERTN = #shipperSignature#,
+			EXECN_DATE = TO_DATE(#date#, 'DDMONYY'),
+			EXECN_PLACE = #place#,
+			STATUS = 'MODIFIED',
+			EXECN_SIGN = #carrierSignature#,
+			CC_CHRG_DESTN_CURR = #currencyCode#,
+			CC_DESTN_CHRG = nvl(#destinationCharges#, 0),
+			CC_TOTAL_DESTN_CHRG = nvl(#currencyConversionCharges#, 0),
+			LM_USER_ID = 'ADMIN1',
+			LM_DATE = sysdate,
+			SLAC = #slac#,
+			AIRP_CODE_DESC = #finalAirportName#
+		WHERE
+			SID_NO = #referenceNumber#
+	</update>
+
+	<select id="extgetSIDOtherCharges" parameterClass="map" resultClass="cargo.cms.external.bo.SIDOtherChargesBO">
+		SELECT 
+			OTH_PC_I AS prepaidOrCollectIndicator,
+			OTH_CHRG_C AS chargeCode,
+			OTH_ENTLEMT_C AS agentOrCarrierIndicator,
+			OTH_CHRG AS charge
+		FROM EXP_SID_OTH_CHARGES
+		WHERE SID_NO = #sidNumber#
+	</select>
+
+	<select id="extgetSIDRates" parameterClass="map" resultClass="cargo.cms.external.bo.SIDRatesBO">
+		SELECT DOC_LINE_NO as seq,
+			RATE_PCS AS rcpPieces,
+			RATE_GORSS_WT_C AS weightType,
+			RATE_GROSS_WT AS grossWeight,
+			RATE_CLASS_C AS rateClass,
+			RATE_COMM_N AS itemNumber,
+			RATE_CHRGBLE_WT AS chargeableWeight,
+			RATE_CHRG_RATE AS rateChargeDiscount,
+			RATE_CHRG_A AS totalCharge,
+			RATE_GOODS_NATR AS goodsDescription
+		FROM EXP_SID_RATE
+		WHERE SID_NO = #sidNumber#
+		order by seq
+	</select>
+
+	<select id="extgetAgentDetails" parameterClass="java.lang.String" resultClass="cargo.cms.external.bo.SIDBO">
+		SELECT	
+			CODE AS	shipperAccountNumber,
+			ADD1 ||' '|| ADD2||' ' ||ADD3||' ' || ADD4 ||' '|| ADD5 AS shipperAddress1,
+			CITY AS shipperCityName,
+			(SELECT CODE_DESC FROM MAST_CITY WHERE CODE=CITY) shipperCityCode,
+			PIN_CODE AS shipperPostalCode,
+			(SELECT CODE_DESC FROM MAST_COUNTRY WHERE CODE=CTRY_CODE) shipperCountryName,
+			CTRY_CODE AS shipperCountryCode,
+			TEL1 AS shipperTelephoneNumber,
+			FAX1 AS shipperFaxNumber,
+			EMAIL1 AS shipperEmailAddress,
+			MOB1 AS shipperContact
+		 FROM CUST_COMPANY
+			WHERE CODE_DESC = #agentName# and rownum=1
+	</select>
+
+	<select id="ext_get_sid_accounting_information" parameterClass="map" resultClass="cargo.cms.external.bo.SIDAccountBO">
+		select 
+		  a.sid_no AS sidNumber,
+		  a.actg_info AS accountInformation
+		from exp_sid_acct_info a
+		where a.sid_no = #sidNumber#
+	</select>
+
+	<insert id="ext_insert_sid_accounting_information" parameterClass="map">
+		insert into exp_sid_acct_info(
+		  SID_NO, 
+		  ACTG_I,
+		  actg_info) 
+		values (
+		  #sidNumber#, 
+		  'a',
+		  #accountInformation#)
+	</insert>
+
+	<delete id="ext_delete_sid_accounting_information" parameterClass="map">
+		delete from exp_sid_acct_info a
+		where a.sid_no = #sidNumber#
+	</delete>
+
+	<!-- >>>>>>>>>>>>>>>>>>>>>    SID : END   <<<<<<<<<<<<<<<<<<-->
+	
+
+	<!-- agent query starts -->
+	<select id="Export_mRCLEnquireQueryBasedOnAWBForAgent" 
+		parameterClass="cargo.cms.external.bo.mRCLBulkHeader" 
+		resultClass="cargo.cms.external.bo.mRCLBulkHeader">
+		SELECT substr(pre_rcl_no,1,4)||'-'||substr(pre_rcl_no,5) AS preRclNoFormat,AWB_NO AS awbNo,
+			pre_rcl_no as preRclNo, decode(PPK_TYPE,'B','Bulk','P','Prepack','M','Mixed') AS rclTypeDescription,
+			PPK_TYPE as rclType,to_char(RCL_ISS_DATE,'DDMONYY     hh24:mi') AS rclsubmissiondate,
+			ULD_NO AS uldNo, upper( STATUS)  AS searchStatus,qcp_pcs as qcp_pcs,
+			qcp_wt as qcp_wt,customer.code_desc as agentName,EXP_PRE_RCL_HD.carr_code as carr,
+			ttl_pcs as pieces,ttl_wt as weight,cust_no as custNo,upper(EXP_PRE_RCL_HD.truck_no1)
+			||decode(upper(EXP_PRE_RCL_HD.truck_no2),null,'',',')||EXP_PRE_RCL_HD.truck_no2
+			||decode(upper(EXP_PRE_RCL_HD.truck_no3),null,'',',')||EXP_PRE_RCL_HD.truck_no3
+			||decode(upper(EXP_PRE_RCL_HD.truck_no4),null,'',',')||EXP_PRE_RCL_HD.truck_no4
+			||decode(upper(EXP_PRE_RCL_HD.truck_no5),null,'',',')||EXP_PRE_RCL_HD.truck_no5 as truckNo1,
+			qcp_pcs as qcp_pcs,qcp_wt as qcp_wt,ttl_pcs as pieces,ttl_wt as weight
+		FROM EXP_PRE_RCL_HD,cust_company customer
+	 WHERE 
+		EXP_PRE_RCL_HD.cust_no = customer.code  
+		
+		AND  awb_no=#awbNo# 
+		
+		AND (
+				(#agentName# IS NOT NULL AND customer.code_desc = #agentName#)
+		        OR #agentName# IS NULL
+		) 
+		
+		AND (upper(status) = upper('SUBMITTED') OR upper(status) = upper('WT_DIFFERENCE'))
+	</select> 
+	
+	<select id="Aims_mRCLEnquireQueryBasedOnAWBForAgent"
+		parameterClass="cargo.cms.external.bo.mRCLBulkHeader"
+		resultClass="cargo.cms.external.bo.mRCLBulkHeader">
+		
+		 <![CDATA[
+		select *
+        from   (select decode (c.status, 'V', ' ', c.rcl_no) as rclNo,
+                       substr (B.pre_rcl_no, 1, 4) || '-' || substr (B.pre_rcl_no, 5) as preRclNoFormat, B.AWB_NO as awbNo,
+                       B.pre_rcl_no as preRclNo, decode (B.PPK_TYPE, 'B', 'Bulk', 'P', 'Prepack', 'M', 'Mixed') as rclTypeDescription,
+                       B.PPK_TYPE as rclType, to_char (RCL_ISS_DATE, 'DDMONYY hh24:mi') as rclsubmissiondate, B.ULD_KEY as uldNo,
+                       upper (B.STATUS) as searchStatus, qcp_pcs as qcp_pcs, qcp_wt as qcp_wt, customer.code_desc as agentName,
+                       B.carr_code as carr, c.rcl_pcs as pieces, c.rcl_wt as weight, B.cust_no as custNo,
+                       upper (B.truck_no1) || decode (upper (B.truck_no2), null, '', ',') || B.truck_no2
+                       || decode (upper (B.truck_no3), null, '', ',') || B.truck_no3
+                       || decode (upper (B.truck_no4), null, '', ',') || B.truck_no4
+                       || decode (upper (B.truck_no5), null, '', ',') || B.truck_no5 as truckNo1,
+                       B.RCL_ISS_DATE
+                from   exp_pre_rcl_hd b, exp_rcl_hd c, cust_company customer
+                where  b.pre_rcl_no = c.pre_rcl_no(+)
+                and    B.cust_no = customer.code
+                and    B.awb_no = #awbNo#               
+                and   ((#custNo# is not null and customer.code = #custNo#) or #custNo# is null))
+                union all
+                select decode (c.status, 'V', ' ', c.rcl_no) as rclNo,
+                       substr (B.pre_rcl_no, 1, 4) || '-' || substr (B.pre_rcl_no, 5) as preRclNoFormat, #awbNo# as awbNo,
+                       B.pre_rcl_no as preRclNo, decode (B.PPK_TYPE, 'B', 'Bulk', 'P', 'Prepack', 'M', 'Mixed') as rclTypeDescription,
+                       B.PPK_TYPE as rclType, to_char (RCL_ISS_DATE, 'DDMONYY hh24:mi') as rclsubmissiondate, B.ULD_KEY as uldNo,
+                       upper (B.STATUS) as searchStatus, B.qcp_pcs as qcp_pcs, B.qcp_wt as qcp_wt, customer.code_desc as agentName,
+                       B.carr_code as carr, c.rcl_pcs as pieces, c.rcl_wt as weight, B.cust_no as custNo,
+                       upper (B.truck_no1) || decode (upper (B.truck_no2), null, '', ',') || B.truck_no2
+                       || decode (upper (B.truck_no3), null, '', ',') || B.truck_no3
+                       || decode (upper (B.truck_no4), null, '', ',') || B.truck_no4
+                       || decode (upper (B.truck_no5), null, '', ',') || B.truck_no5 as truckNo1,
+                       B.RCL_ISS_DATE
+                from   exp_pre_rcl_hd b, exp_rcl_hd c, cust_company customer
+                where  b.pre_rcl_no = c.pre_rcl_no(+)
+                and    B.cust_no = customer.code               
+                and    exists (select null 
+                               from   EXP_PRE_RCL_BRKDN d
+                               where  d.pre_rcl_no = b.pre_rcl_no 
+                               and    d.AWB_NO = #awbNo#)
+                and    ((#custNo# is not null and customer.code = #custNo#) or #custNo# is null)
+        order by 7, 6        
+        ]]> 	
+	</select>
+	
+	
+	
+	
+	
+	
+	
+
+	 <select id="Export_mRCLEnquireQueryBasedOnULDForAgent" 
+			 parameterClass="cargo.cms.external.bo.mRCLBulkHeader" 
+		 resultClass="cargo.cms.external.bo.mRCLBulkHeader">
+		SELECT substr(pre_rcl_no,1,4)||'-'||substr(pre_rcl_no,5) AS preRclNoFormat, 
+			 AWB_NO AS awbNo,PPK_TYPE AS rclType,pre_rcl_no as preRclNo, 
+			 decode(PPK_TYPE,'B','Bulk','P','Prepack','M','Mixed') AS rclTypeDescription,
+			 to_char(RCL_ISS_DATE,'DDMONYY     hh24:mi') AS rclsubmissiondate,
+			 ULD_key AS uldNo,upper(STATUS)  AS searchStatus,qcp_pcs as qcp_pcs,qcp_wt as qcp_wt,
+			 customer.code_desc as agentName,EXP_PRE_RCL_HD.carr_code as carr,ttl_pcs as pieces,
+			 ttl_wt as weight,cust_no as custNo,upper(EXP_PRE_RCL_HD.truck_no1)||
+			 decode(upper(EXP_PRE_RCL_HD.truck_no2),null,'',',')||
+			 EXP_PRE_RCL_HD.truck_no2||decode(upper(EXP_PRE_RCL_HD.truck_no3),null,'',',')||
+			 EXP_PRE_RCL_HD.truck_no3||decode(upper(EXP_PRE_RCL_HD.truck_no4),null,'',',')||
+			 EXP_PRE_RCL_HD.truck_no4||decode(upper(EXP_PRE_RCL_HD.truck_no5),null,'',',')||
+			 EXP_PRE_RCL_HD.truck_no5 as truckNo1,EXP_PRE_RCL_HD.carr_code as carr,qcp_pcs as qcp_pcs,
+			 qcp_wt as qcp_wt,ttl_pcs as pieces,ttl_wt as weight
+		FROM EXP_PRE_RCL_HD,cust_company customer 
+		WHERE uld_key =#uldNo# 
+			AND (   (#agentName# IS NOT NULL AND code_desc = #agentName#)
+					OR #agentName# IS NULL) 
+			AND EXP_PRE_RCL_HD.cust_no=customer.code
+			<dynamic>
+				<isNotEmpty property="searchStatus">
+				 	AND upper(status) in (upper(#searchStatus#),'WT_DIFFERENCE')
+				</isNotEmpty>	
+			</dynamic>
+		 	AND cust_no = #custNo#
+
+		ORDER BY RCL_ISS_DATE desc,PPK_TYPE
+	</select>
+
+	<select id="Aims_mRCLEnquireQueryBasedOnULDForAgent"
+		parameterClass="cargo.cms.external.bo.mRCLBulkHeader"
+		resultClass="cargo.cms.external.bo.mRCLBulkHeader">
+		<!--
+		SELECT stragg(stringdelim(c.rcl_no,',')) rclNo,
+		substr(B.pre_rcl_no,1,4)||'-'||substr(B.pre_rcl_no,5) AS
+		preRclNoFormat,B.AWB_NO AS awbNo, B.pre_rcl_no as preRclNo,
+		decode(B.PPK_TYPE,'B','Bulk','P','Prepack','M','Mixed') AS
+		rclTypeDescription, B.PPK_TYPE as
+		rclType,to_char(RCL_ISS_DATE,'DDMONYY hh24:mi') AS
+		rclsubmissiondate, B.ULD_KEY AS uldNo, upper( B.STATUS) AS
+		searchStatus,qcp_pcs as qcp_pcs, qcp_wt as
+		qcp_wt,customer.code_desc as agentName,B.carr_code as carr,
+		B.rcl_pcs as pieces,B.rcl_wt as weight, B.cust_no as
+		custNo,upper(B.truck_no1)
+		||decode(upper(B.truck_no2),null,'',',')||B.truck_no2
+		||decode(upper(B.truck_no3),null,'',',')||B.truck_no3
+		||decode(upper(B.truck_no4),null,'',',')||B.truck_no4
+		||decode(upper(B.truck_no5),null,'',',')||B.truck_no5 as
+		truckNo1, B.RCL_ISS_DATE FROM cust_company customer ,
+		EXP_PRE_RCL_HD B LEFT JOIN EXP_RCL_HD C ON C.PRE_RCL_NO =
+		B.PRE_RCL_NO AND B.STATUS = 'CONFIRMED' WHERE B.cust_no =
+		customer.code AND B.uld_Key=#uldNo# 
+		AND
+		customer.code = #custNo#
+		GROUP BY
+		substr(B.pre_rcl_no,1,4)||'-'||substr(B.pre_rcl_no,5),B.AWB_NO ,
+		B.pre_rcl_no ,
+		decode(B.PPK_TYPE,'B','Bulk','P','Prepack','M','Mixed') ,
+		B.PPK_TYPE,to_char(RCL_ISS_DATE,'DDMONYY hh24:mi'), B.ULD_KEY,
+		upper( B.STATUS),qcp_pcs ,
+		qcp_wt,customer.code_desc,B.carr_code, B.rcl_pcs,B.rcl_wt,
+		B.cust_no,upper(B.truck_no1)
+		||decode(upper(B.truck_no2),null,'',',')||B.truck_no2
+		||decode(upper(B.truck_no3),null,'',',')||B.truck_no3
+		||decode(upper(B.truck_no4),null,'',',')||B.truck_no4
+		||decode(upper(B.truck_no5),null,'',',')||B.truck_no5,
+		B.RCL_ISS_DATE ORDER BY B.RCL_ISS_DATE desc,B.PPK_TYPE
+	    -->
+		
+		<!--On 16th March 2007...Query has been changed for the defect number #5461# by ANAND+SUNDAR -->
+		
+		
+		select * from (
+        SELECT pkg_exp_val.get_mrcl_no(b.ppk_type, b.pre_rcl_no) as rclNo,
+		substr(B.pre_rcl_no,1,4)||'-'||substr(B.pre_rcl_no,5) AS
+		preRclNoFormat,B.AWB_NO AS awbNo, B.pre_rcl_no as preRclNo,
+		decode(B.PPK_TYPE,'B','Bulk','P','Prepack','M','Mixed') AS
+		rclTypeDescription, B.PPK_TYPE as
+		rclType,to_char(RCL_ISS_DATE,'DDMONYY hh24:mi') AS
+		rclsubmissiondate, B.ULD_KEY AS uldNo, upper( B.STATUS) AS
+		searchStatus,qcp_pcs as qcp_pcs, qcp_wt as
+		qcp_wt,customer.code_desc as agentName,B.carr_code as carr,
+		B.rcl_pcs as pieces,B.rcl_wt as weight, B.cust_no as
+		custNo,upper(B.truck_no1)
+		||decode(upper(B.truck_no2),null,'',',')||B.truck_no2
+		||decode(upper(B.truck_no3),null,'',',')||B.truck_no3
+		||decode(upper(B.truck_no4),null,'',',')||B.truck_no4
+		||decode(upper(B.truck_no5),null,'',',')||B.truck_no5 as
+		truckNo1, B.RCL_ISS_DATE FROM cust_company customer ,
+		EXP_PRE_RCL_HD B 
+		WHERE B.cust_no = customer.code AND B.uld_Key= #uldNo#
+		AND
+		customer.code = #custNo#
+		GROUP BY
+		substr(B.pre_rcl_no,1,4)||'-'||substr(B.pre_rcl_no,5),B.AWB_NO ,
+		B.pre_rcl_no ,
+		decode(B.PPK_TYPE,'B','Bulk','P','Prepack','M','Mixed') ,
+		B.PPK_TYPE,to_char(RCL_ISS_DATE,'DDMONYY hh24:mi'), B.ULD_KEY,
+		upper( B.STATUS),qcp_pcs ,
+		qcp_wt,customer.code_desc,B.carr_code, B.rcl_pcs,B.rcl_wt,
+		B.cust_no,upper(B.truck_no1)
+		||decode(upper(B.truck_no2),null,'',',')||B.truck_no2
+		||decode(upper(B.truck_no3),null,'',',')||B.truck_no3
+		||decode(upper(B.truck_no4),null,'',',')||B.truck_no4
+		||decode(upper(B.truck_no5),null,'',',')||B.truck_no5,
+		B.RCL_ISS_DATE 
+        union all		
+        SELECT pkg_exp_val.get_mrcl_no(b.ppk_type, b.pre_rcl_no) as rclNo,
+		substr(B.pre_rcl_no,1,4)||'-'||substr(B.pre_rcl_no,5) AS
+		preRclNoFormat,B.AWB_NO AS awbNo, B.pre_rcl_no as preRclNo,
+		decode(B.PPK_TYPE,'B','Bulk','P','Prepack','M','Mixed') AS
+		rclTypeDescription, B.PPK_TYPE as
+		rclType,to_char(RCL_ISS_DATE,'DDMONYY hh24:mi') AS
+		rclsubmissiondate, dtl.ULD_KEY AS uldNo, upper( B.STATUS) AS
+		searchStatus,qcp_pcs as qcp_pcs, qcp_wt as
+		qcp_wt,customer.code_desc as agentName,B.carr_code as carr,
+		B.rcl_pcs as pieces,B.rcl_wt as weight, B.cust_no as
+		custNo,upper(B.truck_no1)
+		||decode(upper(B.truck_no2),null,'',',')||B.truck_no2
+		||decode(upper(B.truck_no3),null,'',',')||B.truck_no3
+		||decode(upper(B.truck_no4),null,'',',')||B.truck_no4
+		||decode(upper(B.truck_no5),null,'',',')||B.truck_no5 as
+		truckNo1, B.RCL_ISS_DATE 
+		FROM cust_company customer , EXP_PRE_RCL_DTL dtl,
+		EXP_PRE_RCL_HD B 
+		WHERE B.cust_no = customer.code AND  b.pre_rcl_no = dtl.pre_rcl_no and dtl.uld_Key= #uldNo#
+		AND
+		customer.code = #custNo#
+		GROUP BY
+		substr(B.pre_rcl_no,1,4)||'-'||substr(B.pre_rcl_no,5),B.AWB_NO ,
+		B.pre_rcl_no ,
+		decode(B.PPK_TYPE,'B','Bulk','P','Prepack','M','Mixed') ,
+		B.PPK_TYPE,to_char(RCL_ISS_DATE,'DDMONYY hh24:mi'), dtl.ULD_KEY,
+		upper( B.STATUS),qcp_pcs ,
+		qcp_wt,customer.code_desc,B.carr_code, B.rcl_pcs,B.rcl_wt,
+		B.cust_no,upper(B.truck_no1)
+		||decode(upper(B.truck_no2),null,'',',')||B.truck_no2
+		||decode(upper(B.truck_no3),null,'',',')||B.truck_no3
+		||decode(upper(B.truck_no4),null,'',',')||B.truck_no4
+		||decode(upper(B.truck_no5),null,'',',')||B.truck_no5,
+		B.RCL_ISS_DATE
+		) ORDER BY 7,6
+		
+	</select>
+	
+	<select id="export_sqlsummaryForAgent" 
+			parameterClass="cargo.cms.external.bo.mRCLBulkHeader" 
+		resultClass="cargo.cms.external.bo.mRCLBulkHeader">
+      SELECT TO_DATE (A.rcl_iss_date)  , A.pre_rcl_no AS prerclno,substr(pre_rcl_no,1,4)||'-'
+		   ||substr(pre_rcl_no,5) AS preRclNoFormat,
+	       A.carr_code AS carr, A.awb_no AS awbno, CONCAT(CONCAT(SUBSTR(A.AWB_NO,0,3),'-'),
+		   SUBSTR(A.AWB_NO,4)) AS awbNoDisplay,
+	       A.ppk_type AS rcltype, decode(A.PPK_TYPE,'B','Bulk','P','Prepack','M','Mixed') AS rclTypeDescription,
+		   A.awb_dest AS destination, to_char(RCL_ISS_DATE,'DDMONYY     hh24:mi') AS rclsubmissiondate,
+		   A.uld_type AS uldtype, A.uld_no AS uldseqno,A.uld_key as uldNo, 
+			upper(A.status) AS searchstatus,A.qcp_pcs as qcp_pcs,A.qcp_wt as qcp_wt,A.carr_code as carr,
+			A.ttl_pcs as pieces,A.ttl_wt as weight,	upper(a.truck_no1)||decode(upper(a.truck_no2),null,'  ',' , ')
+			||a.truck_no2||decode(upper(a.truck_no3),null,'  ',' , ')
+			||a.truck_no3||decode(upper(a.truck_no4),null,'  ',' , ')
+			||a.truck_no4||decode(upper(a.truck_no5),null,'  ',' , ')||a.truck_no5 as truckNo1,
+
+		   (SELECT B.code_desc FROM CUST_COMPANY B WHERE A.CUST_NO = B.CODE) as agentName																														
+			  FROM EXP_PRE_RCL_HD A where  A.CARR_CODE = NVL(#carr#,A.CARR_CODE)
+				  AND A.AWB_DEST = NVL(#destination#,A.AWB_DEST)
+				  AND A.PRE_RCL_NO = NVL(#preRclNo#,A.PRE_RCL_NO)
+				  AND trunc(A.RCL_ISS_DATE) BETWEEN TO_DATE(#issueDateFrom#,'DDMONYY') 
+				  AND TO_DATE(#issueDateTo#,'DDMONYY')
+				  AND A.Status=NVL(upper(#searchStatus#),A.Status)
+	  AND A.QCP_IND=NVL(#qcpIndicator#,A.QCP_IND)
+	  AND  A.PPK_TYPE = DECODE(#rclType#,'A',A.PPK_TYPE,'',A.PPK_TYPE,#rclType#)
+	  AND  (DECODE(#truckNo1#,NULL,'1',#truckNo1#) = DECODE('T1',NULL,DECODE(#truckNo1#
+			||#truckNo2#||#truckNo3#||#truckNo4#||#truckNo5#,'','1','2'),A.TRUCK_NO1)
+		   OR DECODE(#truckNo2#,NULL,'1',#truckNo2#) = DECODE(#truckNo2#,NULL,DECODE(#truckNo1#
+			||#truckNo2#||#truckNo3#||#truckNo4#||#truckNo5#,'','1','2'),A.TRUCK_NO2)
+		   OR DECODE(#truckNo3#,NULL,'1',#truckNo3#) = DECODE(#truckNo3#,NULL,DECODE(#truckNo1#||#truckNo2#
+			||#truckNo3#||#truckNo4#||#truckNo5#,'','1','2'),A.TRUCK_NO3)
+		   OR DECODE(#truckNo4#,NULL,'1',#truckNo4#) = DECODE(#truckNo4#,NULL,DECODE(#truckNo1#||#truckNo2#
+			||#truckNo3#||#truckNo4#||#truckNo5#,'','1','2'),A.TRUCK_NO4)
+		   OR DECODE(#truckNo5#,NULL,'1',#truckNo5#) = DECODE(#truckNo5#,NULL,DECODE(#truckNo1#||#truckNo2#
+			||#truckNo3#||#truckNo4#||#truckNo5#,'','1','2'),A.TRUCK_NO5)
+	 )
+	 AND cust_no = #custNo#
+	 <isNotNull prepend = "AND" property="agentName">
+      EXISTS(SELECT B.code_desc as agentName 
+                 FROM CUST_COMPANY B
+                WHERE A.CUST_NO = B.CODE
+                  AND B.code_desc LIKE #agentName#
+      <isNotNull prepend ="AND" property="iataCode">   
+                B.CO_IATA_CODE = #iataCode#
+      </isNotNull>)
+   </isNotNull>
+   <isNull prepend = "AND" property="agentName">
+      1=1
+      <isNotNull prepend ="AND" property="iataCode">   
+        EXISTS(SELECT B.code_desc as agentName,B.CO_IATA_CODE as iataCode 
+                 FROM CUST_COMPANY B
+                WHERE A.CUST_NO = B.CODE
+                  AND B.CO_IATA_CODE = #iataCode#)
+      </isNotNull>
+   </isNull>
+	   order by rclSubmissionDate desc,A.PPK_TYPE
+	</select>
+	 
+	  
+	 <select id="export_checkuldinventory_forupdate"  parameterClass="java.lang.String" resultClass="java.lang.String">
+    	 select NVL(brkdn_yn,'N') from exp_rcl_hd  where pre_rcl_no = #preRclNo# and status not in ('V','R')
+  	 </select> 
+	  
+	  
+	<select id="Aims_sqlsummaryForAgent"
+		parameterClass="cargo.cms.external.bo.mRCLBulkHeader"
+		resultClass="cargo.cms.external.bo.mRCLBulkHeader">
+		<![CDATA[
+		select decode (c.status, 'V', ' ', c.rcl_no) as rclNo,
+		       substr (B.pre_rcl_no, 1, 4) || '-' || substr (B.pre_rcl_no, 5) as preRclNoFormat, B.AWB_NO as awbNo,
+		       B.pre_rcl_no as preRclNo, decode (B.PPK_TYPE, 'B', 'Bulk', 'P', 'Prepack', 'M', 'Mixed') as rclTypeDescription,
+		       B.PPK_TYPE as rclType, to_char (RCL_ISS_DATE, 'DDMONYY hh24:mi') as rclsubmissiondate, B.ULD_KEY as uldNo,
+		       upper (B.STATUS) as searchStatus, qcp_pcs as qcp_pcs, qcp_wt as qcp_wt, customer.code_desc as agentName, B.carr_code as carr,
+		       c.rcl_pcs as pieces, c.rcl_wt as weight, B.cust_no as custNo,
+		       upper (B.truck_no1) || decode (upper (B.truck_no2), null, '', ',') || B.truck_no2
+		       || decode (upper (B.truck_no3), null, '', ',') || B.truck_no3 || decode (upper (B.truck_no4), null, '', ',')
+		       || B.truck_no4 || decode (upper (B.truck_no5), null, '', ',') || B.truck_no5 as truckNo1,
+		       qcp_pcs as qcp_pcs, qcp_wt as qcp_wt, ttl_pcs as pieces, ttl_wt as weight
+		from   EXP_PRE_RCL_HD b, EXP_RCL_HD c, cust_company customer
+		where  b.pre_rcl_no = c.pre_rcl_no(+)
+		and  B.cust_no = customer.code
+		and    B.STATUS = nvl(#searchStatus#, B.STATUS)
+		and    B.PPK_TYPE = decode (#rclType#, 'A', B.PPK_TYPE, '', B.PPK_TYPE, #rclType#)
+		and    trunc(b.cr_date) between nvl(to_date(#issueDateFrom#,'DDMONYY'), b.cr_date) and nvl(TO_DATE(#issueDateTo#,'DDMONYY'), nvl(to_date(#issueDateFrom#,'DDMONYY'), b.cr_date))
+		and    ((#custNo# is not null and customer.code = #custNo#) or #custNo# is null)
+		and    B.CARR_CODE = nvl(#carr#,B.CARR_CODE)
+		ORDER BY b.cr_date desc, B.PPK_TYPE
+		]]>
+	</select>
+
+	<!-- Updated By Murugan on 17 June 06 starts -->
+	<select id="Export_mRCLEnquireQueryForMixedForAgent" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="cargo.cms.external.bo.mRCLBulkHeader">
+		SELECT TO_char (rcl_iss_date,'ddmonyy'), substr(preheader.pre_rcl_no,1,4)||'-'||substr(preheader.pre_rcl_no,5) AS preRclNoFormat ,
+       preheader.carr_code AS carr, awb_no AS awbno,preheader.pre_rcl_no AS preRclNo ,
+       to_char(RCL_ISS_DATE,'DDMONYY     hh24:mi') AS rclsubmissiondate, ppk_type AS rcltype, decode(PPK_TYPE,'B','Bulk','P','Prepack','M','Mixed') AS rclTypeDescription,
+       awb_dest AS destination, to_char(RCL_ISS_DATE,'DDMONYY')||' '||to_char(RCL_ISS_DATE,'hh24:mm') AS rclsubmissiondate,
+       uld_type AS uldtype, uld_no AS uldseqno,uld_key as uldNo, upper(trim(status)) AS searchStatus,cust_no as custNo,customer.code_desc as agentName,upper(preheader.truck_no1)||decode(upper(preheader.truck_no2),null,'',',')||preheader.truck_no2||decode(upper(preheader.truck_no3),null,'',',')||preheader.truck_no3||decode(upper(preheader.truck_no4),null,'',',')||preheader.truck_no4||decode(upper(preheader.truck_no5),null,'',',')||preheader.truck_no5 as truckNo1,qcp_pcs as qcp_pcs,qcp_wt as qcp_wt,ttl_pcs as pieces,ttl_wt as weight
+  FROM exp_pre_rcl_hd preheader, cust_company customer
+ WHERE preheader.cust_no = customer.code
+   AND trunc(rcl_iss_date) BETWEEN  (NVL (decode(#issueDateFrom#,null,null,to_date(#issueDateFrom#,'ddmonyy ')),
+                                                    rcl_iss_date 
+                                                   ))
+                                              
+                                  AND (NVL (decode(#issueDateTo#,null,null,to_date(#issueDateTo#,'ddmonyy')),
+                                                    rcl_iss_date
+                                                   ))
+                                             
+   AND (   (#agentName# IS NOT NULL AND customer.code_desc = #agentName#)
+        OR #agentName# IS NULL
+       )
+   AND (   (#iataCode# IS NOT NULL AND co_iata_code = #iataCode#)
+        OR #iataCode# IS NULL
+       )
+	AND	PPK_TYPE =DECODE(#rclType#,'',PPK_TYPE,'A',PPK_TYPE, #rclType#)
+
+   AND (upper(status) = upper('SUBMITTED') OR upper(status) = upper('WT_DIFFERENCE'))
+	
+	AND cust_no = #custNo#
+	
+	order by RCL_ISS_DATE desc,PPK_TYPE
+	
+	</select>
+	<!-- Updated By Murugan on 17 June 06 ends -->
+
+	<select id="Export_mRCLEnquireQueryBasedOnOthersForAgent" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="cargo.cms.external.bo.mRCLBulkHeader">
+	   SELECT to_char (rcl_iss_date,'ddmonyy'), substr(preheader.pre_rcl_no,1,4)||'-'||substr(preheader.pre_rcl_no,5) AS preRclNoFormat,
+       preheader.carr_code AS carr, awb_no AS awbno,preheader.pre_rcl_no as prerclNo,
+       to_char(RCL_ISS_DATE,'DDMONYY     hh24:mi') AS rclsubmissiondate, ppk_type AS rcltype,
+       decode(PPK_TYPE,'B','Bulk','P','Prepack','M','Mixed') AS rclTypeDescription,
+       awb_dest AS destination, 
+       uld_type AS uldtype, uld_no AS uldseqno,uld_key as uldNo, upper(trim(status)) AS searchStatus,
+       cust_no as custNo,customer.code_desc as agentName,upper(preheader.truck_no1)||decode(upper(preheader.truck_no2),null,'',',')||preheader.truck_no2||decode(upper(preheader.truck_no3),null,'',',')||preheader.truck_no3||decode(upper(preheader.truck_no4),null,'',',')||preheader.truck_no4||decode(upper(preheader.truck_no5),null,'',',')||preheader.truck_no5 as truckNo1,qcp_pcs as qcp_pcs,qcp_wt as qcp_wt,ttl_pcs as pieces,ttl_wt as weight
+       FROM exp_pre_rcl_hd preheader, cust_company customer
+       WHERE preheader.cust_no = customer.code
+       AND trunc(rcl_iss_date) BETWEEN  (NVL (decode(#issueDateFrom#,null,null,to_date(#issueDateFrom#,'ddmonyy ')),
+                                                    rcl_iss_date
+                                                   ))
+       AND (NVL (decode(#issueDateTo#,null,null,to_date(#issueDateTo#,'ddmonyy')),
+                                                    rcl_iss_date
+                                                   ))
+                                             
+      AND (   (#agentName# IS NOT NULL AND customer.code_desc = #agentName#)
+        OR #agentName# IS NULL
+       )
+      AND (   (#iataCode# IS NOT NULL AND co_iata_code = #iataCode#)
+        OR #iataCode# IS NULL
+       )
+   AND	PPK_TYPE =DECODE(#rclType#,'',PPK_TYPE,'A',PPK_TYPE, #rclType#)
+   AND (upper(status) = upper('SUBMITTED') OR upper(status) = upper('WT_DIFFERENCE'))
+   AND cust_no = #custNo#
+    order by RCL_ISS_DATE desc,PPK_TYPE
+	</select>
+
+	<!-- agent query ends -->
+	
+    
+	
+	
+	
+	
+      
+	 <select id="Export_mRCLEnquireQueryForMixed" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="cargo.cms.external.bo.mRCLBulkHeader">
+		SELECT TO_char (rcl_iss_date,'ddmonyy'), substr(preheader.pre_rcl_no,1,4)||'-'||substr(preheader.pre_rcl_no,5) AS preRclNoFormat ,
+       preheader.carr_code AS carr, awb_no AS awbno,preheader.pre_rcl_no AS preRclNo ,
+       to_char(RCL_ISS_DATE,'DDMONYY     hh24:mi') AS rclsubmissiondate, ppk_type AS rcltype, decode(PPK_TYPE,'B','Bulk','P','Prepack','M','Mixed') AS rclTypeDescription,
+       awb_dest AS destination, to_char(RCL_ISS_DATE,'DDMONYY')||' '||to_char(RCL_ISS_DATE,'hh24:mm') AS rclsubmissiondate,
+       uld_type AS uldtype, uld_no AS uldseqno,uld_key as uldNo, upper(trim(status)) AS searchStatus,cust_no as custNo,customer.code_desc as agentName,upper(preheader.truck_no1)||decode(upper(preheader.truck_no2),null,'',',')||preheader.truck_no2||decode(upper(preheader.truck_no3),null,'',',')||preheader.truck_no3||decode(upper(preheader.truck_no4),null,'',',')||preheader.truck_no4||decode(upper(preheader.truck_no5),null,'',',')||preheader.truck_no5 as truckNo1,qcp_pcs as qcp_pcs,qcp_wt as qcp_wt,ttl_pcs as pieces,ttl_wt as weight
+  FROM exp_pre_rcl_hd preheader, cust_company customer
+ WHERE preheader.cust_no = customer.code
+   AND trunc(rcl_iss_date) BETWEEN  (NVL (decode(#issueDateFrom#,null,null,to_date(#issueDateFrom#,'ddmonyy ')),
+                                                    rcl_iss_date 
+                                                   ))
+                                              
+                                  AND (NVL (decode(#issueDateTo#,null,null,to_date(#issueDateTo#,'ddmonyy')),
+                                                    rcl_iss_date
+                                                   ))
+                                             
+   AND (   (#agentName# IS NOT NULL AND customer.code_desc = #agentName#)
+        OR #agentName# IS NULL
+       )
+   AND (   (#iataCode# IS NOT NULL AND co_iata_code = #iataCode#)
+        OR #iataCode# IS NULL
+       )
+	AND	PPK_TYPE =DECODE(#rclType#,'',PPK_TYPE,'A',PPK_TYPE, #rclType#)
+	order by RCL_ISS_DATE desc,PPK_TYPE
+	
+  </select>
+     
+   <!--  changes starts here -->
+  
+    
+    
+	
+	
+  
+ 
+	 <select id="Export_selectmRCLDetailMixedById_Enquire"
+		parameterClass="cargo.cms.external.bo.mRCLBulkHeader"
+		resultClass="cargo.cms.external.bo.mRCLMixedPrepackDetail">
+		select 'NOSUM'as diff, AWB_NO as awbNo, DEST as dest, PCS as pieces, WEIGHT as weight
+		FROM   exp_pre_rcl_brkdn 
+		WHERE  pre_rcl_no= #preRclNo#
+		and not exists (select null 
+		                from   EXP_RCL_BRKDN 
+		                where  rcl_no = #rclNo#)
+		union 
+		SELECT 'NOSUM'as diff, AWB_NO as awbNo, DEST as dest, PCS as pieces, WEIGHT as weight
+		FROM   EXP_RCL_BRKDN 
+		where  rcl_no = #rclNo#
+		union  
+		select 'SUM'as diff, null as awbNo, null dest, sum(pcs) pieces, sum(weight) weight
+		from   (select PCS, weight
+				FROM   exp_pre_rcl_brkdn 
+				WHERE  pre_rcl_no= #preRclNo#
+				and not exists (select null 
+				                from   EXP_RCL_BRKDN 
+				                where  rcl_no = #rclNo#)
+				union 
+				SELECT PCS, weight
+				FROM   EXP_RCL_BRKDN 
+				where  rcl_no = #rclNo#)
+		 
+	 </select>
+	 
+	 
+
+	 
+
+	<select id="Export_selectmRCLDetailBulkById_Enquire"
+		parameterClass="cargo.cms.external.bo.mRCLBulkHeader"
+		resultClass="cargo.cms.external.bo.mRCLBulkDetail">
+		SELECT 'DIM' as diff, A.LENGTH, A.WIDTH, A.HEIGHT, A.PCS as pieces ,0 as rclPcs,'' as rclNo,0 as rclWt,to_char ('' , 'DD MON YY hh24:mi')  as rclDate
+        FROM EXP_RCL_DMN A, EXP_RCL_HD B
+        WHERE B.RCL_NO  = A.RCL_NO 
+        AND B.PRE_RCL_NO = #preRclNo#        
+		UNION ALL
+		SELECT 'DIM' as diff, A.LENGTH, A.WIDTH, A.HEIGHT, A.PCS as pieces ,0 as rclPcs,'' as rclNo,0 as rclWt,to_char ('' , 'DDMONYY hh24:mi')  as rclDate
+        FROM EXP_PRE_RCL_DMN A, EXP_PRE_RCL_HD B
+        WHERE B.PRE_RCL_NO  = A.PRE_RCL_NO 
+        AND B.PRE_RCL_NO = #preRclNo#
+		and not exists (select null from exp_rcl_hd where pre_rcl_no = #preRclNo#)		
+		UNION ALL
+         SELECT 'INFO' as diff, 0, 0, 0, 0,B.RCL_PCS as rclPcs ,substr(B.RCL_NO,1,4)||decode(substr(B.RCL_NO,5),null,null,'-'||substr(B.RCL_NO,5)) as rclNo, B.RCL_WT as rclWt, to_char (B.RCL_DATE , 'DD MON YY hh24:mi') as rclDate
+        FROM EXP_RCL_HD B
+        WHERE B.PRE_RCL_NO = #preRclNo#
+        UNION ALL
+	    SELECT 'SUMPIECES' as diff, 0, 0, 0, sum(A.PCS) as pieces ,0 as rclPcs,'' as rclNo,0 as rclWt,to_char ('' , 'DD MON YY hh24:mi')  as rclDate
+        FROM EXP_RCL_DMN A, EXP_RCL_HD B
+        WHERE B.RCL_NO  = A.RCL_NO 
+        AND B.PRE_RCL_NO = #preRclNo#     
+     </select>
+	
+	 	
+	 <select id="Export_selectmRCLDetailPrepackByIdPrint"
+		parameterClass="cargo.cms.external.bo.mRCLBulkHeader"
+		resultClass="cargo.cms.external.bo.mRCLPrepackDetail">
+	
+	   <!--  SELECT   substr(A.RCL_NO,1,4)||decode(substr(A.RCL_NO,5),null,null,'-'||substr(A.RCL_NO,5)) as rclNo,substr(A.PRE_RCL_NO,1,4)||'-'||substr(A.PRE_RCL_NO,5) as preRCLNO,substr(A.AWB_NO,1,3)||decode(substr(A.AWB_NO,4),null,null,'-'||substr(A.AWB_NO,4)) as awbNo, B.ULD_KEY as ULDNo, A.AWB_DEST as dest, A.RCL_PCS as rclPcs, 
+	    A.RCL_WT as rclWt,TO_CHAR(A.RCL_DATE, 'DDMONYY hh24:mi')as rclDate
+        FROM   EXP_RCL_HD A, EXP_RCL_DTL B  
+        WHERE A.PRE_RCL_NO = #preRclNo#
+        AND A.RCL_NO       = B.RCL_NO
+       -->
+        
+        
+        SELECT   substr(A.RCL_NO,1,6)||decode(substr(A.RCL_NO,7),null,null,'-'||substr(A.RCL_NO,5)) as rclNo,substr(A.PRE_RCL_NO,1,4)||'-'||substr(A.PRE_RCL_NO,5) as preRCLNO,substr(A.AWB_NO,1,3)||decode(substr(A.AWB_NO,4),null,null,'-'||substr(A.AWB_NO,4)) as awbNo,
+	    A.ULD_KEY as ULDNo, A.AWB_DEST as dest, A.RCL_PCS as rclPcs, A.RCL_NO as rclNoRept, A.PRE_RCL_NO as preRclNoRept,
+	    A.RCL_WT as rclWt,TO_CHAR(A.RCL_DATE, 'DDMONYY hh24:mi')as rclDate
+        FROM   EXP_RCL_HD A  
+        WHERE A.RCL_NO = #rclNo#
+        
+        
+        
+      </select>
+     <!--  changes ends here --> 
+	
+
+  
+
+	<select id="export_sqlcheckuldtype" parameterClass="java.lang.String" resultClass="java.lang.String">
+		SELECT CODE FROM MAST_ULD_TYPE WHERE CODE=#PARAM#
+	</select>
+
+	<select id="export_sqlcheckuldcarrier"  parameterClass="java.lang.String" resultClass="java.lang.String">
+		SELECT CODE FROM MAST_CARRIER WHERE CODE=#PARAM#
+	</select>
+
+ 
+  
+	
+	<select id="checkAwbWithCarr" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="java.lang.String">
+		select code from mast_awb_prefix where carr_code=#carr# and rownum=1
+	</select>
+	
+<update id="Export_updatemRCLSequence">
+  UPDATE REGISTER_TR_NO 
+     SET TR_NO = 1, 
+      CR_DATE = sysdate
+	   WHERE TR_TYPE = 'MR'
+</update>
+
+<update id="Export_updatemRCLSequenceNext" parameterClass="cargo.cms.external.bo.mRCLBulkHeader">
+  UPDATE REGISTER_TR_NO 
+     SET TR_NO = TR_NO+1, 
+      CR_DATE = sysdate
+	   WHERE TR_TYPE = 'MR'
+ </update>
+
+<select id="Export_selectMaxmRCLNumber" resultClass="cargo.cms.external.bo.mRCLBulkHeader">
+SELECT TR_TYPE,TO_CHAR(CR_DATE,'YYYYMMDD') as vDATE,TO_CHAR(SYSDATE,'YYYYMMDD') as vSYSDATE,TR_NO as vTRNO 
+FROM REGISTER_TR_NO WHERE TR_TYPE= 'MR'
+</select>
+ <select id="Export_selectAWBDestination" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="cargo.cms.external.bo.mRCLBulkHeader">
+     select  awb_dest as destination,count(awb_dest) as totalRecord from exp_pre_rcl_hd where awb_no=#awbNo# group by awb_dest
+ </select>
+
+
+
+<delete id="Export_deletePreRCLBulkDetail_docLine" parameterClass="cargo.cms.external.bo.mRCLBulkHeader">
+	delete from  EXP_PRE_RCL_DMN
+	WHERE  PRE_RCL_NO  = #preRclNo#
+	<iterate prepend="AND" property="arlDocLineNo" open="(" close=")" conjunction="AND" >
+		DOC_LINE_NO != $arlDocLineNo[]$
+	</iterate>	
+</delete>
+
+
+
+<!-- update query for (PRE-PACK)  Interface  create on 04/JAN/2007 -->
+<update id="Export_updatePreRCLPrepackDetail_forInterface" parameterClass="cargo.cms.external.bo.mRCLPrepackDetail">
+UPDATE EXP_PRE_RCL_DTL
+SET    PRE_RCL_NO  = #preRCLNO#,
+       ULD_TYPE    = #uldType#,
+       ULD_NO      = #uldSeqNo#,
+       ULD_CARR    = #uldCarrier#,
+       ULD_KEY     = #ULDNo#,
+       CONTR_CODE  = #contorCode#,
+       PCS         = #pieces#,
+       GROSS_WT    = #grossWeight#,
+       TR_STATUS   = #trStatus#,
+       LM_USER_ID  = #lastModifiedBy#,
+       LM_DATE     = sysdate
+WHERE  PRE_RCL_NO  = #preRCLNO#
+AND DOC_LINE_NO = #docLineNo#
+</update>
+
+<delete id="Export_deletePreRCLPrepackDetail_docLine" parameterClass="cargo.cms.external.bo.mRCLBulkHeader">
+	delete from  EXP_PRE_RCL_DTL
+	WHERE  PRE_RCL_NO  = #preRclNo#
+	<iterate prepend="AND" property="arlDocLineNo" open="(" close=")" conjunction="AND" >
+		DOC_LINE_NO != $arlDocLineNo[]$
+	</iterate>	
+</delete>
+
+
+
+
+<!--update query (MIX PREPACK) for interface created on 04/JAN/2007  -->
+<update id="Export_updateMixedPrepackDetail_forInterface" parameterClass="cargo.cms.external.bo.mRCLMixedPrepackDetail">
+UPDATE EXP_PRE_RCL_BRKDN
+SET    PRE_RCL_NO         = #preRCLNO#,
+       AWB_NO             = #awbNo#,
+       DUMMY_AWB_YN       = #dummyAwbNo#,
+       DEST               = #destination#,
+       PCS                = #pieces#,
+       WEIGHT             = #netWeight#,
+       TR_TYPE            = #trType#,
+       TR_STATUS          = #trStatus#,
+       LM_USER_ID         = #lastModifiedBy#,
+       LM_DATE            = sysdate,
+       QCP_IND            = #qcpIndicator#,
+       QCP_CONTACT_PERSON = #qcp_contactPerson#,
+       QCP_CONTACT_NO     = #qcp_contactNo#,
+       QCP_FAX_NO         = #qcp_faxNo#,
+       QCP_PCS            = #qcp_pcs#,
+       QCP_WT             = #qcp_wt#,
+       QCP_GOODS_DESC     = #qcp_goods_desc#,
+       QCP_DELV_DATE      = to_date(#qcp_delivery_date#,'ddmonyy'),
+       QCP_DELV_TIME      = #qcp_delv_time#,
+       tr_type_evt = 'ERAMIX'
+WHERE  PRE_RCL_NO         = #preRCLNO#
+AND    DOC_LINE_NO = #docLineNo#
+</update>
+
+<delete id="Export_deletePreRCLMixedDetail_docLine" parameterClass="cargo.cms.external.bo.mRCLBulkHeader">
+	delete from  EXP_PRE_RCL_BRKDN
+	WHERE  PRE_RCL_NO  = #preRclNo#
+	<iterate prepend="AND" property="arlDocLineNo" open="(" close=")" conjunction="AND" >
+		DOC_LINE_NO != $arlDocLineNo[]$
+	</iterate>	
+</delete>
+
+
+
+
+
+<update id="updateMixedPrepackDetailafterCAR" parameterClass="cargo.cms.external.bo.mRCLMixedPrepackDetail">
+UPDATE EXP_PRE_RCL_BRKDN
+SET    PRE_RCL_NO         = #preRCLNO#,
+       DOC_LINE_NO        = #docLineNo#,
+       AWB_NO             = #awbNo#,
+       DUMMY_AWB_YN       = #dummyAwbNo#,
+       DEST               = #destination#,
+       PCS                = #pieces#,
+       WEIGHT             = #netWeight#,
+       TR_STATUS          = #trStatus#,
+       LM_USER_ID         = #lastModifiedBy#,
+       LM_DATE            = #lastmodifiedDate#,
+WHERE  PRE_RCL_NO         = #preRCLNO#
+AND    DOC_LINE_NO        = #docLineNo#
+</update>
+<select id="sqlcheckcarrier"  parameterClass="java.lang.String" resultClass="java.lang.String">
+		SELECT CODE FROM MAST_CARRIER WHERE CODE=#carr# and owned_carr='Y'
+	</select>
+	
+	<select id="sqlcheckdestination" parameterClass="java.lang.String" resultClass="java.lang.String">
+       SELECT CODE as destination FROM MAST_ARPT where code=#destinatin#
+	</select>
+	
+	
+	<select id="export_sqlfetchawbprefix" parameterClass="java.lang.String" resultClass="java.lang.Integer">
+	 SELECT count(CODE) as awbNo1 FROM MAST_AWB_PREFIX WHERE CODE = #awbNo1#
+	</select>
+    
+	<delete id="Export_deletemRCLHeader" parameterClass="cargo.cms.external.bo.mRCLBulkHeader">
+        delete from exp_pre_rcl_hd where pre_rcl_no=#preRclNo#
+	</delete>
+	<delete id="Export_deletemRCLBulkDetail" parameterClass="cargo.cms.external.bo.mRCLBulkHeader">
+	delete from exp_pre_rcl_dmn where pre_rcl_no=#preRclNo#
+	</delete>
+	<delete id="Export_deletemRCLPrepackDetail" parameterClass="cargo.cms.external.bo.mRCLBulkHeader">
+	delete from exp_pre_rcl_dtl where pre_rcl_no=#preRclNo#
+	</delete>
+	<delete id="Export_deletemRCLMixedDetail" parameterClass="cargo.cms.external.bo.mRCLBulkHeader">
+	delete from exp_pre_rcl_brkdn where pre_rcl_no=#preRclNo#
+	</delete>
+	<select id="export_sqlcheckvalidawb" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="java.lang.Integer">
+	 select count(pre_rcl_no) from exp_pre_rcl_hd where awb_no=#awbNo# and PPK_TYPE &lt;&gt;#rclType#
+	</select>
+	<!-- 17th MAY 06 QUERY UPDATED FOR GETTING including truck number-->
+	<select id="export_sqlsummary" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="cargo.cms.external.bo.mRCLBulkHeader">
+      SELECT TO_DATE (A.rcl_iss_date)  , A.pre_rcl_no AS prerclno,substr(pre_rcl_no,1,4)||'-'||substr(pre_rcl_no,5) AS preRclNoFormat,
+       A.carr_code AS carr, A.awb_no AS awbno, CONCAT(CONCAT(SUBSTR(A.AWB_NO,0,3),'-'),SUBSTR(A.AWB_NO,4)) as awbNoDisplay,
+        A.ppk_type AS rcltype, decode(A.PPK_TYPE,'B','Bulk','P','Prepack','M','Mixed') AS rclTypeDescription,
+       A.awb_dest AS destination, to_char(RCL_ISS_DATE,'DDMONYY     hh24:mi') AS rclsubmissiondate,
+       A.uld_type AS uldtype, A.uld_no AS uldseqno,A.uld_key as uldNo, upper(A.status) AS searchstatus,A.qcp_pcs as qcp_pcs,A.qcp_wt as qcp_wt,A.carr_code as carr,A.ttl_pcs as pieces,A.ttl_wt as weight,	upper(a.truck_no1)||decode(upper(a.truck_no2),null,'',',')||a.truck_no2||decode(upper(a.truck_no3),null,'',',')||a.truck_no3||decode(upper(a.truck_no4),null,'',',')||a.truck_no4||decode(upper(a.truck_no5),null,'',',')||a.truck_no5 as truckNo1,
+	   (SELECT B.code_desc FROM CUST_COMPANY B WHERE A.CUST_NO = B.CODE) as agentName
+	  FROM EXP_PRE_RCL_HD A where
+	  A.CARR_CODE = NVL(#carr#,A.CARR_CODE)
+	  AND A.AWB_DEST = NVL(#destination#,A.AWB_DEST)
+	  AND A.PRE_RCL_NO = NVL(#preRclNo#,A.PRE_RCL_NO)
+	  AND trunc(A.RCL_ISS_DATE) BETWEEN TO_DATE(#issueDateFrom#,'DDMONYY') AND TO_DATE(#issueDateTo#,'DDMONYY')
+	  AND A.Status=NVL(upper(#searchStatus#),A.Status)
+	  AND A.QCP_IND=NVL(#qcpIndicator#,A.QCP_IND)
+	  AND  A.PPK_TYPE = DECODE(#rclType#,'A',A.PPK_TYPE,'',A.PPK_TYPE,#rclType#)
+	  AND (DECODE(#truckNo1#,NULL,'1',#truckNo1#) = DECODE('T1',NULL,DECODE(#truckNo1#||#truckNo2#||#truckNo3#||#truckNo4#||#truckNo5#,'','1','2'),A.TRUCK_NO1)
+	  OR DECODE(#truckNo2#,NULL,'1',#truckNo2#) = DECODE(#truckNo2#,NULL,DECODE(#truckNo1#||#truckNo2#||#truckNo3#||#truckNo4#||#truckNo5#,'','1','2'),A.TRUCK_NO2)
+	  OR DECODE(#truckNo3#,NULL,'1',#truckNo3#) = DECODE(#truckNo3#,NULL,DECODE(#truckNo1#||#truckNo2#||#truckNo3#||#truckNo4#||#truckNo5#,'','1','2'),A.TRUCK_NO3)
+	  OR DECODE(#truckNo4#,NULL,'1',#truckNo4#) = DECODE(#truckNo4#,NULL,DECODE(#truckNo1#||#truckNo2#||#truckNo3#||#truckNo4#||#truckNo5#,'','1','2'),A.TRUCK_NO4)
+	  OR DECODE(#truckNo5#,NULL,'1',#truckNo5#) = DECODE(#truckNo5#,NULL,DECODE(#truckNo1#||#truckNo2#||#truckNo3#||#truckNo4#||#truckNo5#,'','1','2'),A.TRUCK_NO5))
+   <isNotNull prepend = "AND" property="agentName">
+      EXISTS(SELECT B.code_desc as agentName 
+                 FROM CUST_COMPANY B
+                WHERE A.CUST_NO = B.CODE
+                  AND B.code_desc LIKE #agentName#
+      <isNotNull prepend ="AND" property="iataCode">   
+                B.CO_IATA_CODE = #iataCode#
+      </isNotNull>)
+   </isNotNull>
+   <isNull prepend = "AND" property="agentName">
+      1=1
+      <isNotNull prepend ="AND" property="iataCode">   
+        EXISTS(SELECT B.code_desc as agentName,B.CO_IATA_CODE as iataCode 
+                 FROM CUST_COMPANY B
+                WHERE A.CUST_NO = B.CODE
+                  AND B.CO_IATA_CODE = #iataCode#)
+      </isNotNull>
+   </isNull>
+   order by rclSubmissionDate desc,A.PPK_TYPE
+	</select>
+	<!--  added by  on 26th nov 06 -->
+	
+	
+	
+	
+	
+	
+	
+	<!-- 17th MAY 06 QUERY UPDATED FOR GETTING including truck number-->
+	<!-- 15th SEP 06 SATHYA -->
+	<select id="export_qcpdetails" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="cargo.cms.external.bo.mRCLBulkHeader">
+
+	 SELECT pre_rcl_no as preRclNo, awb_no as awbNo, qcp_ind as qcpIndicator, qcp_contact_person as qcp_contactPerson,
+     qcp_contact_no as qcp_contactNo, qcp_fax_no as qcp_faxNo, CONCAT(CONCAT(SUBSTR(AWB_NO,0,3),'-'),SUBSTR(AWB_NO,4)) as awbNoDisplay,
+	 qcp_pcs as qcp_pcs, qcp_wt as qcp_wt,decode(ppk_type,'B','Bulk','P','Prepack','M','Mixed') as cargoType,
+	 qcp_goods_desc as qcp_goods_desc, to_char(qcp_delv_date,'DDMONYY') as qcp_delivery_date, qcp_delv_time as qcp_delv_time  
+	 FROM exp_pre_rcl_hd  WHERE pre_rcl_no=#preRclNo#
+
+	</select>
+	<select id="export_issuedatefromcheck" parameterClass="java.lang.String" resultClass="java.lang.Integer">
+	select round(sysdate - to_date(#issueDateFrom#,'ddmonyy')) from dual
+	</select>	
+	
+	
+	<select id="Export_checkmrclenqperiod" resultClass="java.lang.Integer">
+	 select rule_value from cmsrules where rule_code='MRCL_ENQ_PERIOD'
+	</select>
+	<select id="Export_checkmrclprtperiod" resultClass="java.lang.Integer">
+	 select rule_value from cmsrules where rule_code='MRCL_PRT_PERIOD'
+	</select>
+	
+ 
+ <!-- VALIDATOR FOR THE ULDCARRIER-->
+	<select  id="Export_validateuldcarriertest" parameterClass="java.lang.String" resultClass="java.lang.String" >
+		select (FUN_VALIDATE_ULD_PROFILE(#uldNo#)) from dual
+	</select>
+ <!-- VALIDATOR FOR THE ULDCARRIER END-->
+   <select id="Export_validatecontorcode" parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+        select count(*) from uld_type_contr where uld_type=#uldType# and contr_code=#contourCode# 
+   </select>
+   <!-- 15th MAY 06 QUERY ADDED FOR GETTING RCL INFO-->
+   <select id="Export_rclbreakdownquery" parameterClass="cargo.cms.export.bo.ERCLBulkHeaderBO" resultClass="cargo.cms.export.bo.ERCLBulkHeaderBO">
+	     <!-- 
+    select to_char(rcl_date,'ddmonyy') as receptionDate,rcl_pcs as rclpieces, rcl_wt as rclweight,pre_rcl_no as preRclNo    
+     FROM exp_rcl_hd where pre_rcl_no=#preRclNo#
+     
+     select MRCL.pre_rcl_no as preRclNo, MRCL.rcl_no as rclNo,to_char(MRCL.rcl_date,'ddmonyy') as receptionDate,TO_CHAR (mrcl.rcl_date, 'DDMONYY    hh24:mi') AS mrclissuedate,
+   MRCL.rcl_pcs as rclpieces, MRCL.rcl_wt as rclweight,decode(PRCL.STATUS,'WT_DIFFERENCE',nvl(ttl_wt,0) - nvl(MRCL.RCL_WT,0),0) as weightDiff
+   FROM exp_rcl_hd MRCL , EXP_PRE_RCL_HD PRCL where PRCL.PRE_RCL_NO = MRCL.PRE_RCL_NO  AND 	 PRCL.pre_rcl_no=#preRclNo#
+   and    mrcl.status <> 'V'
+  -->
+   <![CDATA[  	
+   
+    select t3.pre_rcl_no as preRclNo, t1.rcl_no as rclNo, to_char (t1.rcl_date, 'ddmonyy') as receptionDate,
+       to_char (t1.rcl_date, 'DDMONYY    hh24:mi') as mrclissuedate, t1.rcl_pcs as rclpieces, t1.rcl_wt as rclweight,
+       decode (t3.status, 'WT_DIFFERENCE', nvl (ttl_wt, 0) - nvl (t1.rcl_wt, 0), 0) as weightDiff
+	from   exp_rcl_hd t1, exp_rcl_dtl t2, exp_pre_rcl_hd t3
+	where  t1.rcl_no = t2.rcl_no
+	and    t1.pre_rcl_no = t3.pre_rcl_no 
+	and    t3.pre_rcl_no = #preRclNo#
+	and    t1.status not in ('V','R')  	
+	   ]]>   
+   </select>
+    <!-- 15th MAY 06 QUERY ADDED FOR GETTING RCL INFO-->
+	<!--20th May 2006 Query Added for Summary Report for UAT-->
+  	<!-- Updated by murugan 17 June starts -->	
+     <select id="export_summaryRclQueryforAwb" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="cargo.cms.external.bo.mRCLBulkHeader">
+        SELECT * FROM (SELECT 
+    					substr(EXP_PRE_RCL_HD.pre_rcl_no,1,4)||'-'||substr(EXP_PRE_RCL_HD.pre_rcl_no,5) AS preRclNoFormat,
+						EXP_PRE_RCL_HD.AWB_NO AS awbNo,
+    					EXP_PRE_RCL_HD.pre_rcl_no as preRclNo, 
+						decode(EXP_PRE_RCL_HD.PPK_TYPE,'B','Bulk','P','Prepack','M','Mixed') AS rclTypeDescription,
+						EXP_PRE_RCL_HD.PPK_TYPE as rclType,
+    					to_char(EXP_PRE_RCL_HD.cr_date,'DDMONYY hh24:mi') AS rclsubmissiondate,
+						EXP_PRE_RCL_HD.ULD_KEY AS uldNo, 
+    					<!-- decode( RCL.STATUS,'S','CONFIRMED')  AS searchStatus, :: BugFix: 5539--> 
+    					EXP_PRE_RCL_HD.STATUS AS searchStatus, 
+						customer.code_desc as agentName,
+    					EXP_PRE_RCL_HD.carr_code as carr,
+    					EXP_PRE_RCL_HD.ttl_pcs as pieces,
+              			EXP_PRE_RCL_HD.ttl_wt as weight,
+    					EXP_PRE_RCL_HD.cust_no as custNo,	
+    					decode((select count(1) from exp_pre_rcl_uld_manf where pre_rcl_no=RCL.pre_rcl_no),0,'N','Y') as houseManfSubmitted,
+    					RCL.awb_dest as destination,
+    					DECODE(RCL.AWB_NO,NULL,'',SUBSTR(TRIM(RCL.AWB_NO),1,3)||'-'||SUBSTR(TRIM(RCL.AWB_NO),4)) awbNoDisplay,
+    					EXP_PRE_RCL_HD.cr_date as createdDate,NVL(EXP_PRE_RCL_HD.carr_rf,'NA') as carrierRF
+					FROM 
+  						EXP_PRE_RCL_HD,cust_company customer,EXP_RCL_HD RCL
+					WHERE 
+  						EXP_PRE_RCL_HD.cust_no = customer.code AND  
+  						EXP_PRE_RCL_HD.PRE_RCL_NO=RCL.PRE_RCL_NO
+  						AND UPPER(RCL.status) = UPPER('S')
+					UNION
+					SELECT 
+    					substr (t1.pre_rcl_no, 1, 4) || '-' || substr (t1.pre_rcl_no, 5) as preRclNoFormat,
+    					t1.awb_no as awbNo, t1.pre_rcl_no as preRclNo,
+					    decode (t1.ppk_type, 'B', 'Bulk', 'P', 'Prepack', 'M', 'Mixed') as rclTypeDescription,
+					    t1.ppk_type as rclType, 
+					    to_char (t1.cr_date, 'DDMONYY hh24:mi') as rclsubmissiondate, 
+					    t1.uld_key as uldNo,
+					    t1.status as searchStatus,
+					    t4.code_desc as agentName,
+					    t1.carr_code as carr,
+					    ttl_pcs as pieces, 
+					    ttl_wt as weight,
+					    t1.cust_no as custNo,
+					    decode((select count(1) from exp_pre_rcl_uld_manf where pre_rcl_no=t1.pre_rcl_no),0,'N','Y') as houseManfSubmitted,
+					    t1.awb_dest as destination,
+					    DECODE(t1.AWB_NO,NULL,'',SUBSTR(TRIM(t1.AWB_NO),1,3)||'-'||SUBSTR(TRIM(t1.AWB_NO),4)) awbNoDisplay,
+					    t1.cr_date as createdDate,NVL(t1.carr_rf,'NA') as carrierRF
+					FROM  
+						  exp_pre_rcl_hd t1,cust_company t4 
+					WHERE 
+						  t1.cust_no = t4.code
+				UNION
+          			SELECT 
+  						SUBSTR(A.PRE_RCL_NO, 1, 4) || '-' || SUBSTR (A.PRE_RCL_NO, 5) AS PRERCLNOFORMAT, B.AWB_NO AS AWBNO, A.PRE_RCL_NO AS PRERCLNO, 
+  						DECODE (A.PPK_TYPE, 'B', 'Bulk', 'P', 'Prepack', 'M', 'Mixed') AS RCLTYPEDESCRIPTION, A.PPK_TYPE AS RCLTYPE, 
+  						TO_CHAR (A.CR_DATE, 'DDMONYY hh24:mi') AS RCLSUBMISSIONDATE, A.ULD_KEY AS ULDNO, A.STATUS AS SEARCHSTATUS, 
+  						C.CODE_DESC AS AGENTNAME, A.CARR_CODE AS CARR, TTL_PCS AS PIECES, TTL_WT AS WEIGHT, A.CUST_NO AS CUSTNO, 
+  						DECODE((SELECT COUNT(1) FROM EXP_PRE_RCL_ULD_MANF WHERE PRE_RCL_NO=A.PRE_RCL_NO),0,'N','Y') AS HOUSEMANFSUBMITTED, 
+  						A.AWB_DEST AS DESTINATION, DECODE(B.AWB_NO,NULL,'',SUBSTR(TRIM(B.AWB_NO),1,3)||'-'||SUBSTR(TRIM(B.AWB_NO),4)) AWBNODISPLAY, 
+  						A.CR_DATE AS CREATEDDATE,NVL(A.carr_rf,'NA') as carrierRF 
+					FROM 
+  						EXP_PRE_RCL_HD A, EXP_PRE_RCL_BRKDN B, CUST_COMPANY C 
+					WHERE 
+  						B.PRE_RCL_NO=A.PRE_RCL_NO AND A.CUST_NO=C.CODE AND A.PPK_TYPE='M')
+ 			WHERE  awbNo=#awbNo# 
+  			AND  rclType = DECODE(#rclType#,'A',rclType,'',rclType,#rclType#)
+ 			AND ((#agentName# IS NOT NULL AND agentName = #agentName#) OR #agentName# IS NULL) 
+			And trunc(createdDate) BETWEEN  (NVL (decode(#issueDateFrom#,null,null,to_date(#issueDateFrom#,'ddmonyy ')),createdDate))
+			AND (NVL (decode(#issueDateTo#,null,null,to_date(#issueDateTo#,'ddmonyy')),createdDate))
+			<isEmpty property="carr">
+				<isNotEmpty property="loginCarrier">
+				   AND ( carr = #loginCarrier#
+                        OR  carr IN (SELECT CARR_CODE FROM MAST_CARR_GRP 
+                        WHERE GRP_CARR_CODE  = #loginCarrier#))             
+            	</isNotEmpty>
+            </isEmpty>	
+			order by rclTypeDescription ,preRclNo
+	 </select>
+	  <select id="export_summaryRclQueryforUld" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="cargo.cms.external.bo.mRCLBulkHeader">
+       		SELECT * FROM (
+            	SELECT substr(B.pre_rcl_no,1,4)||'-'||substr(B.pre_rcl_no,5) AS preRclNoFormat,
+             	B.AWB_NO AS awbNo,
+            	B.pre_rcl_no AS preRclNo,
+            	decode(B.PPK_TYPE,'B','Bulk','P','Prepack','M','Mixed') AS rclTypeDescription,
+           		B.PPK_TYPE AS rclType,
+           		to_char(B.cr_date,'DDMONYY hh24:mi') AS rclsubmissiondate,
+           		B.ULD_KEY AS uldNo, 
+           		<!-- decode( B.STATUS,'S','CONFIRMED','SUBMITTED')  AS searchStatus, :: BugFix: 5539--> 
+           		B.STATUS AS searchStatus, 
+            	B.carr_code AS carr,
+           		customer.code_desc AS agentName,
+           		B.ttl_pcs AS pieces,
+          		B.ttl_wt AS weight,
+          		B.cust_no AS custNo,
+          		decode((SELECT count(1) FROM exp_pre_rcl_uld_manf WHERE pre_rcl_no=B.pre_rcl_no),0,'N','Y') AS houseManfSubmitted,
+          		C.awb_dest AS destination,
+          		DECODE(C.AWB_NO, NULL,'',SUBSTR(TRIM(C.AWB_NO),1,3)||'-'||SUBSTR(TRIM(C.AWB_NO),4)) awbNoDisplay,
+          		B.cr_date as createdDate,NVL(B.carr_rf,'NA') as carrierRF    
+            	FROM 
+            	cust_company customer, EXP_PRE_RCL_HD B LEFT JOIN EXP_RCL_HD C ON C.PRE_RCL_NO=B.PRE_RCL_NO  
+           		WHERE 
+           		B.cust_no = customer.code AND B.uld_Key=#uldNo#  AND  B.PPK_TYPE = DECODE(#rclType#,'A',B.PPK_TYPE,'',B.PPK_TYPE,#rclType#)
+ 				AND ((#agentName# IS NOT NULL AND customer.code_desc = #agentName#) OR #agentName# IS NULL) 
+ 				AND trunc(B.cr_date) BETWEEN  (NVL (decode(#issueDateFrom#,NULL,NULL,to_date(#issueDateFrom#,'ddmonyy ')),B.cr_date))
+			   	AND (NVL (decode(#issueDateTo#,NULL,NULL,to_date(#issueDateTo#,'ddmonyy')),B.cr_date))
+          	UNION           
+        		SELECT substr(B.pre_rcl_no,1,4)||'-'||substr(B.pre_rcl_no,5) AS preRclNoFormat, 
+        		B.AWB_NO AS awbNo,
+            	B.pre_rcl_no AS preRclNo,
+            	decode(B.PPK_TYPE,'B','Bulk','P','Prepack','M','Mixed') AS rclTypeDescription,
+           		B.PPK_TYPE AS rclType,
+            	to_char(B.cr_date,'DDMONYY hh24:mi') AS rclsubmissiondate,
+          		BRK.ULD_KEY AS uldNo,
+          		B.status as searchStatus, 
+           		B.carr_code AS carr,          
+           		customer.code_desc AS agentName,
+           		B.ttl_pcs AS pieces,
+          		B.ttl_wt AS weight,
+          		B.cust_no AS custNo,
+          		decode((SELECT count(1) FROM exp_pre_rcl_uld_manf WHERE pre_rcl_no=B.pre_rcl_no),0,'N','Y') AS houseManfSubmitted,
+          		C.awb_dest AS destination,
+          		DECODE(C.AWB_NO, NULL,'',SUBSTR(TRIM(C.AWB_NO),1,3)||'-'||SUBSTR(TRIM(C.AWB_NO),4)) awbNoDisplay,
+          		B.cr_date as createdDate,NVL(B.carr_rf,'NA') as carrierRF
+            	FROM cust_company customer , EXP_PRE_RCL_DTL BRK,
+            	EXP_PRE_RCL_HD B LEFT JOIN EXP_RCL_HD C ON C.PRE_RCL_NO =   B.PRE_RCL_NO  
+            	WHERE B.cust_no = customer.code 
+            	AND BRK.PRE_RCL_NO = B.PRE_RCL_NO
+            	AND BRK.uld_Key=#uldNo#            
+  				AND  B.PPK_TYPE = DECODE(#rclType#,'A',B.PPK_TYPE,'',B.PPK_TYPE,#rclType#)
+ 				AND ((#agentName# IS NOT NULL AND customer.code_desc = #agentName#) OR #agentName# IS NULL) 
+ 				AND trunc(B.cr_date) BETWEEN  (NVL (decode(#issueDateFrom#,NULL,NULL,to_date(#issueDateFrom#,'ddmonyy ')),B.cr_date))
+			 	AND (NVL (decode(#issueDateTo#,NULL,NULL,to_date(#issueDateTo#,'ddmonyy')),B.cr_date)))
+			 	<isEmpty property="carr">
+				<isNotEmpty property="loginCarrier">
+				   WHERE ( carr = #loginCarrier#
+                        OR  carr IN (SELECT CARR_CODE FROM MAST_CARR_GRP 
+                        WHERE GRP_CARR_CODE  = #loginCarrier#))             
+            	</isNotEmpty>
+            </isEmpty>	
+				order by rclTypeDescription ,preRclNo
+	 </select>
+	 <select id="export_summaryRclQueryforOthers" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="cargo.cms.external.bo.mRCLBulkHeader">     
+		select * from (select substr (t3.pre_rcl_no, 1, 4) || '-' || substr (t3.pre_rcl_no, 5) as preRclNoFormat,
+	        t3.awb_no as awbNo, t3.pre_rcl_no as preRclNo,
+	        decode (t1.ppk_type, 'B', 'Bulk', 'P', 'Prepack', 'M', 'Mixed') as rclTypeDescription,
+	        t1.ppk_type as rclType, 
+	        to_char (t3.cr_date, 'DDMONYY hh24:mi') as rclsubmissiondate, 
+	       t1.uld_key as uldNo,
+	        <!-- decode (t1.status, 'S', 'CONFIRMED') as searchStatus, :: BugFix: 5539--> 
+	        t3.STATUS as searchStatus, 
+	        t1.carr_code as carr,
+	        t4.code_desc as agentName,
+	        t3.ttl_pcs as pieces, t3.ttl_wt as weight,
+	        t3.cust_no as custNo,decode((select count(1) from exp_pre_rcl_uld_manf where pre_rcl_no=t1.pre_rcl_no),0,'N','Y') as houseManfSubmitted,
+          	t1.awb_dest as destination,
+          	DECODE(t1.AWB_NO, NULL, '', SUBSTR(TRIM(t1.AWB_NO),1,3)||'-'||SUBSTR(TRIM(t1.AWB_NO),4)) awbNoDisplay,
+          	t3.cr_date as createdDate, NVL(t1.carr_rf,'NA') as carrierRF
+		from  exp_rcl_hd t1
+   		 join exp_rcl_dtl t2 on t1.rcl_no = t2.rcl_no
+    	join exp_pre_rcl_hd t3 on t3.pre_rcl_no=t1.pre_rcl_no
+    	join cust_company t4 on t3.cust_no = t4.code    	
+		where    t1.status = 'S'		   	
+		union 
+    	select substr (t1.pre_rcl_no, 1, 4) || '-' || substr (t1.pre_rcl_no, 5) as preRclNoFormat,
+                        t1.awb_no as awbNo, t1.pre_rcl_no as preRclNo,
+                        decode (t1.ppk_type, 'B', 'Bulk', 'P', 'Prepack', 'M', 'Mixed') as rclTypeDescription,
+                        t1.ppk_type as rclType, 
+                        to_char (t1.cr_date, 'DDMONYY hh24:mi') as rclsubmissiondate, 
+                        t1.uld_key as uldNo,
+                        t1.status as searchStatus, 
+                        t1.carr_code as carr,
+                        t4.code_desc as agentName,
+                        ttl_pcs as pieces, ttl_wt as weight,
+                        t1.cust_no as custNo,decode((select count(1) from exp_pre_rcl_uld_manf where pre_rcl_no=t1.pre_rcl_no),0,'N','Y') as houseManfSubmitted,t1.awb_dest as destination,
+          				DECODE(t1.AWB_NO, NULL, '', SUBSTR(TRIM(t1.AWB_NO),1,3)||'-'||SUBSTR(TRIM(t1.AWB_NO),4)) awbNoDisplay,
+          				t1.cr_date as createdDate, NVL(t1.carr_rf,'NA') as carrierRF          
+         from  exp_pre_rcl_hd t1
+                join cust_company t4 on t1.cust_no = t4.code)   				
+		 <isEqual  property="rclType" compareValue="A">
+		 	WHERE 1=1
+         </isEqual>
+         <isNotEqual  property="rclType" compareValue="A">
+		 	WHERE rclType =#rclType#
+         </isNotEqual>
+		<isNotEmpty property="agentName">
+			and EXISTS(SELECT B.code_desc as agentName FROM CUST_COMPANY B WHERE custNo = B.CODE AND B.code_desc LIKE #agentName#)
+		</isNotEmpty>
+		<isNotEmpty property="preRclNo">
+		 	and preRclNo =#preRclNo#
+		</isNotEmpty>
+		<isNotEmpty property="destination">
+			and destination =#destination#
+		</isNotEmpty>
+		<isNotEmpty property="carr">
+			and carr = #carr#
+		</isNotEmpty>
+		<isEmpty property="carr">
+				<isNotEmpty property="loginCarrier">
+				   AND ( carr = #loginCarrier#
+                        OR  carr IN (SELECT CARR_CODE FROM MAST_CARR_GRP 
+                        WHERE GRP_CARR_CODE  = #loginCarrier#))             
+            	</isNotEmpty>
+            </isEmpty>	
+		<isNotEmpty property="uldNo">
+			and uldNo = #uldNo#
+		</isNotEmpty>
+		<isNotEmpty property="awbNo">
+			and awbNo  = #awbNo#
+		</isNotEmpty>
+		<isNotEmpty property="agentCode">
+			and custNo =#agentCode#
+		</isNotEmpty>
+		<isNotEmpty property="issueDateFrom">
+			<isNotEmpty property="issueDateTo">
+				and trunc(createdDate) between to_date (#issueDateFrom#, 'DDMONYY') and to_date (#issueDateTo#, 'DDMONYY')
+			</isNotEmpty>
+		</isNotEmpty>
+		<isEmpty property="issueDateFrom">
+			<isNotEmpty property="issueDateTo">
+				and to_date (#issueDateTo#, 'DDMONYY') > trunc(createdDate)
+			</isNotEmpty>
+		</isEmpty>		
+           order by rclTypeDescription ,preRclNo           
+		</select>		
+		<select id="validateAgtName" parameterClass="java.lang.String" resultClass="java.lang.Integer">
+		select count(1) from CUST_COMPANY WHERE CODE_DESC=#param# and AGENT_YN = 'Y' AND ACTIVE = 'Y' AND BLACKLISTED='N'
+		</select>
+		<select id="validateAgtCode" parameterClass="java.lang.String" resultClass="java.lang.Integer">
+		select count(1) from CUST_COMPANY WHERE CODE=#param# and AGENT_YN = 'Y' AND ACTIVE = 'Y' AND BLACKLISTED='N'
+		</select>
+		
+ <!--23rd May 2006 Query Added for AWB OWNERSHIP for UAT-->
+ <!--Added for Mix on 26th May 2006-->
+ <!--Modified 15SEP06 Sathya-->
+ <select id="Export_fetchbrkdnqcpinfo" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="cargo.cms.external.bo.mRCLBulkHeader">
+ SELECT pre_rcl_no, doc_line_no,awb_no as awbNo, CONCAT(CONCAT(SUBSTR(AWB_NO,0,3),'-'),SUBSTR(AWB_NO,4)) as awbNoDisplay,
+ qcp_ind as qcpIndicator, qcp_contact_person as qcp_contactPerson,
+       qcp_contact_no as qcp_contactNo, qcp_fax_no as qcp_faxNo,
+  qcp_pcs as qcp_pcs, qcp_wt as qcp_wt,'Mixed' as cargoType,
+ qcp_goods_desc as qcp_goods_desc,to_char(qcp_delv_date,'DDMONYY') as qcp_delivery_date,
+ qcp_delv_time as qcp_delv_time
+  FROM exp_pre_rcl_brkdn
+ WHERE pre_rcl_no =#preRclNo#  AND doc_line_no = #docLine#
+ </select>
+ <!--Modified 15SEP06 Sathya-->
+ <!--Added for Mix on 26th May 2006-->
+
+	<!-- offshore changed on Mon May 15 15:25:35 SGT 2006 @351 /Internet Time/ by Allan Starts here  -->
+	<select id="Admin_fetchCompanyProfile"  parameterClass="map"  resultClass="cargo.cms.external.admin.bo.CompanyProfileBO">
+		<![CDATA[
+		 SELECT  COM.CODE_DESC  companyName, COM.CODE customerNo,  B.CO_NATURE businessNature, COM.CO_IATA_CODE iataCode, COM.BUS_REG_NO registrationNo ,
+			     COM.EMAIL1 email1, COM.EMAIL2 email2, COM.ADD1 addr1, COM.ADD2 addr2, COM.ADD3 addr3,         COM.ADD4 addr4, 
+				 COM.ADD5 addr5, COM.CITY city,COM.PIN_CODE postalCode, COM.CTRY_CODE country,  COM.TEL1 telephone, COM.TEL2 contactNo, 
+				 COM.FAX1 fax1, COM.FAX2 fax2, COM.ADMIN_NAME adminName, COM.ADMIN_TITLE adminTitle, COM.ADMIN_EMAIL adminEmail, 
+				 COM.ADMIN_CONTACT_NO adminContactNo,COM.ADMIN_USER_ID adminUserId, COM.ADMIN_PASSWD adminPassword    
+	    FROM   SEC_USER USR,CUST_COMPANY COM, CUST_REGISTRATION b    
+		WHERE  COM.CODE = USR.CUST_NO AND B.REG_PROC_ID(+) = COM.CODE    
+			   and usr.code = #userId# and b.admin_user_id=#userId#  
+		]]>
+   	</select>
+	
+
+
+	<select id="Admin_fetchCompanyContactProfile"  parameterClass="cargo.cms.external.admin.bo.CompanyProfileBO"  resultClass="cargo.cms.external.admin.bo.CompanyProfileBO">
+		<![CDATA[
+			SELECT 	CON.EMAIL1 as notEmail1 ,CON.EMAIL2 as notEmail2,CON.EMAIL3 as notEmail3,CON.EMAIL4 as notEmail4,CON.EMAIL5 as notEmail5, 
+			CON.FAX1 as notFax1,CON.FAX2 as notFax2,CON.FAX3 as notFax3 
+			FROM 	SEC_USER USR,CUST_COMPANY COM,CUST_CONTACT CON 
+			WHERE 	COM.CODE = USR.CUST_NO 
+			AND 	CON.CUST_NO = COM.CODE
+			AND	    USR.CODE = #userId#	 
+			AND     CON.CONTACT_TYPE = #notificationType#
+		]]>
+   	</select>
+   	
+   	<select id="fetchCompanyProfileTCStatus" parameterClass="java.lang.String" resultClass="cargo.cms.external.admin.bo.CompanyProfileBO">
+	select TC_IND as tcInd,TC_ID as tcId from MAINTAIN_TC WHERE FUNCTION_NAME = #functionName# 
+	</select>
+	
+	<update id="Admin_updateCompanyProfile" parameterClass="cargo.cms.external.admin.bo.CompanyProfileBO">	
+	
+			UPDATE cust_company
+			SET
+				ADMIN_NAME =		#adminName#,
+				ADMIN_TITLE = 		#adminTitle#,
+				<isNotEqual property="adminNewPassword" compareValue="">
+					ADMIN_PASSWD= #adminNewPassword#,
+				</isNotEqual>
+				LM_USER_ID = 		#userId#,
+				LM_DATE = 			sysdate,
+				ADMIN_EMAIL = 		#adminEmail#,
+				EMAIL1 =			#email1#,
+				TEL1 = 				#telephone#,
+				TEL2 = 				#contactNo#,
+				EMAIL2 = 			#email2#,
+				FAX1 = 				#fax1#,
+				FAX2 = 				#fax2#,
+				ADMIN_CONTACT_NO = 	#adminContactNo#
+			WHERE
+				CODE = #customerNo#
+							
+	</update>
+<!-- offshore changed on Mon May 15 15:25:35 SGT 2006 @351 /Internet Time/ by Allan Ends here  -->
+
+<!-- offshore changed on Mon May 15 15:25:35 SGT 2006 @351 /Internet Time/ by Allan Starts here  -->
+	<update id="Admin_updateCompanyContact" parameterClass="cargo.cms.external.admin.bo.CompanyProfileBO">		
+		update CUST_CONTACT 
+		SET
+			CONTACT_TYPE=  		#notificationType#, 
+			EMAIL1=            #notEmail1#,
+			EMAIL2=            #notEmail2#, 
+			EMAIL3=            #notEmail3#, 
+			EMAIL4=            #notEmail4#,
+			EMAIL5=            #notEmail5#, 
+			FAX1=              #notFax1#, 
+			FAX2=              #notFax2#, 
+			FAX3=              #notFax3#, 
+			CR_USER_ID=        #crUserId#, 
+			CR_DATE=           sysdate, 
+			LM_USER_ID=        #lmUserId#, 
+			LM_DATE=           sysdate            
+		WHERE
+			CUST_NO = #customerNo#
+			AND CONTACT_TYPE = #notificationType#
+	</update>
+	<delete id="sqlDeleteCompanyContact" parameterClass="cargo.cms.external.admin.bo.CompanyProfileBO">
+		delete from CUST_CONTACT where CUST_NO = #customerNo# AND CONTACT_TYPE = #notificationType#
+	</delete>
+<!-- offshore changed on Mon May 15 15:25:35 SGT 2006 @351 /Internet Time/ by Allan Ends here  -->
+
+<!-- offshore changed on Mon May 16 10:25:35 SGT 2006 @351 /Internet Time/ by Vimala Starts here  -->
+    <select id="Admin_updateCompanyContact_count" parameterClass="cargo.cms.external.admin.bo.CompanyProfileBO" resultClass="java.lang.Integer">
+		SELECT COUNT(*)AS count FROM CUST_CONTACT WHERE CUST_NO=#customerNo# and CONTACT_TYPE=#notificationType#
+	</select>
+<!-- offshore changed on Mon May 16 10:25:35 SGT 2006 @351 /Internet Time/ by Vimala Ends here  -->
+
+<!-- offshore changed on Mon May 16 10:25:35 SGT 2006 @351 /Internet Time/ by Vimala Starts here  -->
+	<insert id="Admin_InsertCustomerContact" parameterClass="cargo.cms.external.admin.bo.CompanyProfileBO">
+	<![CDATA[
+ INSERT INTO CUST_CONTACT
+ (CUST_NO,CONTACT_TYPE,EMAIL1,EMAIL2,EMAIL3,EMAIL4,EMAIL5,FAX1,FAX2,FAX3,FAX4,FAX5,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE)
+ VALUES(
+ 	#customerNo#,
+	#notificationType#,
+	#notEmail1#,
+	#notEmail2#,
+	#notEmail3#,
+	#notEmail4#,
+	#notEmail5#,
+	#notFax1#,
+	#notFax2#,
+	#notFax3#,
+	#notFax4#,
+	#notFax5#,
+	#crUserId#,
+	SYSDATE,
+	#lmUserId#,
+	SYSDATE)
+]]>
+</insert>
+
+<!-- offshore changed on Mon May 16 10:25:35 SGT 2006 @351 /Internet Time/ by Vimala Ends here  -->
+
+<select id="sqluserlist"  parameterClass="cargo.cms.external.admin.bo.AimsUserBO" resultClass= "cargo.cms.external.admin.bo.AimsUserBO">	
+	select a.Code as userId,TO_CHAR(B.START_DATE, 'DDMONYY') as startDate,a.Code_desc as userName,a.Email as email,a.Contact_No as contactNo,a.CUST_NO as companyNo,TO_CHAR(a.LM_DATE , 'DDMONYY HH24:MI:SS') AS lastModDate,c.code_desc as roleName from sec_user a, sec_user_role b,sec_role c  where a.cust_no=(select cust_no from sec_user where code=#loggedInUserId#) and a.code = b.user_Id and b.role_name = c.code
+</select>
+
+<select id="sqllovroles_external"  parameterClass="cargo.cms.external.admin.bo.AimsUserBO" resultClass= "cargo.cms.external.admin.bo.AimsUserBO">
+	SELECT CODE AS codeId, CODE_DESC AS codeDesc, ROLE_CATEGORY param1,
+			decode(ROLE_CATEGORY,'E','2') orderVal
+		FROM SEC_ROLE where active='Y' AND ROLE_CATEGORY='E' AND 
+	    cust_type = ( SELECT c.cust_type FROM sec_user a, sec_user_role b  , SEC_ROLE c 
+	    WHERE 
+	    c.code = b.role_name and  a.code = b.user_id and C.ROLE_CATEGORY='E' AND  C.active='Y' 
+	    AND a.code=#loggedInUserId# AND rownum = 1)
+			ORDER BY orderVal, codeDesc
+</select>
+   	
+<select id="sqlgetcompany" parameterClass="cargo.cms.external.admin.bo.AimsUserBO"  resultClass="java.lang.String">
+	select cust_no from Sec_user where code=#loggedInUserId#
+</select>
+<select id="fetchCustType" parameterClass="cargo.cms.external.admin.bo.AimsUserBO"  resultClass="java.lang.String">
+	select cust_type from cust_company where code=#companyNo#
+</select>
+<select id="sqlcompanyType" parameterClass="cargo.cms.external.admin.bo.AimsUserBO"  resultClass="java.lang.String">
+	select AIRLINE_YN From CUST_COMPANY where Code=#companyNo#
+</select>
+<select id="sqlGetSelfHdl" parameterClass="cargo.cms.external.admin.bo.AimsUserBO"  resultClass="java.lang.String">
+	select SELF_HANDLING from CUST_COMPANY where Code=#companyNo#
+</select>
+
+
+    <select id="fetchShowMaintainTCStatus" parameterClass="map" resultClass="cargo.cms.external.admin.bo.AimsUserBO">
+	select TC_IND AS tcInd,TC_ID AS tcId from MAINTAIN_TC WHERE FUNCTION_NAME = #functionName#
+	</select>
+	
+<select id="sqlAimsDuplicateUser"    parameterClass="cargo.cms.external.admin.bo.AimsUserBO" resultClass ="java.lang.String">
+		SELECT to_char(count(CODE)) FROM SEC_USER where upper(code)=upper(#userId#)	
+</select>
+<select id="sqladminid"    parameterClass="cargo.cms.external.admin.bo.AimsUserBO" resultClass ="java.lang.String">
+	select to_char(count(ADMIN_USER_ID)) from cust_registration where upper(ADMIN_USER_ID)=upper(#userId#)	
+</select>
+
+<select id="sqlAimsDuplicateHKID"    parameterClass="cargo.cms.external.admin.bo.AimsUserBO" resultClass ="java.lang.Integer">
+		SELECT count(HKID) FROM SEC_USER where upper(HKID)=upper(#hkID#) and CUST_NO = #companyNo#
+		<isNotEmpty property="lastModDate">   
+				AND CODE!=#userID#
+		</isNotEmpty>
+</select>
+
+<insert id="sqluseradd"  parameterClass="cargo.cms.external.admin.bo.AimsUserBO">
+		INSERT INTO SEC_USER ( CODE, CODE_DESC,USER_PASSWORD,CUST_NO, EMAIL, CONTACT_NO,CR_User_id,cr_Date,lm_user_id, 
+		lm_Date,User_type ,User_Access,STATUS, password_ind, APP_ACCESS_EXT, APP_ACCESS_INT,HKID )  values 
+		(#userId#,#userName#,#userNewPassword#,#companyNo#,
+		#email#,#contactNo#,#crUserId#,sysdate,#crUserId#,sysdate,'E','E','A', null , 'Y','N',#hkID#)
+		
+</insert>
+<insert id="sqlaimsuserrole"  parameterClass="cargo.cms.external.admin.bo.AimsUserBO">
+		INSERT INTO SEC_USER_ROLE (USER_ID, ROLE_NAME, START_DATE,CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE) 
+VALUES (#userId# ,#roleName# , sysdate,#loggedInUserId#, sysdate,#loggedInUserId#, sysdate)
+</insert>
+<update id="sqlupdateaimsuserrole"  parameterClass="cargo.cms.external.admin.bo.AimsUserBO">
+		UPDATE SEC_USER_ROLE
+		SET 
+			ROLE_NAME = #roleName# ,		
+			LM_USER_ID = #loggedInUserId#,
+			LM_DATE = sysdate
+		WHERE USER_ID = #userID# AND ROLE_NAME = #roleExisting# 
+</update>
+<delete id="sqldeleteaimsuserrole" parameterClass="cargo.cms.external.admin.bo.AimsUserBO">
+	DELETE FROM SEC_USER_ROLE  where User_ID = #userID#
+</delete>
+<delete id="sqldeleteaimsuser" parameterClass="cargo.cms.external.admin.bo.AimsUserBO">
+	DELETE FROM SEC_USER  where Code = #userID# AND TO_CHAR(LM_DATE , 'DDMONYY HH24:MI:SS')=#lastModDate#
+</delete>
+<select id="sqldetailsaimsuser" parameterClass="cargo.cms.external.admin.bo.AimsUserBO" resultClass= "cargo.cms.external.admin.bo.AimsUserBO">
+	select Code as userId,Code_desc as userName,Email as email,Contact_No as contactNo,CUST_NO as companyNo,HKID as hkID,USER_PASSWORD as userPassword,TO_CHAR(LM_DATE , 'DDMONYY HH24:MI:SS') AS lastModDate,
+	(select role_name as roleName from sec_user_role a, sec_user b where a.user_id=b.CODE and B.code=#userId# and rownum = 1) 
+	as roleName,#startDate# AS startDate
+	from SEC_USER where Code=#userId#
+</select>
+<select id="checkUserDetailsExists" parameterClass="java.util.HashMap" resultClass= "java.lang.String">
+	select count(1) 
+	from SEC_USER_ROLE 
+	WHERE USER_ID = #userID#
+	and to_CHAR(start_date,'DDMONYY')=#startDate#
+</select>
+<update id ="sqlupdateaimsuser" parameterClass="cargo.cms.external.admin.bo.AimsUserBO" >
+		UPDATE SEC_USER  
+		SET USER_PASSWORD = #userPassword#,
+			Contact_No=#contactNo#, 
+			EMAIL=#email#,
+			PASSWORD_IND=null,
+			LM_USER_ID = #lastModUserId#,				
+			LM_DATE = SYSDATE,
+			HKID = #hkID#
+		WHERE CODE = #userID# AND TO_CHAR(LM_DATE , 'DDMONYY HH24:MI:SS')=#lastModDate#
+	</update>
+
+	<insert id="Admin_InsertCustomerAddress"  parameterClass="cargo.cms.external.admin.bo.CustomerAddressBO">
+		INSERT	 INTO CUST_ADDRESS_BOOK
+				(AGENT_ID, CUSTOMER_NAME, ADD1, ADD2, ADD3, ADD4, ADD5, CITY_CODE, PIN_CODE, 
+				 CTRY_CODE, STATE_CODE, CONTACT_ID1, CONTACT_ID2, CONTACT_ID3, CONTACT_ID4, 
+				 CONTACT_ID5, CONTACT_NO1, CONTACT_NO2, CONTACT_NO3, CONTACT_NO4, CONTACT_NO5,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE)
+		VALUES	((select cust_no from sec_user where code=#userId#),#companyName#,#add1#,#add2#,#add3#,#add4#,#add5#,#city#,#postalCode#,
+				 #country#,#state#,#contactId1#,#contactId2#,#contactId3#,#contactId4#,
+				 #contactId5#,#contactDetail1#,#contactDetail2#,#contactDetail3#,#contactDetail4#,#contactDetail5#,#userId#,sysdate,#userId#,sysdate)
+	</insert>
+
+	<insert id="Admin_UpdateCustomerAddress"  parameterClass="cargo.cms.external.admin.bo.CustomerAddressBO">
+		UPDATE  CUST_ADDRESS_BOOK 
+		SET		ADD1 = #add1#, ADD2 = #add2#, 
+				ADD3 = #add3#, ADD4 = #add4#, ADD5 = #add5#, CITY_CODE = #city#, PIN_CODE = #postalCode#, 
+				CTRY_CODE = #country#,STATE_CODE = #state#, CONTACT_ID1 = #contactId1#, CONTACT_ID2 = #contactId2#, 
+				CONTACT_ID3 = #contactId3#, CONTACT_ID4 = #contactId4#, 
+				CONTACT_ID5 = #contactId5#, CONTACT_NO1 = #contactDetail1#, CONTACT_NO2 = #contactDetail2#,
+				CONTACT_NO3 = #contactDetail3#, CONTACT_NO4 = #contactDetail4#, CONTACT_NO5 = #contactDetail5#,LM_DATE=SYSDATE	
+		WHERE  AGENT_ID=(select cust_no from sec_user where code=#userId#)
+		AND		UPPER(CUSTOMER_NAME) = UPPER(#companyName#) and to_char(LM_DATE, 'ddMMYY hh24:mi:ss') = #lastModifiedDate#		
+	</insert>
+
+	<select id="Admin_FetchCustomerAddress"  parameterClass="cargo.cms.external.admin.bo.CustomerAddressBO" resultClass= "cargo.cms.external.admin.bo.CustomerAddressBO">
+		SELECT	AGENT_ID userId, CUSTOMER_NAME companyName, ADD1 add1, ADD2 add2,
+				ADD3 add3, ADD4 add4, ADD5 add5, CITY_CODE city, PIN_CODE postalCode, 
+				(select upper(code) as country from mast_country where code = ctry_code) as country,
+		         STATE_CODE state, CONTACT_ID1 contactId1, CONTACT_ID2 contactId2, 
+				CONTACT_ID3 contactId3, CONTACT_ID4 contactId4, CONTACT_ID5 contactId5, 
+				CONTACT_NO1 contactDetail1, CONTACT_NO2 contactDetail2, CONTACT_NO3 contactDetail3,
+				CONTACT_NO4 contactDetail4, CONTACT_NO5 contactDetail5,
+				TO_CHAR(LM_DATE , 'DDMMYY HH24:MI:SS')AS lastModifiedDate
+		FROM	CUST_ADDRESS_BOOK
+		WHERE  AGENT_ID=(select cust_no from sec_user where code=#userId#)
+		AND		UPPER(CUSTOMER_NAME) = UPPER(#companyName#)				
+	</select>
+
+	<select id="Admin_FetchCustomerAddressList"  parameterClass="cargo.cms.external.admin.bo.CustomerAddressBO" resultClass= "cargo.cms.external.admin.bo.CustomerAddressBO">
+	
+	
+		SELECT	a.AGENT_ID userId,a.AGENT_ID agentId, a.CUSTOMER_NAME companyName, a.ADD1 add1, a.ADD2 add2, a.ADD3 add3, 
+				a.ADD4 add4, a.ADD5 add5,  a.city_code as city , a.PIN_CODE postalCode,
+            	upper(c.code_desc) as country,
+		      a.state_code as state ,
+				a.CONTACT_ID1 contactId1, a.CONTACT_ID2 contactId2, a.CONTACT_ID3 contactId3, a.CONTACT_ID4 contactId4, 
+				a.CONTACT_ID5 contactId5, a.CONTACT_NO1 contactDetail1, a.CONTACT_NO2 contactDetail2, 
+				a.CONTACT_NO3 contactDetail3,	a.CONTACT_NO4 contactDetail4, a.CONTACT_NO5 contactDetail5,
+				TO_CHAR(a.LM_DATE , 'DDMMYY HH24:MI:SS')AS lastModifiedDate				
+		FROM	CUST_ADDRESS_BOOK a
+   		 JOIN mast_country c ON a.ctry_code = c.code		
+		WHERE  AGENT_ID=(select cust_no from sec_user where code=#userId#)
+		AND		UPPER(a.CUSTOMER_NAME) LIKE UPPER(#companyName#)
+		
+		<dynamic prepend="ORDER BY ">
+	        <isNotEmpty property="sortOrder.sortField">
+	            $sortOrder.sortField$
+	       </isNotEmpty>
+      </dynamic>
+		 <!--  changed by Surendra Gollapalli on 19th May 2011 START -->
+		 <!-- commented on   16th June 2011 START-->
+		 <!--  
+		 SELECT	a.AGENT_ID userId, a.CUSTOMER_NAME companyName, a.ADD1 add1, a.ADD2 add2, a.ADD3 add3, 
+				a.ADD4 add4, a.ADD5 add5,  (select upper(f.code_desc) from mast_city f where f.code_desc=a.city_code) as city , a.PIN_CODE postalCode,
+            upper(c.code_desc) as country,
+		      (select s.code_desc from mast_state s where s.code=a.state_code and s.ctry_code= a.ctry_code) as state ,
+				a.CONTACT_ID1 contactId1, a.CONTACT_ID2 contactId2, a.CONTACT_ID3 contactId3, a.CONTACT_ID4 contactId4, 
+				a.CONTACT_ID5 contactId5, a.CONTACT_NO1 contactDetail1, a.CONTACT_NO2 contactDetail2, 
+				a.CONTACT_NO3 contactDetail3,	a.CONTACT_NO4 contactDetail4, a.CONTACT_NO5 contactDetail5,
+				TO_CHAR(a.LM_DATE , 'DDMMYY HH24:MI:SS')AS lastModifiedDate				
+		FROM	CUST_ADDRESS_BOOK a
+   		 JOIN mast_country c ON a.ctry_code = c.code		
+		WHERE  AGENT_ID=(select cust_no from sec_user where code=#userId#)
+		AND		UPPER(a.CUSTOMER_NAME) LIKE UPPER(#companyName#)
+		
+		<dynamic prepend="ORDER BY ">
+	        <isNotEmpty property="sortOrder.sortField">
+	            $sortOrder.sortField$
+	       </isNotEmpty>
+      </dynamic>
+      -->
+		 <!-- commented on   16th June 2011 END-->
+		
+		 <!--  changed by Surendra Gollapalli on 19th May 2011 END -->
+		
+		<!--  query changed for to display the full city name 
+		SELECT	AGENT_ID userId, CUSTOMER_NAME companyName, ADD1 add1, ADD2 add2, ADD3 add3, 
+				ADD4 add4, ADD5 add5,(select code_desc from mast_city where code = cust_address_book.city_code)city , PIN_CODE postalCode,
+				(select  c.code_desc as country from cust_address_book a
+		        join mast_country c on a.ctry_code = c.code where customer_name = #companyName#)as country,
+		        STATE_CODE state, 
+				FUN_GET_FIRST_CONTACT_NO(#userId#,CUSTOMER_NAME) contactDetail1
+		FROM	CUST_ADDRESS_BOOK
+		
+		WHERE  AGENT_ID=(select cust_no from sec_user where code=#userId#)
+		AND		UPPER(CUSTOMER_NAME) LIKE UPPER(#companyName#)
+		ORDER BY CUSTOMER_NAME
+		 -->
+		
+	</select>
+	
+	<!--  Added by Surendra Gollapalli on 10 Feb 2011 Iteration 3a Pagination START -->
+	<select id="Admin_FetchCustomerAddressListCOUNT"  parameterClass="cargo.cms.external.admin.bo.CustomerAddressBO" resultClass="java.lang.Integer">
+		SELECT	COUNT(*) as totalRowCount
+		FROM	CUST_ADDRESS_BOOK a
+   		 JOIN mast_country c ON a.ctry_code = c.code		
+		WHERE  AGENT_ID=(select cust_no from sec_user where code=#userId#)
+		AND		UPPER(a.CUSTOMER_NAME) LIKE UPPER(#companyName#)
+		ORDER BY CUSTOMER_NAME
+	</select>
+	<!--  Added by Surendra Gollapalli on 10 Feb 2011 Iteration 3a Pagination END -->
+	<select id="Admin_CheckExistingCustomerAddress"  parameterClass="cargo.cms.external.admin.bo.CustomerAddressBO"  resultClass="java.lang.String">
+		SELECT	TO_CHAR(COUNT(*)) count
+		FROM	CUST_ADDRESS_BOOK
+		WHERE	AGENT_ID = (select cust_no from sec_user where code=#userId#)
+		AND		UPPER(CUSTOMER_NAME) = UPPER(#companyName#)				
+	</select>
+
+	<select id="Admin_ValidateCity" parameterClass="cargo.cms.external.admin.bo.CustomerAddressBO"  resultClass="java.lang.String">
+		SELECT	CTRY_CODE country
+		FROM	MAST_CITY
+		WHERE	CODE_DESC = #city#					
+	</select>
+    
+    
+    <select id="Admin_ValidateCity_Only" parameterClass="cargo.cms.external.admin.bo.CustomerAddressBO"  resultClass="java.lang.String">
+		select count(*) as city from MAST_CITY where UPPER(code)=UPPER(#city#)			
+	</select>
+	
+	
+	
+	<select id="fetchCompanyDetailsForAddressBook" parameterClass="cargo.cms.external.admin.bo.CustomerAddressBO" resultClass="cargo.cms.external.admin.bo.CustomerAddressBO">
+		SELECT customer_name AS companyName			
+		FROM cust_address_book where UPPER(customer_name)=UPPER(#companyName#) and AGENT_ID=(select cust_no from sec_user where UPPER(code)=UPPER(#userId#))
+		
+	</select>
+   <select  id="Admin_ValidateCountry" parameterClass="cargo.cms.external.admin.bo.CustomerAddressBO"  resultClass="java.lang.String">
+       select count(*) country from
+		 MAST_COUNTRY 
+	   where UPPER(CODE)=UPPER(#country#)
+    </select>
+     
+    
+	<select id="Admin_ValidateState" parameterClass="cargo.cms.external.admin.bo.CustomerAddressBO"  resultClass="java.lang.String">
+		SELECT	TO_CHAR(COUNT(*)) count
+		FROM	MAST_STATE
+		WHERE	CODE_DESC = #state#	
+		
+	</select>
+
+         <delete id="Admin_DeleteCustomerAddress"  parameterClass="cargo.cms.external.admin.bo.CustomerAddressBO">
+		DELETE  CUST_ADDRESS_BOOK 
+		WHERE	UPPER(AGENT_ID) = UPPER(#agentId#)
+		AND		UPPER(CUSTOMER_NAME) = UPPER(#companyName#) 		
+	</delete>
+
+	<!-- Allan Start -->
+<!-- changed by ambarish -->
+	<update id="sqlExternalUpdateUserPassword" parameterClass="cargo.cms.afw.bo.UserPasswordBO">
+		UPDATE sec_user 
+		SET user_password=#userPassword#, PASSWORD_IND='',PASSWORD_CHG_DATE=SYSDATE 
+		WHERE code=#userId#
+	</update>
+
+	<select id="sqlExternalGetUserPassword" parameterClass="cargo.cms.afw.bo.UserPasswordBO" resultClass="cargo.cms.afw.bo.UserPasswordBO">
+		SELECT
+			code AS userId,
+			user_password AS oldUserPassword
+		FROM sec_user
+		WHERE code=#userId#
+	</select>
+
+	<!-- Allan End -->
+	<select id="sqlmrclcheckdest" parameterClass="cargo.cms.external.bo.mRCLMixedPrepackDetail" resultClass="java.lang.String">
+		SELECT count(1) FROM MAST_ARPT where CODE = #destination#
+	</select>
+	
+	<!--  Added by Venkat at Onsite for #00001081 -->
+	<select id="sqlExtAdminCheckAdminUser" parameterClass="cargo.cms.external.admin.bo.AimsUserBO" resultClass="java.lang.Integer">
+		SELECT COUNT(*) FROM CUST_COMPANY WHERE ADMIN_USER_ID = #userId# AND CODE = #companyNo#
+	</select>	
+		<!-- Ambarish start -->
+	
+
+	<select id="sqlEncryptPassword" parameterClass="cargo.cms.afw.bo.UserPasswordBO" resultClass="cargo.cms.afw.bo.UserPasswordBO">
+		select #newUserPassword# as newUserPassword from dual
+	</select>
+
+	<select id="sqlEncryptOldPassword" parameterClass="cargo.cms.afw.bo.UserPasswordBO" resultClass="cargo.cms.afw.bo.UserPasswordBO">
+		select #oldUserPassword# as newUserPassword from dual
+	</select>
+
+
+<!--	<select id="sqlExternalGetPreviousPassword" parameterClass="cargo.cms.afw.bo.UserPasswordBO" resultClass="cargo.cms.afw.bo.UserPasswordBO">
+		SELECT password as oldUserPassword	  
+		FROM SEC_USR_PASSWORD_LOG
+		WHERE ROWNUM &lt; 7 and USER_ID=#userId# and PASSWORD=#newUserPassword#   
+		order by lm_date DESC
+	</select>
+	-->
+	<select id="sqlExternalGetPreviousPassword" parameterClass="cargo.cms.afw.bo.UserPasswordBO" resultClass="cargo.cms.afw.bo.UserPasswordBO">
+		SELECT password, decode(password, #newUserPassword#, 'Y','N') as oldUserPassword  
+		FROM SEC_USR_PASSWORD_LOG   
+		WHERE 
+		USER_ID=#userId# 
+		order by lm_date DESC
+	</select>	
+
+	<insert id="sqlExternalInsertPassword"  parameterClass="cargo.cms.afw.bo.UserPasswordBO">
+    	insert into SEC_USR_PASSWORD_LOG (USER_ID, PASSWORD, LM_USER_ID, LM_DATE) values 
+    	(#userId#, #oldUserPassword#, 'SYSUSER', SYSDATE) 
+	</insert>
+	
+	<select id="fetchEmailAddressesAndFaxNumbers" parameterClass="java.lang.String" resultClass="cargo.cms.external.bo.EmailFaxBO">
+		SELECT 
+		EMAIL1 AS emailAddress1 ,EMAIL2 AS emailAddress2 , 
+		EMAIL3 AS emailAddress3 , EMAIL4 AS emailAddress4 , 
+		EMAIL5 AS emailAddress5 , 
+		FAX1 AS faxNumber1 ,FAX2 AS faxNumber2 ,
+		FAX3 AS faxNumber3 , FAX4 AS faxNumber4 , FAX5 AS faxNumber5 
+		FROM CUST_CONTACT WHERE CONTACT_TYPE = 'MRC' AND CUST_NO = #PARAM#
+	</select>
+
+	<!-- Ambarish end -->
+
+	<select id="AimsCreditBalance_Airline_Details" parameterClass="java.lang.String"  resultClass="cargo.cms.external.admin.bo.AgentCreditBalanceBO">
+	<![CDATA[
+
+		select TR_NO , 
+			CUST_NO, 
+			CR_TYPE as creditType, 
+			CARR_CODE as airlineName, 
+			trim(TO_CHAR(CR_AMT,'99999999990.0')) as creditLimit, 
+			trim(TO_CHAR(CR_BAL,'99999999990.0')) as creditBalance,			
+			TO_CHAR(CR_EFF_DATE_FROM,'DDMONYY') creditEffectiveFrom, 
+			TO_CHAR(CR_EFF_DATE_TO,'DDMONYY') creditEffectiveTo, 
+			CR_USER_ID, 
+			CR_DATE , 
+			LM_USER_ID, 
+			TO_CHAR(LM_DATE,'DDMONYY HH24:MI') as lastUpdatedDate
+		from 
+			CUST_AGENT_AIRL_CREDIT
+		where 
+			cust_no = #custCode# 
+			and CR_EFF_DATE_FROM <= trunc(sysdate) 
+			and CR_EFF_DATE_TO >= trunc(sysdate)		 
+			and nvl(upper(Status),'**') <> 'VOID'		 
+	]]>
+	</select>
+
+<select id="AimsCreditBalance_Airline_AAT_Details" parameterClass="java.lang.String"  resultClass="cargo.cms.external.admin.bo.AgentCreditBalanceBO">
+
+	<![CDATA[
+		
+		select  
+			CUST_NO,
+			trim(TO_CHAR(CR_AMT,'99999990.0')) as aat_creditLimit, 
+			trim(TO_CHAR(CR_BAL,'99999990.0')) as aat_creditBalance, 
+			CR_DATE, 
+			TO_CHAR(LM_DATE,'DDMONYY HH24:MI') as aat_lastUpdatedDate
+		from 
+			CUST_AGENT_CREDIT 
+		where 
+			cust_no = #custCode# 
+			and CR_EFF_DATE_FROM <= trunc(sysdate) 
+			and CR_EFF_DATE_TO >= trunc(sysdate)
+			and nvl(upper(Status),'**') <> 'VOID'
+	]]>
+	</select>
+
+	<select id="AimsCreditBalance_Airline_Summary" parameterClass="java.lang.String"  resultClass="cargo.cms.external.admin.bo.AgentCreditBalanceBO">
+		
+		select 
+			RULE_CODE, 
+			RULE_DESC as remarks
+		from 
+			cmsrules
+		where 
+			rule_code like 'REPT_083_Airline%'
+	
+	</select>
+
+	<select id="AimsCreditBalance_agentName_finCode" parameterClass="java.lang.String" resultClass="cargo.cms.external.admin.bo.AgentCreditBalanceBO">
+		select CODE_DESC agentName , FIN_CODE financeCustCode  from cust_company  where  code=#custCode#   
+	</select>
+
+<parameterMap id="hmGenerateRclNo" class="map" >
+	<parameter property="NUMBER" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="OUT"/>
+	<parameter property="TYPE" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+</parameterMap>
+
+<procedure id="generatRcleNumber" parameterMap="hmGenerateRclNo" >
+	{? = call FUN_GET_TR_NO(?)}
+</procedure>
+<!-- ercl Quereis starts Santhosh K-->
+
+	<select id="getERCLAgentDetails" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="cargo.cms.external.bo.mRCLBulkHeader">
+	 SELECT CUST_COMPANY.CODE_DESC AS agentName,CUST_COMPANY.CODE AS custNo,CUST_COMPANY.CERTIFIED_YN as agentCertified FROM CUST_COMPANY, SEC_USER 
+	where SEC_USER.CUST_NO=CUST_COMPANY.CODE and (SEC_USER.CODE=#createdUserId# OR SEC_USER.CUST_NO = #createdUserId#) AND ROWNUM = 1 
+	</select>
+	<select id="getGLSERCLAgentDetails" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="cargo.cms.external.bo.mRCLBulkHeader">
+	 SELECT CUST_COMPANY.CODE_DESC AS agentName,CUST_COMPANY.CODE AS custNo,CUST_COMPANY.CERTIFIED_YN as agentCertified FROM CUST_COMPANY
+	where CUST_COMPANY.CODE = #createdUserId# AND ROWNUM = 1 
+	</select>
+	
+<!--  	<select id="getAlertMessageForMrcl"  parameterClass="map"  resultClass="java.lang.String">
+	<![CDATA[
+		SELECT PKG_EXP_VAL.get_ops_msg('AIMS',#CARRCODE#,#DEST#) FROM DUAL
+		]]>
+   	</select> -->
+   	<select id="findValuableShipmentForERCL" parameterClass="map" resultClass="java.lang.Integer">
+		SELECT 
+			COUNT(*) 
+		FROM 
+			CUST_AIRL_SPL_CODE 
+		WHERE 
+			SPL_TYPE='SPL_VAL' AND CARR_CODE=#carrCode# AND SPL_CODE=#splCode# 
+	</select>
+   	<select id="getAlertMessageForMrcl"  parameterClass="map"  resultClass="java.lang.String">
+	<![CDATA[
+		SELECT MSG||','||ACT_TYPE FROM   MAST_OPT_MSG WHERE  SECTION =#SECTION# AND    CARR_CODE = #CARRCODE#
+		and    dest = #DEST# OR COU_CODE = (select CTRY_CODE from mast_city where code=#DEST#) and  
+		sysdate BETWEEN eff_date AND ( case when EFF_DATE_TO is not null then  (EFF_DATE_TO + 1)  else (sysdate + 1)  end)
+		and  suspend_ind = 'N' and nvl(not_allow_split_carr,'N') = 'N'
+	]]>
+	<isNotEmpty property="SHC1">
+		and SPL_CODE1 =  #SHC1#
+		</isNotEmpty>
+		<isNotEmpty property="SHC2">
+		and SPL_CODE2 =  #SHC2#
+		</isNotEmpty>
+		<isNotEmpty property="SHC3">
+		and SPL_CODE3 =  #SHC3#
+		</isNotEmpty>
+   	</select>
+   	<select id="getEmbargoMessage"  parameterClass="map"  resultClass="cargo.cms.common.bo.EmbargoRuleBO">
+   	<![CDATA[
+		SELECT SECTION as section,DEST as dest,MSG as msg,COU_CODE as countryCode,ACT_TYPE as acceptType,
+		SPL_CODE1 as splCode1,SPL_CODE2 as splCode2,SPL_CODE3 as splCode3 FROM MAST_OPT_MSG WHERE 
+		SECTION =#SECTION# AND    CARR_CODE = #CARRCODE# and
+		(dest = #DEST# OR COU_CODE = (select CTRY_CODE from mast_city where code=#DEST#)) 
+		and  sysdate BETWEEN eff_date AND ( case when EFF_DATE_TO is not null then  (EFF_DATE_TO + 1)  else (sysdate + 1)  end)
+		and    suspend_ind = 'N' and nvl(not_allow_split_carr,'N') = 'N'
+		]]>
+   	</select>
+   <select id="sqlgetcompanyno" parameterClass="java.lang.String" resultClass="java.lang.String">
+	select cust_no from sec_user where code=#userName#
+	</select>
+	
+	<select id="Export_ERCLselectDestination" resultClass="java.lang.String">
+  select base_port from sys_param
+  </select>
+  
+  <select id="export_sqlfetchcompanyforuser" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="java.lang.Integer">
+	select count(code) from CUST_COMPANY where CODE=#custNo#
+	</select>
+	
+	<select id="sqlgetcompanyname" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="java.lang.String">
+	 SELECT CUST_COMPANY.code_desc as qcp_contactPerson,CUST_COMPANY.code_desc as qcp_companyName FROM CUST_COMPANY, SEC_USER 
+where SEC_USER.CUST_NO=CUST_COMPANY.CODE and SEC_USER.CODE=#createdUserId# 
+	</select>
+	
+	
+  <select id="Export_ERCLcheckrepeatedawb"  parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+   select cnt1 + cnt2
+ from
+ (select count(1) cnt1 from exp_pre_rcl_hd,cust_company c where awb_no = #awbNo# and upper(status) in('SUBMITTED','WT DIFFERENCE','CONFIRMED') and ppk_type=#rclType#
+ and cust_no=c.code
+and c.code_desc!=#agentName#) c,
+ (select count(1) cnt2 from exp_pre_rcl_hd a, exp_pre_rcl_brkdn b,cust_company c
+          where a.pre_rcl_no = b.pre_rcl_no(+)
+            and upper(a.status) in('SUBMITTED','WT DIFFERENCE','CONFIRMED')
+			and b.awb_no = #awbNo# and PPK_TYPE=#rclType#
+			and a.cust_no=c.code
+			and c.code_desc!=#agentName#) 
+ 
+ </select>
+ 
+ <select id="Export_eRCLDocumentSequence" resultClass="java.lang.Integer">
+     	  select EXP_MRCLDLINE_SEQ.NEXTVAL from dual
+	 	 
+	</select>
+	<insert id="Export_insertmRCLBulkHeader" parameterClass="cargo.cms.external.bo.mRCLBulkHeader">
+    INSERT INTO EXP_PRE_RCL_HD (
+   PRE_RCL_NO, CARR_CODE, AWB_NO, 
+   AWB_DATE, PPK_TYPE, AWB_PFX, 
+   AWB_DEST,  TTL_PCS, 
+   TTL_WT, RCL_ISS_DATE, ULD_TYPE, 
+   ULD_NO, ULD_CARR, ULD_KEY, 
+   CONTR_CODE, CUST_NO, QCP_IND, 
+   QCP_CONTACT_PERSON, QCP_CONTACT_NO, QCP_FAX_NO, 
+   QCP_PCS, QCP_WT, QCP_GOODS_DESC, 
+   QCP_DELV_DATE, QCP_DELV_TIME, TRUCK_NO1, 
+   TRUCK_NO2, TRUCK_NO3, TRUCK_NO4, 
+   TRUCK_NO5, REPT_VER, RMK, 
+   STATUS, VOID_USER_ID, VOID_DATE, 
+   VOID_RMK, TR_TYPE, TR_STATUS, 
+   CR_USER_ID, CR_DATE, LM_USER_ID, 
+   LM_DATE,SPL_LOAD_REQ,CONTENT,SPL_CODE1,SPL_CODE2,SPL_CODE3,
+   ACT_ACC_DATE, ACT_ACC_TIME,TR_TYPE_EVT,
+   SCREENING_OPTION,RACSF_CODE,SCREENING_METHOD,EXEMPTED_REASON,REMARKS,RA_TYPE,RACSF_TRK_NUMBER,DEDICATED_PERSON,CARR_RF,
+   VKC_CODE,SEAL_NUM1,SEAL_NUM2,SEAL_NUM3,SEAL_NUM4,SEAL_NUM5,SEAL_NUM6,SEAL_NUM7,SEAL_NUM8,SEAL_NUM9,ELI_YN,ELM_YN) 
+   VALUES (#preRclNo#,#carr#,#awbNo#, #awbDate#,'B',#awbNo1#,#destination#,#pieces#,#weight#,null,null,null,null,null,null,#custNo#,#qcpIndicator#,#qcp_contactPerson#,#qcp_contactNo#,#qcp_faxNo#,#qcp_pcs#,#qcp_wt#,#qcp_goods_desc#,TO_DATE(#qcp_delivery_date#,'ddmonyy'),#qcp_delv_time#,#truckNo1#,#truckNo2#,#truckNo3#,#truckNo4#,#truckNo5#,0,#remarks#,
+   NVL(#eRCLStatus#,upper('SUBMITTED')),null,null,null,'N','N',#createdUserId#,sysdate,#lastModifiedBy#,sysdate,
+   #splReq#,#content#,#splCode1#,#splCode2#,#splCode3#,#accpTime#,#actAcpTime#,#trtypeEvt#,
+   #racfRadioOption#,#screenUnderRacsfCode#,#screeningMethod#,#exemptedReason#,#screenUnderRacsfRemarks#,#rakcType#,#truckNo#,#personInCab#, #carrierRF#,
+   #vkcCode#,#sealNum1#,#sealNum2#,#sealNum3#,#sealNum4#,#sealNum5#,#sealNum6#,#sealNum7#,#sealNum8#,#sealNum9#,#eliYN#,#elmYN#)
+ </insert>
+ 
+  <insert id="Export_insertERCLBulkDetail" parameterClass="cargo.cms.external.bo.mRCLBulkDetail">
+  INSERT INTO EXP_PRE_RCL_DMN (
+   PRE_RCL_NO, DOC_LINE_NO, LENGTH, 
+   WIDTH, HEIGHT, PCS, 
+   TR_TYPE, TR_STATUS, CR_USER_ID, 
+   CR_DATE, LM_USER_ID, LM_DATE) 
+ VALUES (#preRCLNO#,#docLineNo#,#length#,#width#,#height#,#pieces#,'MR','N',#createdUserId#,sysdate,#lastModifiedBy#,sysdate)
+  </insert>
+   <insert id="Export_inserteRCLBulkHeader" parameterClass="cargo.cms.external.bo.mRCLBulkHeader">
+    INSERT INTO EXP_RCL_HD (
+   RCL_NO,PRE_RCL_NO, CARR_CODE, AWB_NO, 
+   AWB_DATE, PPK_TYPE, AWB_PFX, 
+   AWB_DEST, RCL_DATE, CUST_NO, SEC_CHECK, 
+    REPT_VER, RMK, 
+     TR_TYPE, TR_STATUS, 
+   CR_USER_ID, CR_DATE, LM_USER_ID, 
+   LM_DATE,SPL_CODE1,SPL_CODE2,SPL_CODE3,
+   STATUS,AWB_CONTENT,RCL_PCS, RCL_WT,EXP_CRGO,CARR_RF,SCREENING_OPTION,RACSF_CODE,SCREENING_METHOD,EXEMPTED_REASON,REMARKS,RA_TYPE,RACSF_TRK_NUMBER,DEDICATED_PERSON,TSA_RCL_IND,
+   VKC_CODE,SEAL_NUM1,SEAL_NUM2,SEAL_NUM3,SEAL_NUM4,SEAL_NUM5,SEAL_NUM6,SEAL_NUM7,SEAL_NUM8,SEAL_NUM9,securenet_serial_no,SECURENET_COUNT) 
+   VALUES (#rclNo#,#preRclNo#,#carr#,#awbNo#,#awbDate#,'B',#awbNo1#,#destination#,SYSDATE,#custNo#,#qcpIndicator#,0,#remarks#,'N','N',#createdUserId#,SYSDATE,#lastModifiedBy#,SYSDATE,#splCode1#,#splCode2#,#splCode3#,DECODE(#qcpIndicator#,'Y','P','S') ,#content#
+   ,#pieces#,#weight#,'Y',#carrierRF#,#racfRadioOption#,#screenUnderRacsfCode#,#screeningMethod#,#exemptedReason#,#screenUnderRacsfRemarks#,#rakcType#,#truckNo#,#personInCab#,#tsaRclInd#,
+   #vkcCode#,#sealNum1#,#sealNum2#,#sealNum3#,#sealNum4#,#sealNum5#,#sealNum6#,#sealNum7#,#sealNum8#,#sealNum9#,#secSerialNo#,#secSerialCount#)
+ </insert>
+ <select id="fetchTareWt" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="java.lang.String" >
+  select TARE_WEIGHT from ULD_TYPE_CARR_TARE_WT where ULD_CARR=#uldCarrier# and ULD_TYPE=#uldType# and #uldSeqNo# between ULD_NO_FROM and ULD_NO_TO
+	</select>
+
+ <select id="ppkFetchTareWt" parameterClass="cargo.cms.external.bo.mRCLPrepackDetail" resultClass="java.lang.String" >
+  select TARE_WEIGHT from ULD_TYPE_CARR_TARE_WT where ULD_CARR=#uldCarrier# and ULD_TYPE=#uldType# and #uldSeqNo# between ULD_NO_FROM and ULD_NO_TO
+	</select>	
+ <insert id="Export_insertRCLDtlBulk" parameterClass="cargo.cms.external.bo.mRCLBulkHeader">
+   INSERT INTO EXP_RCL_DTL (
+   RCL_NO,DOC_LINE_NO,PPK_TYPE,PRE_RCL_NO,CONTENT,PCS,NET_WT,TR_TYPE,TR_STATUS,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE,LOC_CODE,LSP_NO,
+   GROSS_WT,TARE_WT,FSCALE_WT,TR_TYPE_EVT)    
+   VALUES (#rclNo#,EXP_RCLDLINE_SEQ.NEXTVAL,'B',#preRclNo#,#content#,#pieces#,#weight#,'MR','N',#createdUserId#,SYSDATE,#lastModifiedBy#,SYSDATE,#dummyLocn#,#dummyLSP#,
+   #weight#,0,#weight#,#trtypeEvt# )
+ </insert>
+ <insert id="Export_inserteRCLDtlMix" parameterClass="cargo.cms.external.bo.mRCLBulkHeader">
+ 	INSERT INTO EXP_RCL_DTL (
+   RCL_NO,DOC_LINE_NO,PPK_TYPE,PRE_RCL_NO,PCS,NET_WT,GROSS_WT,TARE_WT,FSCALE_WT,CONTR_CODE,TR_TYPE,TR_STATUS,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE,
+   LOC_CODE,ULD_CARR,ULD_KEY,ULD_NO,ULD_TYPE,TR_TYPE_EVT)    
+   VALUES (#rclNo#,EXP_RCLDLINE_SEQ.NEXTVAL,'M',#preRclNo#,#totalPieces#,#totalWeight#,#grossWeight#,#tareweight#,0,
+   #contourCode#,'MR','C',#createdUserId#,SYSDATE,#lastModifiedBy#,SYSDATE ,
+   #dummyLocn#,#uldCarrier#,#uldNo#,#uldSeqNo#,#uldType#,#trtypeEvt#)   
+ </insert>
+  <insert id="Export_inserteRCLBulkDimensionDtl" parameterClass="cargo.cms.external.bo.mRCLBulkDetail">
+  INSERT INTO EXP_RCL_DMN (
+   RCL_NO, DOC_LINE_NO, LENGTH, 
+   WIDTH, HEIGHT, PCS, 
+   TR_TYPE, TR_STATUS, CR_USER_ID, 
+   CR_DATE, LM_USER_ID, LM_DATE) 
+ VALUES (#rclNo#,#docLineNo#,#length#,#width#,#height#,#pieces#,'MR','N',#createdUserId#,sysdate,#lastModifiedBy#,sysdate)
+  </insert>
+  
+  	<select id="getSHCType" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="java.lang.String">
+  	select decode(count(spl_code),0,'UNKNOWN_SPL_EXP','SPL_EXP') FROM CUST_AIRL_SPL_CODE 
+	WHERE CARR_CODE=#carr#  and SPL_TYPE='SPL_EXP' AND SPL_CODE in( #splCode1# , #splCode2#,#splCode3#) 		
+	</select>
+	
+	<select id="getSHCTypeForAccptTime" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="java.lang.String">
+  	select decode(count(1),0,'UNKNOWN_SPL_EXP','SPL_EXP') FROM MAST_SPL_HAND_CODE 
+	WHERE CODE in( #splCode1# , #splCode2#,#splCode3#) AND ECT_HANDLR  is not null 		
+	</select>
+	
+	<select id="Export_ERCLselectAWBPrefix" parameterClass="java.lang.String" 
+		resultClass="cargo.cms.external.bo.mRCLBulkHeader">
+		SELECT CODE as awbNo1 FROM MAST_AWB_PREFIX WHERE CARR_CODE = #carr#
+	</select>
+	
+<insert id="Export_insertmRCLMixedHeader" parameterClass="cargo.cms.external.bo.mRCLBulkHeader">
+INSERT INTO EXP_PRE_RCL_HD (
+   PRE_RCL_NO, CARR_CODE, AWB_NO, 
+   AWB_DATE, PPK_TYPE, AWB_PFX, 
+   AWB_DEST, TTL_PCS, 
+   TTL_WT, RCL_ISS_DATE, ULD_TYPE, 
+   ULD_NO, ULD_CARR, ULD_KEY, 
+   CONTR_CODE, CUST_NO, QCP_IND, 
+   QCP_CONTACT_PERSON, QCP_CONTACT_NO, QCP_FAX_NO, 
+   QCP_PCS, QCP_WT, QCP_GOODS_DESC, 
+   QCP_DELV_DATE, QCP_DELV_TIME, TRUCK_NO1, 
+   TRUCK_NO2, TRUCK_NO3, TRUCK_NO4, 
+   TRUCK_NO5, REPT_VER, RMK, 
+   STATUS, VOID_USER_ID, VOID_DATE, 
+   VOID_RMK, TR_TYPE, TR_STATUS, 
+   CR_USER_ID, CR_DATE, LM_USER_ID, 
+   LM_DATE,SPL_LOAD_REQ,CONTENT,SPL_CODE1,SPL_CODE2,SPL_CODE3,
+   ACT_ACC_DATE, ACT_ACC_TIME,GROSS_WT,TR_TYPE_EVT,WEIGHT_SENT_BY_GLS,securenet_serial_no,SECURENET_COUNT, 
+   BKD_IND, PR_AWB_NO, BK_FLT_KEY, BK_FLT_DATE
+   ,SCREENING_OPTION,RACSF_CODE,SCREENING_METHOD,EXEMPTED_REASON,REMARKS,RA_TYPE,RACSF_TRK_NUMBER,DEDICATED_PERSON,CARR_RF,
+  	 VKC_CODE,SEAL_NUM1,SEAL_NUM2,SEAL_NUM3,SEAL_NUM4,SEAL_NUM5,SEAL_NUM6,SEAL_NUM7,SEAL_NUM8,SEAL_NUM9,ELI_YN,ELI_PI_NUM,ELM_YN,ELM_PI_NUM,DC_NOTICE,BU_PERSON_NAME
+   )
+    
+   VALUES (#preRclNo#,#carr#,#awbNo#,#awbDate#,'M',#awbNo1#,#destination#,#pieces#,#weight#,null,#uldType#,#uldSeqNo#,#uldCarrier#,#uldNo#,upper(#contourCode#),#custNo#,
+   #qcpIndicator#,#qcp_contactPerson#,#qcp_contactNo#,#qcp_faxNo#,#qcp_pcs#,#qcp_wt#,#qcp_goods_desc#,TO_DATE(#qcp_delivery_date#,'ddmonyy'),#qcp_delv_time#,
+   #truckNo1#,#truckNo2#,#truckNo3#,#truckNo4#,#truckNo5#,0,#remarks#,NVL(#eRCLStatus#,'SUBMITTED'),null,null,null,'MR','N',#createdUserId#,sysdate,#lastModifiedBy#,sysdate,#splReq#,
+   #content#,#splCode1#,#splCode2#,#splCode3#,#accpTime#,#actAcpTime#,#grossWeight#,#trtypeEvt#,#weightSentByGLS#,#secSerialNo#,#secSerialCount#,
+   #booked#,#primaryAWB#,#bookFlight#,TO_DATE(#bookFlightDate#,'DDMONYY'),
+   #racfRadioOption#,#screenUnderRacsfCode#,#screeningMethod#,#exemptedReason#,#screenUnderRacsfRemarks#,#rakcType#,#truckNo#,#personInCab#,#carrierRF#,
+   	#vkcCode#,#sealNum1#,#sealNum2#,#sealNum3#,#sealNum4#,#sealNum5#,#sealNum6#,#sealNum7#,#sealNum8#,#sealNum9#,#eliYN#,#eliPINumer#,#elmYN#,#elmPINumer#,#discNotice#,#buPersonName#
+   )
+</insert>
+<insert id="Export_insertERCLMixedHeader" parameterClass="cargo.cms.external.bo.mRCLBulkHeader">
+INSERT INTO EXP_RCL_HD (
+   RCL_NO,PRE_RCL_NO, CARR_CODE, AWB_NO, 
+   AWB_DATE, PPK_TYPE, AWB_PFX, 
+   AWB_DEST, RCL_DATE, CUST_NO, QCP_IND, 
+    REPT_VER, RMK, 
+     TR_TYPE, TR_STATUS, 
+   CR_USER_ID, CR_DATE, LM_USER_ID, 
+   LM_DATE,SPL_CODE1,SPL_CODE2,SPL_CODE3,
+   RCL_PCS,RCL_WT,ULD_TYPE,ULD_NO,ULD_CARR,ULD_KEY,STATUS,EXP_CRGO,CARR_RF,SCREENING_OPTION,RACSF_CODE,SCREENING_METHOD,EXEMPTED_REASON,REMARKS,RA_TYPE,RACSF_TRK_NUMBER,DEDICATED_PERSON,TSA_RCL_IND,
+   VKC_CODE,SEAL_NUM1,SEAL_NUM2,SEAL_NUM3,SEAL_NUM4,SEAL_NUM5,SEAL_NUM6,SEAL_NUM7,SEAL_NUM8,SEAL_NUM9) 
+   VALUES (#rclNo#,#preRclNo#,#carr#,#awbNo#,#awbDate#,'M',#awbNo1#,#destination#,SYSDATE,#custNo#,#qcpIndicator#,0,#remarks#,'N','N',#createdUserId#,SYSDATE,
+   #lastModifiedBy#,SYSDATE,#splCode1#,#splCode2#,#splCode3#,#pieces#,#weight#,
+   #uldType#,#uldSeqNo#,#uldCarrier#,#uldNo#,DECODE(#qcpIndicator#,'Y','P','S'),'Y',#carrierRF#,#racfRadioOption#,#screenUnderRacsfCode#,#screeningMethod#,#exemptedReason#,
+   #screenUnderRacsfRemarks#,#rakcType#,#truckNo#,#personInCab#,#tsaRclInd#,
+   #vkcCode#,#sealNum1#,#sealNum2#,#sealNum3#,#sealNum4#,#sealNum5#,#sealNum6#,#sealNum7#,#sealNum8#,#sealNum9#)
+   
+</insert>
+<insert id="Export_insertERCLMixedDetail" parameterClass="cargo.cms.external.bo.mRCLMixedPrepackDetail">
+INSERT INTO EXP_PRE_RCL_BRKDN (
+   PRE_RCL_NO, DOC_LINE_NO, AWB_NO, 
+   AWB_DATE,DEST, 
+   PCS, WEIGHT, TR_TYPE, 
+   TR_STATUS, CR_USER_ID, CR_DATE, 
+   LM_USER_ID, LM_DATE, QCP_IND, 
+   QCP_CONTACT_PERSON, QCP_CONTACT_NO, QCP_FAX_NO, 
+   QCP_PCS, QCP_WT, QCP_GOODS_DESC, 
+   QCP_DELV_DATE, QCP_DELV_TIME, SPL_CODE1, SPL_CODE2, SPL_CODE3,SPL_CODE4,SPL_CODE5,SPL_CODE6,SPL_CODE7,SPL_CODE8,SPL_CODE9,tr_type_evt,CARR_RF) 
+VALUES (#preRCLNO#,#docLineNo#,#awbNo# ,#awbDate#,upper(#destination#),#pieces#,#netWeight2#,'MR','C',#createdUserId#,sysdate,#lastModifiedBy#,sysdate,#qcpIndicator#,#qcp_contactPerson#,#qcp_contactNo#,#qcp_faxNo#,#qcp_pcs#,#qcp_wt#,#content#,TO_DATE(#qcp_delivery_date#,'ddmonyy'),#qcp_delv_time#,#splCode1#,#splCode2#,#splCode3#,#splCode4#,#splCode5#,#splCode6#,#splCode7#,#splCode8#,#splCode9#,'ERAMIX',#carrierRF#)
+</insert>
+<insert id="insertERCLMixedDetail" parameterClass="cargo.cms.external.bo.mRCLMixedPrepackDetail">
+INSERT INTO EXP_RCL_BRKDN (
+   RCL_NO,AWB_NO,AWB_DATE,ULD_KEY,PCS,WEIGHT,DEST,
+   TR_TYPE, TR_STATUS, CR_USER_ID, CR_DATE, 
+   LM_USER_ID, LM_DATE,SEC_CHECK,CONTENT, SPL_CODE1, SPL_CODE2, SPL_CODE3, SPL_CODE4, SPL_CODE5, SPL_CODE6, SPL_CODE7, SPL_CODE8, SPL_CODE9,CARR_RF) 
+VALUES (#rclNo#,#awbNo#,#awbDate#,#uldNo#,#pieces#,#netWeight2#,upper(#destination#),'MR','C',#createdUserId#,sysdate,#lastModifiedBy#,sysdate,#qcpIndicator#,#content#,
+		#splCode1#, #splCode2#, #splCode3#, #splCode4#, #splCode5#, #splCode6#, #splCode7#, #splCode8#, #splCode9#,#carrierRF#)
+</insert>
+
+<select id="Export_checkrepeateduld" parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+ select cnt1 + cnt2
+ from
+ (select count(1) cnt1 from exp_pre_rcl_hd where uld_key = #uldNo# and upper(status) in('SUBMITTED','WT DIFFERENCE') and CUST_NO = #custNo#) c,
+ (select count(1) cnt2 from exp_pre_rcl_hd a, exp_pre_rcl_dtl b
+          where a.pre_rcl_no = b.pre_rcl_no(+)
+            and upper(a.status) in('SUBMITTED','WT DIFFERENCE')
+			and b.uld_key = #uldNo# and CUST_NO = #custNo#) d
+ </select>
+ 
+ 	<!--  Changed for QR -->
+ 	<select id="CheckforDuplicateUldKeyMrcl"  parameterClass="java.lang.String"  
+		resultClass="java.lang.String">
+	<![CDATA[
+    select (SELECT   count(1)
+		   	FROM EXP_PRE_RCL_HD hd
+			WHERE  
+			 	 hd.ULD_KEY = #uldKey#
+				 	 AND UPPER(hd.STATUS) = 'SUBMITTED'
+
+			) +	 
+	 
+	 (SELECT  count(1) 
+	 		  FROM EXP_PRE_RCL_HD hd, EXP_PRE_RCL_DTL dtl 
+			  	 WHERE 
+				  hd.PRE_RCL_NO = dtl.PRE_RCL_NO AND
+				  dtl.ULD_KEY = #uldKey#   
+				  AND UPPER(hd.STATUS) = 'SUBMITTED'
+	 ) from dual
+	]]>
+   	</select>
+   	
+<select id="Export_ERCLMixedDocumentSequence" resultClass="java.lang.Integer">
+	  select EXP_MRCLBDNLINE_SEQ.NEXTVAL from dual
+</select>
+<select id="Export_ERCLPrepackDocumentSequence" resultClass="java.lang.Integer">
+  select EXP_RCLDLINE_SEQ.NEXTVAL from dual
+</select>
+<insert id="Export_insertmRCLPrepackHeader" parameterClass="cargo.cms.external.bo.mRCLBulkHeader">
+	INSERT INTO EXP_PRE_RCL_HD (
+   PRE_RCL_NO, CARR_CODE, AWB_NO, 
+   AWB_DATE, PPK_TYPE, AWB_PFX, 
+   AWB_DEST, TTL_PCS, 
+   TTL_WT, RCL_ISS_DATE, ULD_TYPE, 
+   ULD_NO, ULD_CARR, ULD_KEY, 
+   CONTR_CODE, CUST_NO, QCP_IND, 
+   QCP_CONTACT_PERSON, QCP_CONTACT_NO, QCP_FAX_NO, 
+   QCP_PCS, QCP_WT, QCP_GOODS_DESC, 
+   QCP_DELV_DATE, QCP_DELV_TIME, TRUCK_NO1, 
+   TRUCK_NO2, TRUCK_NO3, TRUCK_NO4, 
+   TRUCK_NO5, REPT_VER, RMK, 
+   STATUS, VOID_USER_ID, VOID_DATE, 
+   VOID_RMK, TR_TYPE, TR_STATUS, 
+   CR_USER_ID, CR_DATE, LM_USER_ID, 
+   LM_DATE,SPL_LOAD_REQ,CONTENT,SPL_CODE1,SPL_CODE2,SPL_CODE3,
+   ACT_ACC_DATE, ACT_ACC_TIME,TR_TYPE_EVT, GROSS_WT
+   ,SCREENING_OPTION,RACSF_CODE,SCREENING_METHOD,EXEMPTED_REASON,REMARKS,RA_TYPE,RACSF_TRK_NUMBER,
+   DEDICATED_PERSON,CARR_RF,
+   VKC_CODE,SEAL_NUM1,SEAL_NUM2,SEAL_NUM3,SEAL_NUM4,SEAL_NUM5,SEAL_NUM6,SEAL_NUM7,SEAL_NUM8,SEAL_NUM9,DC_NOTICE,BU_PERSON_NAME,ELI_YN,ELM_YN) 
+   
+	VALUES (#preRclNo#,#carr#,#awbNo#,#awbDate#,'P',#awbNo1#,#destination#,#pieces#,#weight#,null,null,null,null,null,null,#custNo#,#qcpIndicator#,#qcp_contactPerson#,
+	#qcp_contactNo#,#qcp_faxNo#,#qcp_pcs#,#qcp_wt#,#qcp_goods_desc#,TO_DATE(#qcp_delivery_date#,'ddmonyy'),#qcp_delv_time#,#truckNo1#,#truckNo2#,
+	#truckNo3#,#truckNo4#,#truckNo5#,0,#remarks#,NVL(#eRCLStatus#,'SUBMITTED'),null,null,null,'MR','N',#createdUserId#,sysdate,#lastModifiedBy#,sysdate,#splReq#,
+	#content#,#splCode1#,#splCode2#,#splCode3#,#accpTime#,#actAcpTime#,#trtypeEvt#,#grossWeight#,
+	#racfRadioOption#,#screenUnderRacsfCode#,#screeningMethod#,#exemptedReason#,#screenUnderRacsfRemarks#,
+	#rakcType#,#truckNo#,#personInCab#,#carrierRF#,
+	#vkcCode#,#sealNum1#,#sealNum2#,#sealNum3#,#sealNum4#,#sealNum5#,#sealNum6#,#sealNum7#,#sealNum8#,#sealNum9#,#discNotice#,#buPersonName#,#eliYN#,#elmYN#)
+</insert>
+
+<insert id="Export_insertERCLPrepack" parameterClass="cargo.cms.external.bo.mRCLBulkHeader">
+INSERT INTO EXP_RCL_HD (
+   RCL_NO,PRE_RCL_NO, CARR_CODE, AWB_NO, 
+   AWB_DATE, PPK_TYPE, AWB_PFX, 
+   AWB_DEST, RCL_DATE, CUST_NO, QCP_IND, 
+     TR_TYPE, TR_STATUS, 
+   CR_USER_ID, CR_DATE, LM_USER_ID, 
+   LM_DATE,SPL_CODE1,SPL_CODE2,SPL_CODE3,STATUS,RCL_PCS,RCL_WT,EXP_CRGO,CARR_RF,SCREENING_OPTION,RACSF_CODE,SCREENING_METHOD,EXEMPTED_REASON,REMARKS,RA_TYPE,RACSF_TRK_NUMBER,DEDICATED_PERSON,TSA_RCL_IND,
+   VKC_CODE,SEAL_NUM1,SEAL_NUM2,SEAL_NUM3,SEAL_NUM4,SEAL_NUM5,SEAL_NUM6,SEAL_NUM7,SEAL_NUM8,SEAL_NUM9) 
+   VALUES (#rclNo#,#preRclNo#,#carr#,#awbNo#,#awbDate#,'P',#awbNo1#,#destination#,SYSDATE,#custNo#,#qcpIndicator#,'MR','N',#createdUserId#,SYSDATE,#lastModifiedBy#,SYSDATE,#splCode1#,#splCode2#,#splCode3#,
+   DECODE(#qcpIndicator#,'Y','P','S'),#pieces#,#weight#,'Y',#carrierRF#,#racfRadioOption#,#screenUnderRacsfCode#,#screeningMethod#,#exemptedReason#,#screenUnderRacsfRemarks#,#rakcType#,#truckNo#,#personInCab#,#tsaRclInd#,
+   #vkcCode#,#sealNum1#,#sealNum2#,#sealNum3#,#sealNum4#,#sealNum5#,#sealNum6#,#sealNum7#,#sealNum8#,#sealNum9#)
+</insert>
+<insert id="Export_insertERCLPrepackDetail" parameterClass="cargo.cms.external.bo.mRCLPrepackDetail">
+INSERT INTO EXP_PRE_RCL_DTL (
+   PRE_RCL_NO, DOC_LINE_NO, ULD_TYPE, 
+   ULD_NO, ULD_CARR, ULD_KEY, 
+   CONTR_CODE, PCS, WT, 
+   NET_WT, GROSS_WT, TARE_WT, 
+   FSCALE_WT, RTN_PCS, RTN_WT, 
+   TR_TYPE, TR_STATUS, CR_USER_ID, 
+   CR_DATE, LM_USER_ID, LM_DATE,TR_TYPE_EVT,securenet_serial_no,SECURENET_COUNT,ELI_YN,ELI_PI_NUM,ELM_YN,ELM_PI_NUM) 
+	VALUES (#preRCLNO#,#docLineNo#,#uldType# ,#uldSeqNo#,#uldCarrier#,#ULDNo#,#contorCode#,#pieces#,0,#netWt#,#grossWeight#,#tareWt#,
+	0,0,0,'MR','S',#createdUserId#,sysdate,#lastModifiedBy#,sysdate,#trtypeEvt#,#secSerialNo#,#secSerialCount#,#eliYN#,#eliPINumer#,#elmYN#,#elmPINumer#)
+</insert>
+
+<insert id="ERCLPrepackDetail" parameterClass="cargo.cms.external.bo.mRCLPrepackDetail">
+	INSERT INTO EXP_RCL_DTL (
+     RCL_NO,PRE_RCL_NO,DOC_LINE_NO,PPK_TYPE,ULD_TYPE, 
+     ULD_NO, ULD_CARR, ULD_KEY, 
+     CONTR_CODE, PCS,
+     NET_WT, GROSS_WT, TARE_WT,
+     FSCALE_WT, RTN_PCS, RTN_WT, 
+     TR_TYPE, TR_STATUS, CR_USER_ID, 
+     CR_DATE, LM_USER_ID, LM_DATE,LOC_CODE) 
+	 VALUES (#rclNo#,#preRCLNO#,#docLineNo#,'P',#uldType# ,#uldSeqNo#,#uldCarrier#,#ULDNo#,#contorCode#,#pieces#,(#grossWeight#-#tareWt#),#grossWeight#,#tareWt#,
+	 0,0,0,'MR','S',#createdUserId#,sysdate,#lastModifiedBy#,sysdate,#dummyLocn#)
+</insert>
+
+<select id="Export_checkrepeatedawbowner"  parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+   select cnt1 + cnt2
+ from
+ (select count(1) cnt1 from exp_pre_rcl_hd,cust_company c where awb_no = #awbNo# and 
+  cust_no=c.code
+			and c.code_desc!=#agentName#) c,
+ (select count(1) cnt2 from exp_pre_rcl_hd a, exp_pre_rcl_brkdn b,cust_company c
+          where a.pre_rcl_no = b.pre_rcl_no(+)
+            and b.awb_no = #awbNo# 
+			and a.cust_no=c.code
+			and c.code_desc!=#agentName#) d
+ 
+ </select>
+		<select id="checkUldInHoldingList" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="java.lang.Integer">
+  		SELECT count(1) from ULD_INVENTORY where ULD_KEY=#uldNo# and AGENT_INV='Y' and AGENT_ID=#custNo#
+	</select>
+	<select id="checkULDInCpctInventory" parameterClass="java.lang.String" resultClass="java.lang.Integer">
+  		SELECT count(1) from ULD_INVENTORY where ULD_KEY=#uldNo# and OWNED_INV = 'Y'
+	</select>
+	<select id="checkUldAgainstAgent" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="java.lang.Integer">
+ 		SELECT   count(1) FROM EXP_PRE_RCL_HD hd WHERE hd.ULD_KEY = #uldNo#  AND UPPER(hd.STATUS) = 'SUBMITTED' AND hd.CUST_NO=#custNo#
+	</select>
+	<select id="checkUldAgainstAgentForPrepack" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="java.lang.Integer">
+		SELECT   count(1) FROM EXP_PRE_RCL_HD hd,EXP_PRE_RCL_DTL dtl
+		WHERE hd.PRE_RCL_NO = dtl.PRE_RCL_NO AND dtl.ULD_KEY = #uldNo#  AND UPPER(hd.STATUS) = 'SUBMITTED' AND hd.CUST_NO=#custNo#
+	</select>
+<select id="generateERCLNumber" parameterClass="java.lang.String" resultClass="java.lang.String">
+ select lpad(ERCL_NO_SEQ.NEXTVAL,8,0) FROM DUAL
+</select>
+		
+<select id="Export_mRCLMixedHouseDtls" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="cargo.cms.external.bo.mRCLBulkHeader" >
+ SELECT 
+H.HAWB_NO AS hawbNo ,
+H.HAWB_ORG AS hawbOrg,
+H.HAWB_DEST AS hawbDest,
+H.HAWB_PCS AS fhlPcs,
+H.HAWB_NET_WT AS fhlWt,
+'0' as oldAvlPcs,
+'0.0' as oldAvlWt,
+ABS(H.HAWB_PCS - NVL((SELECT SUM(PC) FROM EXP_PRE_RCL_ULD_MANF U  WHERE A.AWB_NO = U.AWB_NO AND H.HAWB_NO    = U.HAWB_NO ),0)) AS avlPcs,
+ABS(H.HAWB_NET_WT- NVL((SELECT SUM(WT) FROM EXP_PRE_RCL_ULD_MANF U WHERE A.AWB_NO = U.AWB_NO AND H.HAWB_NO    = U.HAWB_NO),0)) AS avlWt ,
+'0' AS loadPcs,
+'0.0' AS loadWt ,
+A.AWB_PCS as awbPcs
+FROM EDI_FHL A
+JOIN EDI_FHL_HAWB H
+ON A.TR_NO = H.TR_NO
+WHERE A.AWB_NO =#houseAwbNo#
+</select>
+
+<select id="Export_mRCLMixedHouseDtlsAcptCargo" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="cargo.cms.external.bo.mRCLBulkHeader" >
+ SELECT 
+H.HAWB_NO AS hawbNo ,
+H.HAWB_ORG AS hawbOrg,
+H.HAWB_DEST AS hawbDest,
+H.HAWB_PCS AS fhlPcs,
+H.HAWB_NET_WT AS fhlWt,
+'0' as oldAvlPcs,
+'0.0' as oldAvlWt,
+ABS(H.HAWB_PCS - NVL((SELECT SUM(PC) FROM EXP_RCL_ULD_MANF U  WHERE A.AWB_NO = U.AWB_NO AND H.HAWB_NO    = U.HAWB_NO ),0)) AS avlPcs,
+ABS(H.HAWB_NET_WT- NVL((SELECT SUM(WT) FROM EXP_RCL_ULD_MANF U WHERE A.AWB_NO = U.AWB_NO AND H.HAWB_NO    = U.HAWB_NO),0)) AS avlWt ,
+NVL((SELECT SUM(PC) FROM EXP_RCL_ULD_MANF U  WHERE A.AWB_NO = U.AWB_NO AND H.HAWB_NO = U.HAWB_NO),0) AS loadPcs,
+NVL((SELECT SUM(WT) FROM EXP_RCL_ULD_MANF U WHERE A.AWB_NO = U.AWB_NO AND H.HAWB_NO  = U.HAWB_NO),0) AS loadWt ,
+A.AWB_PCS as awbPcs
+FROM EDI_FHL A
+JOIN EDI_FHL_HAWB H
+ON A.TR_NO = H.TR_NO
+WHERE A.AWB_NO =#houseAwbNo#
+</select>
+
+<select id="fetchPrepackSumUldManfPcsWt" parameterClass="cargo.cms.export.bo.ERCLBulkHeaderBO" resultClass="cargo.cms.export.bo.ERCLBulkHeaderBO">
+		SELECT NVL(SUM(PC),0) AS totalBUPcs, NVL(SUM(WT),0) AS totalBUWt FROM EXP_PRE_RCL_ULD_MANF WHERE PRE_RCL_NO = #preRclNo# AND AWB_NO = #houseAwbNo#
+	</select>
+<select id="getHouseManifestDtls" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="cargo.cms.external.bo.mRCLBulkHeader" >
+ SELECT 
+H.HAWB_NO AS hawbNo ,
+H.HAWB_ORG AS hawbOrg,
+H.HAWB_DEST AS hawbDest,
+H.HAWB_PCS AS fhlPcs,
+H.HAWB_NET_WT AS FHLWT,
+(H.HAWB_PCS - NVL((SELECT SUM(PC) FROM EXP_PRE_RCL_ULD_MANF U WHERE A.AWB_NO = U.AWB_NO AND H.HAWB_NO = U.HAWB_NO),0))  AS AVLPCS  ,
+(H.HAWB_NET_WT - NVL((SELECT SUM(WT) FROM EXP_PRE_RCL_ULD_MANF U WHERE A.AWB_NO = U.AWB_NO AND H.HAWB_NO = U.HAWB_NO),0))  AS avlWt   ,
+A.AWB_PCS as awbPcs
+FROM EDI_FHL A
+JOIN EDI_FHL_HAWB H ON A.TR_NO = H.TR_NO
+where A.AWB_NO = #houseAwbNo#
+</select>
+
+<select id="getHouseManifestDtlsAcptCargo" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="cargo.cms.external.bo.mRCLBulkHeader" >
+ SELECT 
+H.HAWB_NO AS hawbNo ,
+H.HAWB_ORG AS hawbOrg,
+H.HAWB_DEST AS hawbDest,
+H.HAWB_PCS AS fhlPcs,
+H.HAWB_NET_WT AS FHLWT,
+(H.HAWB_PCS - NVL((SELECT SUM(PC) FROM EXP_RCL_ULD_MANF U WHERE A.AWB_NO = U.AWB_NO AND H.HAWB_NO = U.HAWB_NO),0))  AS AVLPCS  ,
+(H.HAWB_NET_WT - NVL((SELECT SUM(WT) FROM EXP_RCL_ULD_MANF U WHERE A.AWB_NO = U.AWB_NO AND H.HAWB_NO = U.HAWB_NO),0))  AS avlWt   ,
+A.AWB_PCS as awbPcs
+FROM EDI_FHL A
+JOIN EDI_FHL_HAWB H ON A.TR_NO = H.TR_NO
+where A.AWB_NO = #houseAwbNo#
+</select>
+
+<select id="getPrepackHouseManifestDtls" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="cargo.cms.external.bo.mRCLBulkHeader" >
+  SELECT H.HAWB_NO AS hawbNo  ,
+  H.HAWB_ORG      AS hawbOrg ,
+  H.HAWB_DEST     AS hawbDest,
+  H.HAWB_PCS      AS fhlPcs  ,
+  H.HAWB_NET_WT   AS FHLWT   , 
+  (H.HAWB_PCS - NVL((SELECT SUM(PC) FROM EXP_PRE_RCL_ULD_MANF U WHERE A.AWB_NO = U.AWB_NO AND H.HAWB_NO = U.HAWB_NO),0))  AS AVLPCS  ,
+  (H.HAWB_NET_WT - NVL((SELECT SUM(WT) FROM EXP_PRE_RCL_ULD_MANF U WHERE A.AWB_NO = U.AWB_NO AND H.HAWB_NO = U.HAWB_NO),0))  AS avlWt   ,  
+  A.AWB_PCS       AS awbPcs  
+  FROM EDI_FHL A
+  JOIN EDI_FHL_HAWB H ON A.TR_NO = H.TR_NO  
+where A.AWB_NO = #houseAwbNo#
+</select>
+<select id="checkPreRCLHouseDtls" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="java.lang.Integer">
+ select count(1) from EXP_PRE_RCL_ULD_MANF where AWB_NO=#houseAwbNo# and HAWB_NO =#hawbNo# AND ULD_KEY = #uldNo#
+</select>
+<select id="checkRCLHouseDtls" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="java.lang.Integer">
+ select count(1) from EXP_RCL_ULD_MANF where AWB_NO=#houseAwbNo# and HAWB_NO =#hawbNo# and RCL_NO=#rclNo# AND ULD_KEY = #uldNo#
+</select>
+	<update id="updateHouseMnfstDtls" parameterClass="cargo.cms.external.bo.mRCLBulkHeader">
+	UPDATE EXP_PRE_RCL_ULD_MANF
+   SET PC = #loadPcs#,
+   WT = #loadWt#,
+   LM_USER_ID =#lastModifiedBy#,
+   LM_DATE = sysdate
+   WHERE AWB_NO = #houseAwbNo# AND
+	HAWB_NO = #hawbNo# AND ULD_KEY = #uldNo#
+	
+	</update>
+	<!--  Changed for QR -->
+	<update id="updateMixRCLHouseMnfstDtls" parameterClass="cargo.cms.external.bo.mRCLBulkHeader">
+	UPDATE EXP_RCL_ULD_MANF
+   SET PC = PC+#loadPcs#,
+   WT = WT+#loadWt#,
+   LM_USER_ID =#lastModifiedBy#,
+   LM_DATE = sysdate
+   WHERE AWB_NO = #houseAwbNo# AND
+	HAWB_NO = #hawbNo# AND ULD_KEY = #uldNo# and RCL_NO=#rclNo#
+	
+	</update>
+	<insert id="insertHouseMnfstDtls" parameterClass="cargo.cms.external.bo.mRCLBulkHeader">
+INSERT INTO EXP_PRE_RCL_ULD_MANF (
+   PRE_RCL_NO,ULD_KEY,AWB_NO,HAWB_NO,
+	PC,WT,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE) 
+VALUES (#preRclNo#,#uldNo#,#houseAwbNo#,#hawbNo#,#loadPcs#,#loadWt#,#createdUserId#,sysdate,#lastModifiedBy#,sysdate)
+</insert>
+	<insert id="insertRCLHouseMnfstDtls" parameterClass="cargo.cms.external.bo.mRCLBulkHeader">
+INSERT INTO EXP_RCL_ULD_MANF (
+   RCL_NO,ULD_KEY,AWB_NO,HAWB_NO,
+	PC,WT,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE) 
+VALUES (#rclNo#,#uldNo#,#houseAwbNo#,#hawbNo#,#loadPcs#,#loadWt#,#createdUserId#,sysdate,#lastModifiedBy#,sysdate)
+</insert>
+	<!--  Changed for QR -->
+	<update id="updateRCLHouseMnfstDtls" parameterClass="cargo.cms.external.bo.mRCLBulkHeader">
+	UPDATE EXP_RCL_ULD_MANF
+   SET PC = PC+#loadPcs#,
+   WT = WT+#loadWt#,
+   LM_USER_ID =#lastModifiedBy#,
+   LM_DATE = sysdate
+   WHERE AWB_NO = #houseAwbNo# AND
+	HAWB_NO = #hawbNo#  and RCL_NO=#rclNo#
+	</update>
+  <select id="checkFhlMsgForAwb" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="java.lang.Integer">
+  select count(1) from EDI_FHL where AWB_NO=#houseAwbNo#
+  </select>
+<select id="verifyRecvDocForAwb" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="java.lang.Integer">
+  select count(1) from EXP_DOC_RECD where AWB_NO=#houseAwbNo# AND AWB_FRZ_YN = 'Y'
+</select>
+<select id="sqlcheckSplLoadReq"  parameterClass="java.lang.String" resultClass="java.lang.Integer">
+		SELECT count(1) FROM MAST_CODE_DTL  WHERE CODE_TYPE='SPL_LOAD_REQUIREMENT' and CODE_DESC=#splLoadReq#
+</select>	
+<select id="sqlcheckAgentName"  parameterClass="java.lang.String" resultClass="java.lang.Integer">
+		select count(1) from CUST_COMPANY where ACTIVE = 'Y' AND AGENT_YN = 'Y' AND BLACKLISTED='N' AND CODE_DESC = #codeDesc#
+</select>
+<select id="sqlcheckAgentCode"  parameterClass="java.lang.String" resultClass="java.lang.Integer">
+		select count(1) from CUST_COMPANY where ACTIVE = 'Y' AND AGENT_YN = 'Y' AND BLACKLISTED='N' AND CODE=#code#
+</select>
+	<!--  Changed for QR -->
+ <select id="checkSPLCodeExist" parameterClass="map" resultClass="java.lang.String">
+  SELECT to_char(count(1)) 
+  FROM MAST_SPL_HAND_CODE 
+  where upper(code) = upper(#splCode#)
+ </select>
+ <select id="getERCLAgentCode"  parameterClass="java.lang.String" resultClass="java.lang.String">
+		select code from CUST_COMPANY where  CODE_DESC=#codeDesc#
+</select>
+ <select id="getERCLAgentCodeDesc"  parameterClass="java.lang.String" resultClass="java.lang.String">
+		select code_desc from CUST_COMPANY where  CODE=#code#
+</select>
+<!--  Changed for QR -->
+<select id="checkULDInventory" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="java.lang.Integer">
+		SELECT COUNT(1)  FROM ULD_INVENTORY WHERE  ULD_KEY  = #uldNo# and OWNED_INV = 'Y'
+	</select>
+	<insert id="insertServiceErrorLog" parameterClass="cargo.cms.external.bo.mRCLBulkHeader">
+		INSERT INTO SERVICE_ERR_LOG(TR_NO ,TR_TYPE,DOC_LINE_NO,TR_DATE,OWNER_ID,AGENT_NO,CARR_CODE  ,RMK1,RMK2,ERR_REASON ,SVC_USER_ID,SVC_DATE,ULD_TYPE,ULD_NO,
+     								ULD_CARR   ,ULD_KEY    ,CR_USER_ID ,CR_DATE    ,LM_USER_ID ,LM_DATE,ORG_OWNED_INV,FLT_TYPE)
+     	VALUES( #preRclNo#,'MR',SERVICE_ERR_LOG_DLN_SEQ.nextval,SYSDATE,#carr#,NULL,#carr#,NULL,NULL,'Found ULD in inventory during creation of eRCL(Mixed)' ,'',
+      	'',#uldType#,#uldSeqNo#,#uldCarrier#,#uldNo#,#createdUserId# ,SYSDATE,#lastModifiedBy# ,SYSDATE,'N','E')
+	</insert>	
+	<select id="fetchAgentInventoryHouseDetails" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="cargo.cms.external.bo.mRCLBulkHeader">
+		SELECT HAWB_NO AS hawbNo, LOCN_PCS AS newBUPcs, LOCN_WT AS newBUWt  FROM ASV_INVENTORY WHERE ULD_KEY = #uldNo# AND AGENT_CODE = #custNo# AND AWB_NO = #houseAwbNo#
+	</select>
+	<!--  Changed for QR -->
+	<select id="fetchAgentInventoryAWBDetails" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="cargo.cms.external.bo.mRCLMixedPrepackDetail">
+		SELECT SUBSTR(AWB_NO,1,3) AS awbNo1,SUBSTR(AWB_NO,4) AS awbNo2,TO_CHAR(AWB_DATE,'DDMONYY') AS awbDate,SUM(LOCN_PCS) AS pieces1,SUM(LOCN_WT) AS netWeight2,LOC_CODE FROM ASV_INVENTORY 
+		WHERE ULD_KEY = #uldNo# AND AGENT_CODE = #custNo#
+		GROUP BY AWB_NO,AWB_DATE,LOC_CODE
+	</select>
+	
+	<select id="fetchSystemDateWithTime"  parameterClass="java.lang.String" resultClass="java.lang.String">
+		SELECT to_char(sysdate,'DDMONYY HH24:MI') as systemDate FROM dual 
+	</select>
+	
+	
+	<select id="isUldInAgtInvByIntrnlStaff" parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+		SELECT COUNT(1) FROM ASV_INVENTORY WHERE ULD_KEY=#uldKey# AND AGENT_CODE=#agtCode#
+	</select>
+	
+	<select id="isAwbLoadedInUld" parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+		SELECT COUNT(1) FROM ASV_INVENTORY WHERE ULD_KEY=#uldKey# AND AWB_NO=#awbNo# AND AWB_DATE=TRUNC(SYSDATE)
+	</select>
+<!-- ercl Quereis Ends -->
+
+<select id="Export_checkDateDiff"  parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="java.lang.Integer">
+		select to_date(#issueDateTo#,'DDMONYY')-to_date(#issueDateFrom#,'DDMONYY') from dual 
+</select>
+	<select id="exp_getdate"  parameterClass="java.lang.String"  resultClass="java.lang.String">
+			SELECT UPPER(TO_CHAR(SYSDATE,'DDMONYY')) FROM DUAL
+  	</select>
+  	<select id="exp_getFrmdate"  parameterClass="java.lang.String"  resultClass="java.lang.String">
+		select to_char(sysdate-14,'DDMONYY') from dual 
+	</select>
+	<!--  added by Surendra Gollapalli for auto populate the Country based on City START -->
+
+
+<select id="admin_cust_fetchCountry" parameterClass="map" resultClass="cargo.cms.external.admin.bo.CustomerAddressBO">
+
+  SELECT CODE AS
+			country,
+				 CODE_DESC AS
+				countryDesc
+			 FROM MAST_COUNTRY WHERE  CODE = (select ctry_code from mast_city where code=#code#) ORDER BY CODE
+		
+			
+	</select>
+	<select id="admin_cust_fetchCity" parameterClass="map" resultClass="cargo.cms.external.admin.bo.CustomerAddressBO">
+		  SELECT CODE AS
+			country,
+				 CODE_DESC AS
+				countryDesc
+			 FROM MAST_COUNTRY WHERE  CODE = (select ctry_code from mast_city where code=#code#) ORDER BY CODE
+	</select>
+
+<!--  added by Surendra Gollapalli for auto populate the Country based on City END -->
+
+	<select id="fetchTruckerCode"  parameterClass="java.lang.String" resultClass="java.lang.String">
+		select code from CUST_COMPANY where  CODE_DESC=#codeDesc#
+	</select>
+ 	<select id="fetchTruckerCodeDesc"  parameterClass="java.lang.String" resultClass="java.lang.String">
+		select code_desc from CUST_COMPANY where  CODE=#code#
+	</select>
+	<select id="validateTruckerName" parameterClass="java.lang.String" resultClass="java.lang.Integer">
+		select count(1) from CUST_COMPANY WHERE CODE_DESC=#param# and TRUCKER_YN = 'Y' AND ACTIVE = 'Y' AND BLACKLISTED='N'
+	</select>
+	<select id="validateTruckerCode" parameterClass="java.lang.String" resultClass="java.lang.Integer">
+		select count(1) from CUST_COMPANY WHERE CODE=#param# and TRUCKER_YN = 'Y' AND ACTIVE = 'Y' AND BLACKLISTED='N'
+	</select>	
+	<!-- Added by Surendra Gollaplli for Validation for Country and State on 2nd May 2011 START -->
+	<select id="admin_cust_fetchCountry_Val" parameterClass="java.lang.String" resultClass="java.lang.String">
+  SELECT CODE AS
+			country				 
+			 FROM MAST_COUNTRY WHERE  CODE = (select ctry_code from mast_city where code_desc=#strCity#) ORDER BY CODE
+	</select>	
+	<select id="admin_cust_fetchState_Val" parameterClass="cargo.cms.external.admin.bo.CustomerAddressBO" resultClass="java.lang.Integer">
+		  select count(*) from MAST_STATE a  WHERE UPPER(CTRY_CODE) =
+		  (SELECT UPPER(CTRY_CODE) FROM MAST_CITY WHERE UPPER(CODE_DESC) = UPPER(#city#) AND ROWNUM=1
+		  ) and a.code=#state#
+	</select>
+	<!-- Added by Surendra Gollaplli for Validation for Country and State on 2nd May 2011 END -->
+	<select id="checkUldInv" parameterClass="java.lang.String" resultClass="java.lang.Integer">
+		select count(1) from asv_inventory where ULD_KEY=#param#
+	</select>
+	<select id="checkAwbinUldInv" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="java.lang.Integer">
+		select count(1) from asv_inventory where ULD_KEY=#uldNo# and AWB_NO=#houseAwbNo#
+	</select>
+	
+	<update id="updOwnedInv" parameterClass="cargo.cms.external.bo.mRCLBulkHeader">
+	 update ULD_INVENTORY set AGENT_INV='N',OWNED_INV='Y',LM_USER_ID=#lastModifiedBy#,LM_DATE=sysdate where ULD_KEY=#uldNo# 
+	</update>
+	<!-- create eRCL prepack  -->
+	<select id="chkInULDInveRCL" parameterClass="java.util.HashMap" resultClass="cargo.cms.external.bo.mRCLBulkHeader">
+	 select AGENT_INV as agntInv,EMPTY_FLG as emptyFlg,OWNED_INV as ownedInv from ULD_INVENTORY where ULD_KEY=#uldKey# 
+	</select>
+	<select id="chkInULDInveRCL_preDec" parameterClass="java.util.HashMap" resultClass="cargo.cms.common.ext.bo.mRCLBulkHeader">
+	 select AGENT_INV as agntInv,EMPTY_FLG as emptyFlg,OWNED_INV as ownedInv from ULD_INVENTORY where ULD_KEY=#uldKey# 
+	</select>
+	<insert id="insertServiceErrorLogPrepack" parameterClass="cargo.cms.external.bo.mRCLPrepackDetail">
+		INSERT INTO SERVICE_ERR_LOG(TR_NO ,TR_TYPE,DOC_LINE_NO,TR_DATE,OWNER_ID,AGENT_NO,CARR_CODE  ,RMK1,RMK2,ERR_REASON ,SVC_USER_ID,SVC_DATE,ULD_TYPE,ULD_NO,
+     								ULD_CARR   ,ULD_KEY    ,CR_USER_ID ,CR_DATE    ,LM_USER_ID ,LM_DATE ,FLT_TYPE)
+     	VALUES( #preRCLNO#,'MR',SERVICE_ERR_LOG_DLN_SEQ.nextval,SYSDATE,#uldCarrier#,#custNo#,#uldCarrier#,NULL,NULL,'Found ULD in cpct inventory during creation of eRCL(Prepack)' ,'',
+      	'',#uldType#,#uldSeqNo#,#uldCarrier#,#ULDNo#,#createdUserId# ,SYSDATE,#lastModifiedBy# ,SYSDATE,'E')
+	</insert>	
+	<update id="updOwnedInvPrepack" parameterClass="cargo.cms.external.bo.mRCLPrepackDetail">
+	 update ULD_INVENTORY set AGENT_INV='N',OWNED_INV='Y',LM_USER_ID=#lastModifiedBy#,LM_DATE=sysdate where ULD_KEY=#ULDNo# 
+	</update>
+	<select id="fetchDummyLocation" parameterClass="java.lang.String" resultClass="java.lang.String">
+	  SELECT RULE_VALUE FROM CMSRULES where RULE_CODE = 'eRCL_EXP_CRGO_LOCATION' 
+	</select>
+	<select id="fetchDummyLSP" parameterClass="java.lang.String" resultClass="java.lang.String">
+	  SELECT RULE_VALUE FROM CMSRULES where RULE_CODE = 'eRCL_EXP_CRGO_LSP' 
+	</select>
+	<select id="eRCLULDLocation" parameterClass="java.lang.String" resultClass="java.lang.String">
+	 select LOC_CODE from ULD_INVENTORY where ULD_KEY=#param#
+	</select>	
+	<select id="eRCLValidAWB" parameterClass="java.lang.String" resultClass="java.lang.Integer">
+	select count(1) from AWB where AWB_NO=#param# and AWB_CLOSED_YN='N' and AWB_TYPE!='E'
+	</select>
+	<select id="checkContourCodeIsValidINPPK" parameterClass="java.lang.String" resultClass="java.lang.Integer">
+	select count(1) from uld_type_contr where contr_code=#PARAM#
+	</select>
+	<update id="eRCLUldInvUpd" parameterClass="java.util.HashMap">
+	 update ULD_INVENTORY set DIRECT_TOW='Y',HANDLING_MODE='DT', second_wt = FIRST_WT ,FINAL_WEIGHT ='Y', LOC_CODE = NVL(LOC_CODE, #locCode#),RESV_FLG = 'N' where ULD_KEY=#uldKey#
+	</update>
+	
+	<update id="eRCLUpdUldInVoidDel" parameterClass="java.util.HashMap">
+		UPDATE ULD_INVENTORY SET DIRECT_TOW='N', HANDLING_MODE='' WHERE ULD_KEY=#uldKey#
+	</update>
+	<select id="eRclContourCode" parameterClass="java.lang.String" resultClass="java.lang.String">
+		SELECT CONTR_CODE FROM ULD_TYPE_CONTR WHERE UPPER(ULD_TYPE) = UPPER(#param#) 
+	</select>
+	<select id="checkuldiscontorpallet" parameterClass="java.lang.String" resultClass="java.lang.String">
+	<![CDATA[
+		select (case when (SELECT COUNT(1)
+		FROM uld_group_type gt,
+  			 mast_uld_allot_group uag,
+  			 mast_uld_allot ua,
+  			 mast_uld_group ug
+	   WHERE gt.uld_group = uag.uld_group
+			 AND uag.uld_allot  = ua.uld_allot
+			 AND ug.uld_group   = uag.uld_group
+	         AND gt.uld_type    = UPPER(#param#)
+			 AND ua.plt_cnt     = 'Pallet') > 0 then 'P' else 'C' end) from dual
+			 ]]>
+	</select>
+	<select id="fetchMastCodeDtlDesc" parameterClass="java.util.HashMap" resultClass="java.lang.String">
+		SELECT CODE FROM MAST_CODE_DTL WHERE CODE_TYPE = #codeType# AND CODE_DESC = #codeDesc# AND ROWNUM = 1
+	</select>
+	<!-- create eRCL prepack  -->
+	<select id="validateDestforERCLRCL" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="java.lang.Integer">
+		<![CDATA[
+		  select count(1) from awb where awb_no=#awbNo# and awb_date=to_date(#awbDate#,'DDMONYY') 
+			AND ( RCL_PCS > 0  OR CAR_YN = 'Y') AND RTN_PCS <> RCL_PCS AND dest! = #destination#
+		]]>		
+	</select>
+	<select id="validateDestforERCLBulk" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="java.lang.Integer">
+	  <![CDATA[
+		select count(1) from exp_pre_rcl_hd where awb_no=#awbNo# and awb_date=to_date(#awbDate#,'DDMONYY') and awb_dest!=#destination# and 
+		status='SUBMITTED'  
+		and not exists (select null from awb where awb_no=#awbNo# and awb_date=to_date(#awbDate#,'DDMONYY') and RCL_PCS > 0)
+	   ]]>
+	</select>
+	<select id="validateDestforERCLMix" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="java.lang.Integer">
+	  <![CDATA[
+		select count(1) from exp_pre_rcl_brkdn a left join exp_pre_rcl_hd b
+		on a.awb_no=b.awb_no and a.awb_date=b.awb_date 
+		where a.awb_no=#awbNo# and a.awb_date=to_date(#awbDate#,'DDMONYY') and (a.dest!=#destination# or b.awb_dest!=#destination#) and 
+		b.status='SUBMITTED'  
+		and not exists (select null from awb where awb_no=#awbNo# and awb_date=to_date(#awbDate#,'DDMONYY') and  RCL_PCS > 0)
+		]]>
+	</select>
+	
+	<update id="sqlExternalUpdateUserPasswordCP" parameterClass="cargo.cms.external.admin.bo.CompanyProfileBO">
+		UPDATE sec_user 
+		SET user_password=#adminNewPassword#, PASSWORD_IND='',PASSWORD_CHG_DATE=SYSDATE 
+		WHERE code=#userId#
+	</update>
+	
+	<update id="eRCLUldInvUpdHdlg" parameterClass="java.util.HashMap">
+		update ULD_INVENTORY set DIRECT_TOW='Y',HANDLING_MODE='DT', 
+		second_wt = FIRST_WT ,FINAL_WEIGHT ='Y', LOC_CODE = NVL(LOC_CODE, #locCode#),
+		RESV_FLG = 'N', OWNED_INV = 'Y'
+		where ULD_KEY=#uldKey#	 
+	</update>
+	
+	<select id="fetchScreenDetailsByRclNoforEnquiry" parameterClass="cargo.cms.external.bo.mRCLBulkHeader" resultClass="cargo.cms.export.bo.ERCLBulkHeaderBO">
+	  SELECT PRE_RCL_NO AS rclNo,SCREENING_OPTION AS racfRadioOption,RACSF_CODE AS screenUnderRacsfCode,
+	  SCREENING_METHOD AS screeningMethod,EXEMPTED_REASON AS exemptedReason,
+	  REMARKS AS remarks,RA_TYPE AS rakcType,RACSF_TRK_NUMBER AS truckNo,DEDICATED_PERSON AS personInCab,
+	  	VKC_CODE as vkcCode,
+		SEAL_NUM1 as sealNum1,
+		SEAL_NUM2 as sealNum2,
+		SEAL_NUM3 as sealNum3,
+		SEAL_NUM4 as sealNum4,
+		SEAL_NUM5 as sealNum5,
+		SEAL_NUM6 as sealNum6,
+		SEAL_NUM7 as sealNum7,
+		SEAL_NUM8 as sealNum8,
+		SEAL_NUM9 as sealNum9
+	  FROM EXP_PRE_RCL_HD WHERE PRE_RCL_NO=#rclNo#
+	</select>
+	
+	<select id="getScreeningMethodDropdownNameforEnquiry" parameterClass="map" resultClass="java.lang.String">
+	  SELECT NVL(CODE_DESC,'') AS codeDesc FROM MAST_CODE_DTL WHERE CODE=#code# AND CODE_TYPE=#codeType#
+	</select>
+ 
+</sqlMap>

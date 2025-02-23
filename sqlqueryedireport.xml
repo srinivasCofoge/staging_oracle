@@ -1,0 +1,1467 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://www.ibatis.com/dtd/sql-map-2.dtd">
+
+	<!--
+		The SQL in these maps files has purposely been typed with more
+		verbosity than is actually required. For example, many of the selects
+		could have just used SELECT * FROM... instead of listing all of the
+		columns. This is to demonstrate that even complex SQL can be handled
+		and coded and formatted the way SQL was meant to be (i.e. not a bunch
+		of concatenated strings in a Java class).
+	-->
+	<!-- This XML file will hold only the queries which would be used for EDI module Reports -->
+	<!-- Added by Varadaraj Muni 01-Sep-2010 -->
+<sqlMap namespace="EDIReportModule">
+
+<select id="edi_rept_173"  parameterClass="cargo.cms.edi.report.bo.EnqFHLRept_173BO"  	resultClass="cargo.cms.edi.report.bo.EnqFHLRept_173BO">
+
+SELECT 
+									  C.*,
+									  D.tmpSrcDispName,
+									  D.tmpCustName,
+									  D.LM_USER_ID
+									FROM 
+									  (SELECT TR_NO,
+									  DOC_LINE_NO as docLineNo,
+									  HAWB_NO as hawbNo ,
+									  HAWB_ORG ||'/'|| HAWB_DEST as orgDest,
+									  HAWB_PCS ||'/'|| HAWB_NET_WT as hawbPcWt,
+									  HAWB_PCS as hawbPc,
+									  TO_CHAR(HAWB_NET_WT,'9999990.9') as hawbWt,
+									  TO_CHAR(sysdate, 'DDMONYY HH24:MI') as sysDate2,  HAWB_WT_CODE,
+									  (FREE_TEXT_DESC1 || ' ' || FREE_TEXT_DESC2 || ' ' || FREE_TEXT_DESC3 || ' ' || FREE_TEXT_DESC4 || ' ' || FREE_TEXT_DESC5 || ' ' || FREE_TEXT_DESC6 || ' ' || FREE_TEXT_DESC7 || ' ' || FREE_TEXT_DESC8 || ' ' || FREE_TEXT_DESC9) as freeTextDesc,
+									  SPL_CODE1
+									   ||decode(SPL_CODE2 ,null,'',CONCAT(', ',SPL_CODE2))
+									   ||decode(SPL_CODE3 ,null,'',CONCAT(', ',SPL_CODE3))
+									   ||decode(SPL_CODE4 ,null,'',CONCAT(', ',SPL_CODE4))
+									   ||decode(SPL_CODE5 ,null,'',CONCAT(', ',SPL_CODE5))
+									   ||decode(SPL_CODE6 ,null,'',CONCAT(', ',SPL_CODE6))
+									   ||decode(SPL_CODE7 ,null,'',CONCAT(', ',SPL_CODE7))
+									   ||decode(SPL_CODE8 ,null,'',CONCAT(', ',SPL_CODE8)) as splcode,
+									  MANIFEST_DESC as  content,
+									  SHPR_NAME as shipperName,
+									  SHPR_ADD1||' '||SHPR_ADD2||' '||SHPR_ADD3||' '||SHPR_ADD4||' '||SHPR_ADD5 as shipperAddr,
+									  SHPR_PLACE as shipperCity,
+									  SHPR_CTRY_CODE as shipperCtryCode,
+									  SHPR_PIN_CODE as shipperPostalCode,
+									  SHPR_CONT_ID as shipperId,
+									  SHPR_CONT_N as shipperNo,
+									  CSGNE_NAME as congName ,
+									  CSGNE_ADD1||' '||CSGNE_ADD2||' '||CSGNE_ADD3||' '||CSGNE_ADD4||' ' ||CSGNE_ADD5 as consgAddr,
+									  CSGNE_PLACE as consgCity,
+									  CSGNE_CTRY_CODE as consgCtryCode,
+									  CSGNE_PIN_CODE as consgPostalCode,
+									  CSGNE_CONT_ID as consgId,
+									  CSGNE_CONT_N  as consgNo,
+									  NFY_NAME  as notifyName,
+									  (NFY_ADD1||' '||NFY_ADD2||' '||NFY_ADD3||' '||NFY_ADD4||' '||NFY_ADD5)as notifyAddr,
+									  NFY_PLACE as notifyCity,									
+									  NFY_CTRY_CODE as notifyCtryCode,
+									  NFY_PIN_CODE as notifyPostalCode,
+									  NFY_CONT_ID as notifyId,
+									  NFY_CONT_N as notifyNo,
+									  NFY_LICENSE1||' '||NFY_LICENSE2||' '||NFY_LICENSE3||' '||NFY_LICENSE4||' '||NFY_LICENSE5||' '||NFY_LICENSE6||' '|| NFY_LICENSE7||' '||NFY_LICENSE8||' '||NFY_LICENSE9 as license,
+									  NFY_PERMIT1 ||' '||NFY_PERMIT2||' ' ||NFY_PERMIT3||' '||NFY_PERMIT4 ||' '||NFY_PERMIT5||' '||NFY_PERMIT6||' '||NFY_PERMIT7||' ' ||NFY_PERMIT8||' '|| NFY_PERMIT9 as permit,
+									  DECLN_CURR_CODE as currCode,
+									  DECLN_WT_VALN_PPCC_I as wt,
+									  DECLN_OTH_CHRG_PPCC_I as otherchrg,
+									  DECLN_CARR as carrDeclVal,
+									  DECLN_CTM as ctmDeclVal,
+									  DECLN_INSURCE as insurAmt,
+									  DECLN_FREE_TEXT,
+									  ACCS_I,SOURCE,RMK_CTM,FHL_OWNER,
+									  LM_USER_ID as logonId,
+									  TO_CHAR(LM_DATE, 'DDMONYY HH24:MI') as amdDate,
+									  LM_VER ,RMK as remarks,
+									  NFY_LICENSE6,NFY_LICENSE7,NFY_LICENSE8,NFY_LICENSE9,NFY_PERMIT6 ,NFY_PERMIT7 ,NFY_PERMIT8 ,
+									  NFY_PERMIT9 ,HBS_SLAC as slacNo,HTS_COMM_CODE1,HTS_COMM_CODE2,HTS_COMM_CODE3,HTS_COMM_CODE4,
+									  HTS_COMM_CODE5,HTS_COMM_CODE6,HTS_COMM_CODE7,HTS_COMM_CODE8,HTS_COMM_CODE9,
+									  CHARGE_AGENT AS agtIndicator,SHPR_STATE_PROVINCE as state,
+									  CSGNE_STATE_PROVINCE as consgState
+
+		FROM EDI_FHL_HAWB
+		WHERE  TR_NO = #trno# AND
+						HAWB_NO=#hawbNo#) C,   
+  
+  (SELECT TR_NO,       DECODE(A.SI_TYPE,'ISAC','AIMS','ISACS','AIMS','FHL_I','SITA','TX_HM','TRAXON','S','CMS') AS tmpSrcDispName,       DECODE(A.SI_TYPE,'ISAC',B.CO_SNAME,'ISACS',B.CO_SNAME,'') AS tmpCustName,   DECODE(A.SI_TYPE,'S',A.LM_USER_ID,'') AS LM_USER_ID       FROM EDI_FHL A,         CUST_COMPANY B       WHERE A.FHL_OWNER = B.CODE(+)  AND
+  A.TR_NO = #trno#) D      WHERE C.TR_NO = D.TR_NO
+
+</select>	
+
+
+<select id="edi_rept_173_before"  parameterClass="cargo.cms.edi.report.bo.EnqFHLRept_173BO"  	resultClass="cargo.cms.edi.report.bo.EnqFHLRept_173BO">
+
+SELECT 
+									  C.*,
+									  D.tmpSrcDispName,
+									  D.tmpCustName,
+									  D.LM_USER_ID
+									FROM 
+									  (SELECT TR_NO,
+									  DOC_LINE_NO as docLineNo,
+									  HAWB_NO as hawbNo ,
+									  HAWB_ORG ||'/'|| HAWB_DEST as orgDest,
+									  HAWB_PCS ||'/'|| HAWB_NET_WT as hawbPcWt,
+									  HAWB_PCS as hawbPc,
+									  TO_CHAR(HAWB_NET_WT,'9999990.9') as hawbWt,
+									  TO_CHAR(sysdate, 'DDMONYY HH24:MI') as sysDate2,  HAWB_WT_CODE,
+  									  (FREE_TEXT_DESC1 || ' ' || FREE_TEXT_DESC2 || ' ' || FREE_TEXT_DESC3 || ' ' || FREE_TEXT_DESC4 || ' ' || FREE_TEXT_DESC5 || ' ' || FREE_TEXT_DESC6 || ' ' || FREE_TEXT_DESC7 || ' ' || FREE_TEXT_DESC8 || ' ' || FREE_TEXT_DESC9) as freeTextDesc,
+									  SPL_CODE1
+									   ||decode(SPL_CODE2 ,null,'',CONCAT(', ',SPL_CODE2))
+									   ||decode(SPL_CODE3 ,null,'',CONCAT(', ',SPL_CODE3))
+									   ||decode(SPL_CODE4 ,null,'',CONCAT(', ',SPL_CODE4))
+									   ||decode(SPL_CODE5 ,null,'',CONCAT(', ',SPL_CODE5))
+									   ||decode(SPL_CODE6 ,null,'',CONCAT(', ',SPL_CODE6))
+									   ||decode(SPL_CODE7 ,null,'',CONCAT(', ',SPL_CODE7))
+									   ||decode(SPL_CODE8 ,null,'',CONCAT(', ',SPL_CODE8)) as splcode,
+									  MANIFEST_DESC as  content,
+									  SHPR_NAME as shipperName,
+									  SHPR_ADD1||' '||SHPR_ADD2||' '||SHPR_ADD3||' '||SHPR_ADD4 ||' '||SHPR_ADD5 as shipperAddr,
+									  SHPR_PLACE as shipperCity,
+									  SHPR_CTRY_CODE as shipperCtryCode,
+									  SHPR_PIN_CODE as shipperPostalCode,
+									  SHPR_CONT_ID as shipperId,
+									  SHPR_CONT_N as shipperNo,
+									  CSGNE_NAME as congName ,
+									  CSGNE_ADD1||' '||CSGNE_ADD2||' '||CSGNE_ADD3||' '||CSGNE_ADD4||' ' ||CSGNE_ADD5 as consgAddr,
+									  CSGNE_PLACE as consgCity,
+									  CSGNE_CTRY_CODE as consgCtryCode,
+									  CSGNE_PIN_CODE as consgPostalCode,
+									  CSGNE_CONT_ID as consgId,
+									  CSGNE_CONT_N  as consgNo,
+									  NFY_NAME  as notifyName,
+									  (NFY_ADD1||' '||NFY_ADD2||' '||NFY_ADD3||' '||NFY_ADD4||' '||NFY_ADD5)as notifyAddr,
+									  NFY_PLACE as notifyCity,									
+									  NFY_CTRY_CODE as notifyCtryCode,
+									  NFY_PIN_CODE as notifyPostalCode,
+									  NFY_CONT_ID as notifyId,
+									  NFY_CONT_N as notifyNo,
+									  NFY_LICENSE1||'' ||NFY_LICENSE2||'' ||NFY_LICENSE3||'' ||NFY_LICENSE4||'' ||NFY_LICENSE5||'' ||NFY_LICENSE6||'' || NFY_LICENSE7 ||'' ||NFY_LICENSE8 ||''||NFY_LICENSE9 as license,
+									  NFY_PERMIT1 ||'' ||NFY_PERMIT2 ||'' ||NFY_PERMIT3 ||'' ||NFY_PERMIT4 ||'' ||NFY_PERMIT5 ||''|| NFY_PERMIT6||'' || NFY_PERMIT7 ||'' ||NFY_PERMIT8 ||'' || NFY_PERMIT9 as permit,
+									  DECLN_CURR_CODE as currCode,
+									  DECLN_WT_VALN_PPCC_I as wt,
+									  DECLN_OTH_CHRG_PPCC_I as otherchrg,
+									  DECLN_CARR as carrDeclVal,
+									  DECLN_CTM as ctmDeclVal,
+									  DECLN_INSURCE as insurAmt,
+									  DECLN_FREE_TEXT,
+									  ACCS_I,SOURCE,RMK_CTM,FHL_OWNER,
+									  LM_USER_ID as logonId,
+									  TO_CHAR(LM_DATE, 'DDMONYY HH24:MI') as amdDate,
+									  LM_VER ,RMK as remarks,
+									  NFY_LICENSE6,NFY_LICENSE7,NFY_LICENSE8,NFY_LICENSE9,NFY_PERMIT6 ,NFY_PERMIT7 ,NFY_PERMIT8 ,
+									  NFY_PERMIT9 ,HBS_SLAC as slacNo,HTS_COMM_CODE1,HTS_COMM_CODE2,HTS_COMM_CODE3,HTS_COMM_CODE4,
+									  HTS_COMM_CODE5,HTS_COMM_CODE6,HTS_COMM_CODE7,HTS_COMM_CODE8,HTS_COMM_CODE9,
+									  CHARGE_AGENT AS agtIndicator,SHPR_STATE_PROVINCE as state,
+									  CSGNE_STATE_PROVINCE as consgState
+
+		FROM EDI_FHL_HAWB_LOG
+		WHERE  TR_NO = #trno# AND
+						HAWB_NO=#hawbNo#) C,   
+  
+  (SELECT TR_NO,       DECODE(A.SI_TYPE,'ISAC','AIMS','ISACS','AIMS','FHL_I','SITA','TX_HM','TRAXON','S','CMS') AS tmpSrcDispName,       DECODE(A.SI_TYPE,'ISAC',B.CO_SNAME,'ISACS',B.CO_SNAME,'') AS tmpCustName,   DECODE(A.SI_TYPE,'S',A.LM_USER_ID,'') AS LM_USER_ID       FROM EDI_FHL A,         CUST_COMPANY B       WHERE A.FHL_OWNER = B.CODE(+)  AND
+  A.TR_NO = #trno#) D      WHERE C.TR_NO = D.TR_NO
+
+</select>	
+
+<select id="edi_rept_173_check"  parameterClass="cargo.cms.edi.report.bo.EnqFHLRept_173BO" resultClass="java.lang.Integer">
+
+select count(1) 
+	from edi_fhl_log a,
+		edi_fhl_hawb_log b
+ where  a.tr_no = b.tr_no
+		and a.awb_no = #awbNo#
+		and b.hawb_no = #hawbNo#
+
+</select>
+
+<select id="edi_rept_173_before_lp"  parameterClass="cargo.cms.edi.report.bo.EnqFHLRept_173BO"  	resultClass="cargo.cms.edi.report.bo.EnqFHLRept_173BO">
+
+SELECT lic_per_type as licType, stragg(stringdelim(lic_per_no,' , ')) as licNo
+FROM EDI_FHL_HAWB_LIC_PER_LOG
+WHERE TR_NO = #trno#  AND HDOC_LINE_NO=#hdocLineNo#
+group by lic_per_type
+
+</select>
+
+<select id="edi_rept_173_before_contact"  parameterClass="cargo.cms.edi.report.bo.EnqFHLRept_173BO"  	resultClass="cargo.cms.edi.report.bo.EnqFHLRept_173BO">
+
+SELECT cont_type as contactType,stragg(stringdelim((cont_id||'  '||ccnt_name),' ')) as contactName 
+FROM EDI_FHL_CONTACT_LOG
+WHERE TR_NO = #trno#  AND HDOC_LINE_NO=#hdocLineNo#
+group by cont_type
+</select>
+
+<select id="edi_rept_173_after_lp"  parameterClass="cargo.cms.edi.report.bo.EnqFHLRept_173BO"  	resultClass="cargo.cms.edi.report.bo.EnqFHLRept_173BO">
+
+SELECT lic_per_type as licType, stragg(stringdelim(lic_per_no,' , ')) as licNo 
+FROM EDI_FHL_HAWB_LIC_PER
+WHERE TR_NO = #trno#  AND HDOC_LINE_NO=#hdocLineNo#
+group by lic_per_type
+
+</select>
+
+<select id="edi_rept_173_after_contact"  parameterClass="cargo.cms.edi.report.bo.EnqFHLRept_173BO"  	resultClass="cargo.cms.edi.report.bo.EnqFHLRept_173BO">
+
+SELECT cont_type as contactType,stragg(stringdelim((cont_id||'  '||ccnt_name),' ')) as contactName
+FROM EDI_FHL_CONTACT
+WHERE TR_NO = #trno#  AND HDOC_LINE_NO=#hdocLineNo# 
+group by cont_type
+
+</select>
+
+
+
+
+
+<select id="edi_rept_509" parameterClass="cargo.cms.edi.report.bo.FinalizeFFM509_ReptBO" resultClass="cargo.cms.edi.report.bo.FinalizeFFM509_ReptBO" >
+		SELECT 
+			EDI_FFM_MSG.FLT_KEY AS repFltKey,
+			TO_CHAR(EDI_FFM_MSG.FLT_DATE,'DDMONYY') AS repFltDate,
+			TO_CHAR(EDI_FFM_MSG.FINALIZE_DATE,'DDMONYY HH24:MI:SS') AS FINALIZEDATE,
+			EDI_FFM_MSG.FINALIZE_USER_ID AS FINALIZEUSERID, DECODE(COUNT(CST_ACK.FLT_KEY),NULL,'N',0,'N','Y') AS TMPFLTCLR ,
+			DECODE(MAX(CST_SUBM.VER_NO),NULL,'N',0,'N','Y') AS TMPLBSFLAG,
+			TO_CHAR(MAX(CST_SUBM.SUBM_DATE),'DDMONYY') AS TMPLBSDATE,
+			RTRIM(LTRIM(SUBSTR(LPAD(FLT_OPR.ACT_TIME,4,'0'),1,2)||':'||
+			SUBSTR(LPAD(FLT_OPR.ACT_TIME,4,'0'),3,2)||'/'||
+			DECODE(FLT_OPR.ACT_DATE,FLT_OPR.SCH_DATE,NULL,TO_CHAR(FLT_OPR.ACT_DATE,'DD')),':/'),'/') AS TMPATA,
+			FLT_OPR.SCH_TIME,FLT_OPR.SCH_DATE
+		FROM 
+			EDI_FFM_MSG 
+			INNER JOIN FLT_OPR ON 
+				EDI_FFM_MSG.FLT_KEY = FLT_OPR.FLT_KEY AND EDI_FFM_MSG.FLT_DATE = FLT_OPR.SCH_DATE AND FLT_OPR.FLT_TYPE='A'
+			LEFT OUTER JOIN 
+				CST_ACK ON  EDI_FFM_MSG.FLT_KEY = CST_ACK.FLT_KEY   AND TRUNC(EDI_FFM_MSG.FLT_DATE) = TRUNC(CST_ACK.FLT_DATE)   
+				AND CST_ACK.FLT_TYPE = 'I'   AND CST_ACK.ACK_REC_TYPE = 'CLR' 
+			LEFT OUTER JOIN 
+				CST_SUBM ON EDI_FFM_MSG.FLT_KEY  = CST_SUBM.FLT_KEY AND TRUNC(EDI_FFM_MSG.FLT_DATE) = TRUNC(CST_SUBM.FLT_DATE)   
+				AND CST_SUBM.FLT_TYPE = 'I' AND CST_SUBM.REC_TYPE = 'BDS'
+		WHERE 
+			EDI_FFM_MSG.FLT_DATE = TO_DATE(#fltDate#,'DDMONYY')   AND
+			EDI_FFM_MSG.FFM_STATUS IN ('P','F')   AND
+			EDI_FFM_MSG.FLT_KEY = NVL(#fltKey#, EDI_FFM_MSG.FLT_KEY)
+		 GROUP BY  EDI_FFM_MSG.FLT_KEY,
+			   TO_CHAR(EDI_FFM_MSG.FLT_DATE,'DDMONYY'),
+			   TO_CHAR(EDI_FFM_MSG.FINALIZE_DATE,'DDMONYY HH24:MI:SS'),
+			   EDI_FFM_MSG.FINALIZE_USER_ID, 
+			   RTRIM(LTRIM(SUBSTR(LPAD(FLT_OPR.ACT_TIME,4,'0'),1,2)||':'|| SUBSTR(LPAD(FLT_OPR.ACT_TIME,4,'0'),3,2)||'/'|| DECODE(FLT_OPR.ACT_DATE,FLT_OPR.SCH_DATE,NULL,TO_CHAR(FLT_OPR.ACT_DATE,'DD')),':/'),'/'), 
+			   FLT_OPR.SCH_TIME,FLT_OPR.SCH_DATE
+			ORDER BY (TO_CHAR(FLT_OPR.SCH_DATE,'YYYYMMDD')||LPAD(FLT_OPR.SCH_TIME,4,'0')) ASC				
+	</select>
+	<select id="edi_rept_550_brd" parameterClass="cargo.cms.edi.report.bo.MaintainFFM550_ReptBO" resultClass="cargo.cms.edi.report.bo.MaintainFFM550_ReptBO" >
+		<![CDATA[
+				select brd_point as allBrdPt from flt_opr_seg where tr_no in (
+					select tr_no from flt_opr where flt_key = #fltKey#  and 
+					sch_date=to_date(#fltDate#,'dd-mon-yy') and flt_type = 'A')
+				and off_point='HKG'
+
+		]]>
+	</select>
+	<select id="edi_rept_550" parameterClass="cargo.cms.edi.report.bo.MaintainFFM550_ReptBO" resultClass="cargo.cms.edi.report.bo.MaintainFFM550_ReptBO" >
+select *  from (
+  select distinct edi_ffm_uld.uld_key as tmpUldKey, '' awb_no , ''  man_wt,''  pcs,'' udoc_line_no, '' man_pcs ,'' shp_Cont,'' code1,''code2,'' shipment_code,
+  '' org,'' dest, '' total_man_pcs, '' total_man_wt, '1' as seq 
+		from edi_ffm_msg inner join edi_ffm_uld on 
+		edi_ffm_msg.tr_no = edi_ffm_uld.tr_no
+		<isNotPropertyAvailable property="isType" prepend="AND">
+		edi_ffm_uld.brd_point = #brdPt#  and edi_ffm_uld.off_point = #offPt#	
+		</isNotPropertyAvailable>	
+	  left join edi_ffm_shp
+	   on edi_ffm_msg.tr_no = edi_ffm_shp.tr_no
+	   and edi_ffm_uld.doc_line_no = edi_ffm_shp.udoc_line_no
+	    and edi_ffm_shp.AWB_NO = nvl(#filterAwbNo#, edi_ffm_shp.AWB_NO) 	 
+	 where edi_ffm_msg.flt_key =#fltKey#
+	   and edi_ffm_msg.flt_date =to_date(#fltDate#, 'dd-mon-yy')
+	   and (edi_ffm_msg.si_type = 'S' or (edi_ffm_msg.si_type = 'I' and ffm_status = 'P'))	  
+  union all
+  select distinct edi_ffm_uld.uld_key as tmpUldKey , 
+  decode(edi_ffm_shp.awb_no,null,null,substr(edi_ffm_shp.awb_no, 1, 3) || '-' ||
+        substr(edi_ffm_shp.awb_no, 4)) as awb_no ,
+        trim(to_char(edi_ffm_shp.man_wt, '9999999.99')) as man_wt, to_char(decode(edi_ffm_shp.shmpt_code, 'T', '', edi_ffm_shp.pcs)) as pcs,
+   to_char(edi_ffm_uld.doc_line_no) as udoc_line_no,  to_char(edi_ffm_shp.man_pcs ) man_pcs,edi_ffm_shp.content as shp_Cont,
+    decode(edi_ffm_shp.spl_code1, NULL,' ',edi_ffm_shp.spl_code1) as code1,
+    decode(edi_ffm_shp.spl_code2, NULL,' ',edi_ffm_shp.spl_code2) as code2, 
+   to_char(edi_ffm_shp.shmpt_code) as shipment_code,edi_ffm_shp.org as org,edi_ffm_shp.dest as dest, '' total_man_pcs, '' total_man_wt, '2' as seq
+  		from edi_ffm_msg inner join edi_ffm_uld on 
+		edi_ffm_msg.tr_no = edi_ffm_uld.tr_no
+		<isNotPropertyAvailable property="isType" prepend="AND">
+		edi_ffm_uld.brd_point = #brdPt#  and edi_ffm_uld.off_point = #offPt#	
+		</isNotPropertyAvailable>	
+	  left join edi_ffm_shp
+	   on edi_ffm_msg.tr_no = edi_ffm_shp.tr_no
+	   and edi_ffm_uld.doc_line_no = edi_ffm_shp.udoc_line_no
+	    and edi_ffm_shp.AWB_NO = nvl(#filterAwbNo#, edi_ffm_shp.AWB_NO) 
+	 where edi_ffm_msg.flt_key =#fltKey#
+	   and edi_ffm_msg.flt_date =to_date(#fltDate#, 'dd-mon-yy')
+	   and (edi_ffm_msg.si_type = 'S' or (edi_ffm_msg.si_type = 'I' and ffm_status = 'P'))	  
+	    union all
+     select distinct edi_ffm_uld.uld_key as tmpUldKey, '' awb_no , ''  man_wt,''  pcs,'' udoc_line_no, '' man_pcs ,'' shp_Cont,'' code1,''code2,'' shipment_code,
+     ''org,''dest, to_char(sum(edi_ffm_shp.man_pcs )) total_man_pcs, to_char(sum(edi_ffm_shp.man_wt ), '9999999.99') total_man_wt, '3' as seq
+		from edi_ffm_msg inner join edi_ffm_uld on 
+		edi_ffm_msg.tr_no = edi_ffm_uld.tr_no
+		<isNotPropertyAvailable property="isType" prepend="AND">
+		edi_ffm_uld.brd_point = #brdPt#  and edi_ffm_uld.off_point = #offPt#	
+		</isNotPropertyAvailable>
+	  left join edi_ffm_shp
+	   on edi_ffm_msg.tr_no = edi_ffm_shp.tr_no
+	   and edi_ffm_uld.doc_line_no = edi_ffm_shp.udoc_line_no
+	   and edi_ffm_shp.AWB_NO = nvl(#filterAwbNo#, edi_ffm_shp.AWB_NO) 
+	 where edi_ffm_msg.flt_key =#fltKey#
+	   and edi_ffm_msg.flt_date =to_date(#fltDate#, 'dd-mon-yy')
+	   and (edi_ffm_msg.si_type = 'S' or (edi_ffm_msg.si_type = 'I' and ffm_status = 'P'))	   
+     group by edi_ffm_uld.uld_key ) an
+     order by  tmpUldKey nulls first,tmpUldKey ,seq, awb_no
+</select>
+<select id="edi_rept_551" parameterClass="cargo.cms.edi.report.bo.EnquireCPM551_ReptBO" resultClass="cargo.cms.edi.report.bo.EnquireCPM551_ReptBO">
+			SELECT FLT_KEY AS flightKey,FLT_DATE AS flightDate,VER_NO AS versionNumber,
+		ULD_KEY AS uldKey,DEST AS dest,WT AS wt,LOAD_TYPE AS loadCode,LOAD_POS AS loadPos,NVL(SHC1,'') || DECODE(SHC2,NULL,'',','||SHC2) || DECODE(SHC3,NULL,'',','||SHC3)
+		|| DECODE(SHC4,NULL,'',','||SHC4) || DECODE(SHC5,NULL,'',','||SHC5) || DECODE(SHC6,NULL,'',','||SHC6) || DECODE(SHC7,NULL,'',','||SHC7) 
+    	|| DECODE(SHC8,NULL,'',','||SHC8) || DECODE(SHC9,NULL,'',','||SHC9) AS splHandlingCode1, 
+    	(SELECT CODE_DESC FROM MAST_CODE_DTL WHERE CODE = LOAD_TYPE AND CODE_TYPE = 'LOAD_CODE') AS loadTypeDesc,TR_NO as trNo
+		FROM EDI_CPM_DTL WHERE FLT_KEY = #fltCarr# || #fltNo# AND FLT_DATE = TO_DATE(#fltDate#, 'ddMONyy')
+		AND TR_NO = #trNo# ORDER BY SEQ_NO ASC
+	</select>
+	<select id="edi_rept_551_oth_port" parameterClass="cargo.cms.edi.report.bo.EnquireCPM551_ReptBO" resultClass="cargo.cms.edi.report.bo.EnquireCPM551_ReptBO">
+	SELECT FLT_KEY AS flightKey,FLT_DATE AS flightDate,VER_NO AS versionNumber,
+		ULD_KEY AS uldKey,DEST AS dest,WT AS wt,LOAD_TYPE AS loadCode,LOAD_POS AS loadPos,NVL(SHC1,'') || DECODE(SHC2,NULL,'',','||SHC2) || DECODE(SHC3,NULL,'',','||SHC3)
+		|| DECODE(SHC4,NULL,'',','||SHC4) || DECODE(SHC5,NULL,'',','||SHC5) || DECODE(SHC6,NULL,'',','||SHC6) || DECODE(SHC7,NULL,'',','||SHC7) 
+    	|| DECODE(SHC8,NULL,'',','||SHC8) || DECODE(SHC9,NULL,'',','||SHC9) AS splHandlingCode1, 
+    	(SELECT CODE_DESC FROM MAST_CODE_DTL WHERE CODE = LOAD_TYPE AND CODE_TYPE = 'LOAD_CODE') AS loadTypeDesc,TR_NO as trNo
+		FROM EDI_CPM_DTL_OTH_PORT WHERE FLT_KEY = #fltCarr# || #fltNo# AND FLT_DATE = TO_DATE(#fltDate#, 'ddMONyy')
+		AND TR_NO = #trNo# ORDER BY SEQ_NO ASC
+	</select>
+<select id="edi_rept_551_offPoint" parameterClass="cargo.cms.edi.report.bo.EnquireCPM551_ReptBO" resultClass="java.lang.String">
+	SELECT OFF_POINT FROM FLT_OPR_LEG WHERE OFF_POINT != 'HKG' AND FLT_KEY = #fltCarr# || #fltNo# AND SCH_DATE = TO_DATE(#fltDate#,'DDMONYY') AND BRD_POINT = #port#
+</select>
+
+<select id="edi_551_tr_op" parameterClass="cargo.cms.edi.report.bo.EnquireCPM551_ReptBO" resultClass="cargo.cms.edi.report.bo.EnquireCPM551_ReptBO">
+		SELECT OPR.FLT_KEY AS flightKey,TO_CHAR(OPR.SCH_DATE,'DDMONYY') AS flightDate,LOAD_DESK_VER AS versionNumber,SI_RMK AS siRemarks,OPR.ORIG AS origin, OPR.DEST AS destination, 
+		CPM.ACFT_REG_NO AS arcftRegNo, OPR.TR_NO AS flighTxnNo,OPR.FLT_TYPE AS flightType,CPM.TR_NO AS trNo FROM FLT_OPR OPR LEFT OUTER JOIN EDI_CPM_OTH_PORT CPM ON
+   		OPR.FLT_KEY = CPM.FLT_KEY AND OPR.SCH_DATE  = CPM.FLT_DATE WHERE CPM.FLT_KEY = #fltCarr# ||''|| #fltNo# AND CPM.FLT_DATE = TO_DATE(#fltDate#, 'ddMONyy') 
+   		AND CPM.ORIG = #port# AND OPR.FLT_TYPE = 'A' AND CPM.TR_NO = (SELECT MAX(TR_NO) FROM EDI_CPM_OTH_PORT WHERE FLT_KEY = #fltCarr# ||''|| #fltNo# AND 
+   		FLT_DATE = TO_DATE(#fltDate#, 'ddMONyy') AND ORIG = #port#) 
+</select>
+
+<select id="edi_551_tr_no" parameterClass="cargo.cms.edi.report.bo.EnquireCPM551_ReptBO" resultClass="cargo.cms.edi.report.bo.EnquireCPM551_ReptBO">
+		SELECT OPR.FLT_KEY AS flightKey,TO_CHAR(OPR.SCH_DATE,'DDMONYY') AS flightDate,LOAD_DESK_VER AS versionNumber,SI_RMK AS siRemarks,OPR.ORIG AS origin, OPR.DEST AS destination, 
+		CPM.ACFT_REG_NO AS arcftRegNo, OPR.TR_NO AS flighTxnNo,OPR.FLT_TYPE AS flightType,CPM.TR_NO AS trNo FROM FLT_OPR OPR LEFT OUTER JOIN EDI_CPM CPM ON
+   		OPR.FLT_KEY = CPM.FLT_KEY AND CPM.FLT_DATE = OPR.SCH_DATE WHERE OPR.FLT_KEY = #fltCarr# ||''|| #fltNo# AND OPR.SCH_DATE = TO_DATE(#fltDate#, 'ddMONyy') AND OPR.FLT_TYPE = 'A'
+		AND (CPM.TR_NO IS NULL OR CPM.TR_NO = (SELECT MAX(TR_NO) FROM EDI_CPM WHERE FLT_KEY = #fltCarr# ||''|| #fltNo# AND FLT_DATE = TO_DATE(#fltDate#, 'ddMONyy') AND ORIG = #port#))     
+		ORDER BY VER_NO DESC
+</select>
+		
+<select id="edi_EnqFWB_E"  parameterClass="cargo.cms.edi.report.bo.EnqFWBRept_BO" resultClass="cargo.cms.edi.report.bo.EnqFWBRept_BO">
+SELECT LENGTH as length,widht as width,HEIGHT as height,PCS as pieces,rtd_awb_vol_amt as volume,rtd_awb_vol_CODE as volCode FROM edi_fwb_dmn WHERE TR_NO=#trNo#
+</select>
+		
+<select id="edi_EnqFWB_A"  parameterClass="cargo.cms.edi.report.bo.EnqFWBRept_BO" resultClass="cargo.cms.edi.report.bo.EnqFWBRept_BO">
+  	 
+	SELECT 
+	     EDI_FWB.tr_no as trNo,
+	     EDI_FWB.ORG as orginAa,
+     	 EDI_FWB.RTG_APT_CODE as depAportName,
+     	 EDI_FWB.RTG_DES_CARR as carrAgent,
+     	 (select code_desc from mast_city where code = EDI_FWB.DES) as finalAirportName,
+     	 (select code_desc from cust_company where carr_code = (select carr_code from mast_awb_prefix where code=SUBSTR(SUBSTR(EDI_FWB.AWB_NO,1,3),1,3) and rownum=1)) as compName,
+     	 to_char(edi_fwb.isu_awb_iss_date,'DDMONYY') as execnDate,
+     	 decode(nvl(EDI_FWB.PPD_TOTAL_WT_AMT,0),'0','',TRIM(to_char(nvl(EDI_FWB.PPD_TOTAL_WT_AMT,0),'999999999999999999999999999999999990.00'))) as ttlWtChrgPpd,
+		 EDI_FWB.MSG_VER as msgVer,
+		 SUBSTR(EDI_FWB.AWB_NO,1,3) ||'   '|| EDI_FWB.ORG||'   '||SUBSTR(EDI_FWB.AWB_NO,4) as awbNoSfx,		 
+		 SUBSTR(EDI_FWB.AWB_NO,1,3)||'-'||SUBSTR(EDI_FWB.AWB_NO,4) AS awbNo,		 
+		 to_char(EDI_FWB.AWB_DATE,'DDMONYY') as awbDate,
+		 EDI_FWB.ORG as ediFwbOrig,
+		 EDI_FWB.DES as dest,
+		 EDI_FWB.SHIP_DESC_C as shipDescC,
+		 EDI_FWB.PCS as pcs,
+		 EDI_FWB.WGT_UNIT as wgtUnit,
+		 EDI_FWB.WGT as wgt,
+		 EDI_FWB.FLT_CARR1||EDI_FWB.FLT_NUM1 ||'/'||EDI_FWB.FLT_DATE1 as finalFltCarr1,
+		 EDI_FWB.FLT_NUM1 as finalFltNo1,
+		 EDI_FWB.FLT_KEY1  fltKey1, 
+         EDI_FWB.FLT_DATE1 as finalFltDt1,
+		 EDI_FWB.FLT_CARR2||EDI_FWB.FLT_NUM2 ||'/'||EDI_FWB.FLT_DATE2 as finalFltCarr2,
+		 EDI_FWB.FLT_NUM2  as finalFltNo2,
+		 EDI_FWB.FLT_KEY2  fltKey2,
+		 EDI_FWB.FLT_DATE2 as finalFltDt2,
+		 EDI_FWB.RTG_APT_CODE as rtgAptCode,
+		 EDI_FWB.RTG_DES_CARR as rtgDesCarr,
+		 
+		 EDI_FWB.RTG_ONWARD_CODE1 as rtgOnwardCode1,
+		 EDI_FWB.RTG_ONWARD_CARR1 as rtgOnwardCarr1,
+		 EDI_FWB.RTG_ONWARD_CODE2 as rtgOnwardCode2,
+		 EDI_FWB.RTG_ONWARD_CARR2 as rtgOnwardCarr2,
+		 
+		 EDI_FWB.SHPR_ACC_NO as shprAccNo,
+		 EDI_FWB.SHPR_NAME as shprName,
+		 EDI_FWB.SHPR_ADDR as shprAddr1,
+	     EDI_FWB.SHPR_PLACE as shprCity,
+		(select code_desc from mast_country mcntr where mcntr.code = EDI_FWB.SHPR_CTRY_CODE) as shpCountry,
+		 EDI_FWB.SHPR_STATE_PROVINCE as shprState,
+		 EDI_FWB.SHPR_PIN_CODE as shpPostal,
+		
+		decode(EDI_FWB.SHPR_CONT_ID,null,
+	      (SELECT  STRAGG(STRINGDELIM(EDI_FWB_CONTACT.cont_name,'/'))  FROM EDI_FWB_CONTACT WHERE EDI_FWB_CONTACT.tr_no=EDI_FWB.tr_no and cont_id = 'TE' and cont_type = 'SHP' ),
+	    EDI_FWB.SHPR_CONT_ID) as shpTelNo,   
+	    
+	    decode(EDI_FWB.SHPR_CONT_ID,null,
+	      (SELECT  STRAGG(STRINGDELIM(EDI_FWB_CONTACT.cont_name,'/'))  FROM EDI_FWB_CONTACT WHERE EDI_FWB_CONTACT.tr_no=EDI_FWB.tr_no and cont_id = 'FX' and cont_type = 'SHP' ),
+	    EDI_FWB.SHPR_CONT_ID) as shpFax,   
+	    
+	    decode(EDI_FWB.SHPR_CONT_ID,null,
+	      (SELECT  STRAGG(STRINGDELIM(EDI_FWB_CONTACT.cont_name,'/'))  FROM EDI_FWB_CONTACT WHERE EDI_FWB_CONTACT.tr_no=EDI_FWB.tr_no and cont_id = 'TL' and cont_type = 'SHP' ),
+	    EDI_FWB.SHPR_CONT_ID) as shpTelexNO,   
+	    
+	    decode(EDI_FWB.SHPR_CONT_ID,null,
+	      (SELECT  STRAGG(STRINGDELIM(EDI_FWB_CONTACT.cont_name,'/'))  FROM EDI_FWB_CONTACT WHERE EDI_FWB_CONTACT.tr_no=EDI_FWB.tr_no and cont_id = 'TE' and cont_type = 'CNE' ),
+	    EDI_FWB.SHPR_CONT_ID) as csgnTelNo,   
+	    
+	    decode(EDI_FWB.SHPR_CONT_ID,null,
+	      (SELECT  STRAGG(STRINGDELIM(EDI_FWB_CONTACT.cont_name,'/'))  FROM EDI_FWB_CONTACT WHERE EDI_FWB_CONTACT.tr_no=EDI_FWB.tr_no and cont_id = 'FX' and cont_type = 'CNE' ),
+	    EDI_FWB.SHPR_CONT_ID) as csgnFax,   
+	    
+	    decode(EDI_FWB.SHPR_CONT_ID,null,
+	      (SELECT  STRAGG(STRINGDELIM(EDI_FWB_CONTACT.cont_name,'/'))  FROM EDI_FWB_CONTACT WHERE EDI_FWB_CONTACT.tr_no=EDI_FWB.tr_no and cont_id = 'TL' and cont_type = 'CNE' ),
+	    EDI_FWB.SHPR_CONT_ID) as csgnTelexNO, 
+    
+	     EDI_FWB.SHPR_CONT_NO as shpFax,
+		 
+		 EDI_FWB.CSGNE_ACC_NO as csgnAccNo,
+		 EDI_FWB.CSGNE_NAME as csgnName,
+		 EDI_FWB.CSGNE_ADDR as csgnAddr1,
+		 EDI_FWB.CSGNE_PLACE as csgnCity,
+		 (select code_desc from mast_country mcntr where mcntr.code = EDI_FWB.CSGNE_CTRY_CODE) as csgnCountry,
+		 EDI_FWB.CSGNE_STATE_PROVINCE as csgnState,
+		 EDI_FWB.CSGNE_PIN_CODE as csgnPostal,
+		 EDI_FWB.CSGNE_CONT_ID as csgnContact,
+		 EDI_FWB.CSGNE_CONT_NO as csgnContact,		 
+		 EDI_FWB.AGENT_ACC_NO as agentAccNo,	
+		 decode(EDI_FWB.AGENT_IATA_CODE,'0',' ',EDI_FWB.AGENT_IATA_CODE) as agentIata,
+		 decode(EDI_FWB.AGENT_IATA_ADDR,'0',' ',EDI_FWB.AGENT_IATA_ADDR) as agentIataAddr,	 	
+		 EDI_FWB.AGENT_PART_ID as agentPartId,
+		 EDI_FWB.AGENT_NAME as agentName,
+		 EDI_FWB.AGENT_PLACE as agentCity,
+		 
+		 EDI_FWB.AGENT_SPL_SERV1 as hndlgInfo1,
+		 EDI_FWB.AGENT_SPL_SERV2 hndlgInfo2,
+		 EDI_FWB.AGENT_SPL_SERV3 hndlgInfo3,
+		 EDI_FWB.AGENT_SPL_SERV3  agentSplServ3, 
+         EDI_FWB.NOTIFY_NAME  notifyName,
+		 EDI_FWB.NOTIFY_ADDR  notifyAddr,
+		 EDI_FWB.NOTIFY_ADDR2 notifyAddr2,
+		 EDI_FWB.NOTIFY_PLACE notifyPlace,
+		 EDI_FWB.NOTIFY_CTRY_CODE  notifyCtryCode,
+		 EDI_FWB.NOTIFY_STATE_PROVINCE  notifyStateProvince,
+		 EDI_FWB.NOTIFY_PIN_CODE  notifyPinCode,
+		 EDI_FWB.NOTIFY_CONT_ID  notifyContId,
+		 EDI_FWB.NOTIFY_CONT_NO  notifyContNo,		 
+		 (SELECT  NVL(STRAGG(STRINGDELIM(cont_id  ||  ' ' ||  cont_name, ' ')),'')   FROM   EDI_FWB_CONTACT WHERE tr_no= EDI_FWB.tr_no AND edi_fwb_contact.cont_type = 'NFY') as notifyContInfo, 
+		 
+		 EDI_FWB.CVD_ISO_CURR_CODE as currCode,
+		 EDI_FWB.CVD_CHG_CODE as declChrgCode,
+     
+	     decode(CVD_CHG_CODE,'','',decode(PPD_TOTAL_WT_AMT,'',decode(PPD_VALUE_VC_AMT,0,'','','','P'),0,decode(PPD_VALUE_VC_AMT,0,'','','','P'),'P')) pcsWtPP,
+	     decode(CVD_CHG_CODE,'','',decode(COL_TOTAL_WT_AMT,'',decode(COL_VALUE_VC_AMT,0,'','','','C'),0,decode(COL_VALUE_VC_AMT,0,'','','','C'),'C')) pcsWtColl,    
+	     decode(CVD_CHG_CODE,'','',decode(PPD_TOTAL_OA_AMT,'',decode(PPD_TOTAL_OC_AMT,0,'','','','P'),0,decode(PPD_TOTAL_OC_AMT,0,'','','','P'),'P')) pcsOtherPP,     
+	     decode(CVD_CHG_CODE,'','',decode(COL_TOTAL_OA_AMT,'',decode(COL_TOTAL_OC_AMT,0,'','','','C'),0,decode(COL_TOTAL_OC_AMT,0,'','','','C'),'C')) pcsOtherColl,
+	     
+		  EDI_FWB.CVD_ISO_CURR_CODE                   AS cvdIsoCurrCode,
+  		EDI_FWB.CVD_CHG_CODE                        AS cvdChgCode,
+  		EDI_FWB.CVD_CHG_DECL_WGT                    AS cvdChgDeclWgt,
+  		EDI_FWB.CVD_CHG_DECL_OTH                    AS cvdChgDeclOth,
+  		decode(EDI_FWB.CVD_CHG_CARR_VAL,'0',' ',EDI_FWB.CVD_CHG_CARR_VAL) AS cvdChgCarrVal,
+  		EDI_FWB.CVD_CHG_CARR_IND                    AS cvdChgCarrInd,
+  		decode(EDI_FWB.CVD_CHG_CUST_VAL,'0',' ',EDI_FWB.CVD_CHG_CUST_VAL) AS cvdChgCustVal,
+  		EDI_FWB.CVD_CHG_CUST_IND                    AS cvdChgCustInd,
+  		decode(EDI_FWB.CVD_CHG_INSUR_VAL,'0',' ',EDI_FWB.CVD_CHG_INSUR_VAL) AS cvdChgInsurVal,
+  		EDI_FWB.CVD_CHG_INSUR_IND                   AS cvdChgInsurInd,
+		 
+		 (case when nvl(EDI_FWB.CVD_CHG_CARR_VAL,0)>0  then
+		        trim(EDI_FWB.CVD_CHG_CARR_VAL)
+		       else 'NVD' end) as declValCarr,				 
+		 (case when nvl(EDI_FWB.CVD_CHG_CUST_VAL,0)>0  then
+		        trim(EDI_FWB.CVD_CHG_CUST_VAL)
+		       else 'NCV' end)as declValCustoms,
+		(case when nvl(EDI_FWB.CVD_CHG_INSUR_VAL,0)>0  then
+		        trim(EDI_FWB.CVD_CHG_INSUR_VAL)
+		       else 'XXX' end) as insuranceAmt,
+				 		 
+		decode(nvl(EDI_FWB.PPD_TOTAL_WT_AMT,0),'0','',TRIM(to_char(nvl(EDI_FWB.PPD_TOTAL_WT_AMT,0),'999999999999999999999999999999999990.00'))) as valChrgPrepd,
+		decode(nvl(EDI_FWB.PPD_VALUE_VC_AMT,0),'0','',TRIM(to_char(nvl(EDI_FWB.PPD_VALUE_VC_AMT,0),'999999999999999999999999999999999990.00'))) as ppdValVcAmt,
+		decode(nvl(EDI_FWB.PPD_TAXES_TX_AMT,0),'0','',TRIM(to_char(nvl(EDI_FWB.PPD_TAXES_TX_AMT,0),'999999999999999999999999999999999990.00'))) as taxChrgPrepd,
+		decode(nvl(EDI_FWB.PPD_TOTAL_OA_AMT,0),'0','',TRIM(to_char(nvl(EDI_FWB.PPD_TOTAL_OA_AMT,0),'999999999999999999999999999999999990.00'))) as agentChgPrpd,
+		decode(nvl(EDI_FWB.PPD_TOTAL_OC_AMT,0),'0','',TRIM(to_char(nvl(EDI_FWB.PPD_TOTAL_OC_AMT,0),'999999999999999999999999999999999990.00'))) as carrChrgPrepd,
+		decode(nvl(EDI_FWB.PPD_SUMMY_CT_AMT,0),'0','',TRIM(to_char(nvl(EDI_FWB.PPD_SUMMY_CT_AMT,0),'999999999999999999999999999999999990.00'))) as totWtChrgPrepd,
+				 
+		 decode(nvl(EDI_FWB.COL_TOTAL_WT_AMT,0),'0','',TRIM(to_char(nvl(EDI_FWB.COL_TOTAL_WT_AMT,0),'999999999999999999999999999999999990.00'))) as valChrg,
+		 decode(nvl(EDI_FWB.COL_VALUE_VC_AMT,0),'0','',TRIM(to_char(nvl(EDI_FWB.COL_VALUE_VC_AMT,0),'999999999999999999999999999999999990.00'))) as colValVcAmt,
+		 decode(nvl(EDI_FWB.COL_TAXES_TX_AMT,0),'0','',TRIM(to_char(nvl(EDI_FWB.COL_TAXES_TX_AMT,0),'999999999999999999999999999999999990.00'))) as taxChrg,
+		 decode(nvl(EDI_FWB.COL_TOTAL_OA_AMT,0),'0','',TRIM(to_char(nvl(EDI_FWB.COL_TOTAL_OA_AMT,0),'999999999999999999999999999999999990.00'))) as agentChrg,
+		 decode(nvl(EDI_FWB.COL_TOTAL_OC_AMT,0),'0','',TRIM(to_char(nvl(EDI_FWB.COL_TOTAL_OC_AMT,0),'999999999999999999999999999999999990.00'))) as carrChrg,
+		 decode(nvl(EDI_FWB.COL_SUMMY_CT_AMT,0),'0','',TRIM(to_char(nvl(EDI_FWB.COL_SUMMY_CT_AMT,0),'999999999999999999999999999999999990.00'))) as totCollChrgPrepaid,
+		 		 
+		 EDI_FWB.CER_SIGNATURE as shpSign,
+		 to_char(EDI_FWB.ISU_AWB_ISS_DATE,'DDMONYY') as sdate,
+		 EDI_FWB.ISU_AWB_ISS_PLACE as place,
+		 EDI_FWB.ISU_SIGNATURE as carrSign,	 
+		 
+		 EDI_FWB.OSI_SERVICE_INFO1  osiServiceInfo1,
+		 EDI_FWB.OSI_SERVICE_INFO2  osiServiceInfo2 ,
+		 EDI_FWB.OSI_SERVICE_INFO3  osiServiceInfo3,
+		 EDI_FWB.CDC_ISO_CURR_CODE  cdcIsoCurrCode,
+		 EDI_FWB.CDC_CURR_RATE  cdeCurrRate,
+		 EDI_FWB.CDC_CC_INDES_AMT  cdeCcIndesAmt,
+		 EDI_FWB.CDC_CC_ATDES_AMT  cdeCcAtdesAmt,
+		 EDI_FWB.CDC_TOTAL_CHG_AMT  cdeTotalChgAmt,
+		 EDI_FWB.COR_CUST_ORI_CODE  corCustOriCode, 
+	     EDI_FWB.CR_USER_ID  crUserID,
+		 EDI_FWB.CR_DATE  crDate,
+		 EDI_FWB.LM_USER_ID  lmuserId,
+		 EDI_FWB.LM_DATE  lmDate,
+		 EDI_FWB.COPY_NO  copyNo,
+		 EDI_FWB.MSG_SEQ_NUM  msgSeqNum,
+		 EDI_FWB.TOTAL_COUNT  totalCount,
+		 pkg_common.get_fwb_splcodes(EDI_FWB.TR_NO) splCodes
+		 FROM EDI_FWB
+		 WHERE 
+		 EDI_FWB.TR_NO = (select max(a.tr_no) from edi_fwb a where a.awb_no = #awbNo#)
+	
+	</select>
+	
+<select id="edi_EnqFWB_B_tempTab"  parameterClass="cargo.cms.edi.report.bo.EnqFWBRept_BO" resultClass="cargo.cms.edi.report.bo.EnqFWBRept_BO">
+		<![CDATA[	
+		SELECT * FROM (SELECT 
+		 DECODE(EDI_FWB_CHR_RATE.RATE_PCS,'','','0','',EDI_FWB_CHR_RATE.RATE_PCS) as rcpPcs,
+    	 trim(to_char(EDI_FWB_CHR_RATE.RATE_GWT,'9999990.0')) as grossWt, 
+		 DECODE(EDI_FWB_CHR_RATE.RATE_GWT,'','',EDI_FWB_CHR_RATE.RATE_GWT_CODE) as wgtType,
+		 EDI_FWB_CHR_RATE.RATE_CL_CODE as rateClass,
+		 EDI_FWB_CHR_RATE.RATE_COMM_N as itemNo,
+     	 trim(to_char(EDI_FWB_CHR_RATE.RATE_CHRGBLE_WT,'9999990.0')) as chrgWt,
+		 trim(to_char(EDI_FWB_CHR_RATE.RATE_CHRG_RATE,'9999990.00')) as chrgDiscount,
+     	trim(to_char(EDI_FWB_CHR_RATE.RATE_CHRG_A,'999999999999999999999.99')) as totchrg,
+     	substr(EDI_FWB_CHR_RATE.RATE_GOODS_NATR,0,20) as goodsDesc,substr(EDI_FWB_CHR_RATE.RATE_GOODS_NATR,21,20) as goodsDesc1,substr(EDI_FWB_CHR_RATE.RATE_GOODS_NATR,41,20) as goodsDesc2
+     	FROM EDI_FWB,EDI_FWB_CHR_RATE 
+		WHERE EDI_FWB_CHR_RATE.TR_NO=EDI_FWB.TR_NO
+    	AND EDI_FWB.TR_NO = (SELECT MAX(A.TR_NO) FROM EDI_FWB A WHERE A.AWB_NO =#awbNo#)) T
+    	WHERE (T.rcpPcs IS NOT NULL OR T.grossWt IS NOT NULL OR T.itemNo IS NOT NULL OR T.chrgWt IS NOT NULL OR T.chrgDiscount IS NOT NULL
+    	OR T.totchrg IS NOT NULL OR T.goodsDesc IS NOT NULL)
+		]]>
+	</select>
+	
+	<select id="edi_EnqFWB_C"  parameterClass="cargo.cms.edi.report.bo.EnqFWBRept_BO" resultClass="cargo.cms.edi.report.bo.EnqFWBRept_BO">
+		SELECT 
+			DECODE(b.OTH_CHRG_C1||b.OTH_ENTLEMT_C1,null,'',b.OTH_CHRG_C1||' '||b.OTH_ENTLEMT_C1||' :'||trim(to_char(nvl(b.OTH_CHRG1,0),'9999999999990.00'))) ||' ' ||
+			DECODE(b.OTH_CHRG_C2||b.OTH_ENTLEMT_C2,null,'',b.OTH_CHRG_C2||' '||b.OTH_ENTLEMT_C2||' :'||trim(to_char(nvl(b.OTH_CHRG2,0),'9999999999990.00'))) ||' ' ||
+			DECODE(b.OTH_CHRG_C3||b.OTH_ENTLEMT_C3,null,'',b.OTH_CHRG_C3||' '||b.OTH_ENTLEMT_C3||' :'||trim(to_char(nvl(b.OTH_CHRG3,0),'9999999999990.00'))) as othPcI1
+		FROM  EDI_FWB c,EDI_FWB_OTH_CHARGES b
+		WHERE c.TR_NO=b.TR_NO
+		AND c.TR_NO = (select max(a.tr_no) from edi_fwb a where a.awb_no = #awbNo#)
+	</select>
+	
+	<select id="edi_EnqFWB_D"  parameterClass="cargo.cms.edi.report.bo.EnqFWBRept_BO" resultClass="cargo.cms.edi.report.bo.EnqFWBRept_BO">
+	
+	SELECT 
+		 EDI_FWB_ACCT_INFO.ACC_INFO_IND accInfoInd,
+		 EDI_FWB_ACCT_INFO.ACC_INFO as accInformation
+		 FROM  EDI_FWB,EDI_FWB_ACCT_INFO 
+		 WHERE 
+		 EDI_FWB_ACCT_INFO.TR_NO = EDI_FWB.TR_NO
+		 AND EDI_FWB.TR_NO = (select max(a.tr_no) from edi_fwb a where a.awb_no = #awbNo#)
+		</select>
+		
+<select id="edi_EnqFWB_F"  parameterClass="cargo.cms.edi.report.bo.EnqFWBRept_BO" resultClass="cargo.cms.edi.report.bo.EnqFWBRept_BO">
+	     select
+			 sum(R.RATE_PCS)as totPcs,
+			 to_char(nvl(sum(R.RATE_GWT),0),'99999990.0') as totWgt,
+			 to_char(nvl(sum(R.RATE_CHRG_A),0),'999999999990.00') as totChrgs
+		  FROM EDI_FWB,EDI_FWB_CHR_RATE R 
+		 WHERE R.TR_NO=EDI_FWB.TR_NO
+		 AND EDI_FWB.TR_NO = (select max(a.tr_no) from edi_fwb a where a.awb_no = #awbNo#)
+</select>
+
+<select id="edi_rept_in_523"  parameterClass="cargo.cms.edi.report.bo.EnquireTelexMsg523_ReptBO" resultClass="cargo.cms.edi.report.bo.EnquireTelexMsg523_ReptBO">
+select 'I' as msgFlow,LOG_IN.MSG_ID as msgId ,LOG_IN.MSG_SEQ_NO as msgSeqNo,(SELECT STRAGG(STRINGDELIM(RECIPIENT,' , ')) FROM EDI_MSG_RECIPIENT_IN WHERE MSG_ID = #smsgId#) as addressee,
+		MSG_TITLE as subject,ATTENTION as attention,COPY as copy,
+		SENDER_ID as sender,MSG as messageText ,MSG_TYPE as msgType,
+		FLT_KEY as fltKey1,FLT_KEY_2 as fltKey2,FLT_KEY_3 as fltKey3,FLT_KEY_4 as fltKey4,FLT_KEY_5 as fltKey5,
+		TO_CHAR( FLT_DATE,'DDMONYY') as fltDate1,TO_CHAR(FLT_DAT_2,'DDMONYY') as fltDate2,TO_CHAR(FLT_DAT_3,'DDMONYY') as fltDate3,TO_CHAR(FLT_DAT_4,'DDMONYY') as fltDate4,
+		TO_CHAR( FLT_DAT_5,'DDMONYY') as fltDate5,
+		 substr(trim(AWB_NO), 0, 3) as awbPre1 ,substr(trim(AWB_NO), 4) as awbSuff1 ,
+		 substr(trim(AWB_NO_2), 0, 3) as awbPre2 ,substr(trim(AWB_NO_2), 4) as awbSuff2 ,
+		 substr(trim(AWB_NO_3), 0, 3) as awbPre3 ,substr(trim(AWB_NO_3), 4) as awbSuff3 ,
+		 substr(trim(AWB_NO_4), 0, 3) as awbPre4 ,substr(trim(AWB_NO_4), 4) as awbSuff4 ,
+		 substr(trim(AWB_NO_5), 0, 3) as awbPre5 ,substr(trim(AWB_NO_5), 4) as awbSuff5 ,
+		to_char(MSG_DATE,'DDMONYYYY HH24:MI') as msgDate,
+ 		'' as priority
+		from EDI_MSG_LOG_IN LOG_IN
+		where MSG_ID=#smsgId# and MSG_SEQ_NO=#smsgSeqNo#
+</select>
+
+<select id="edi_rept_out_523"  parameterClass="cargo.cms.edi.report.bo.EnquireTelexMsg523_ReptBO" resultClass="cargo.cms.edi.report.bo.EnquireTelexMsg523_ReptBO">
+		 SELECT 'O'                     AS msgFlow     ,
+  MSG_ID                        AS msgId       ,
+  MSG_SEQ_NO                    AS msgSeqNo    ,
+  (SELECT STRAGG(STRINGDELIM(RECIPIENT,' , '))
+     FROM EDI_MSG_RECIPIENT_OUT
+    WHERE MSG_ID = #smsgId#
+  )                             AS addressee   ,
+  MSG_TITLE                     AS subject     ,
+  ATTENTION                     AS attention   ,
+  COPY                          AS copy        ,
+  SENDER_ID                     AS sender      ,
+  MSG                           AS messageText ,
+  MSG_TYPE                      AS msgType     ,
+  FLT_KEY                       AS fltKey1     ,
+  FLT_KEY_2                     AS fltKey2     ,
+  FLT_KEY_3                     AS fltKey3     ,
+  FLT_KEY_4                     AS fltKey4     ,
+  FLT_KEY_5                     AS fltKey5     ,
+  TO_CHAR( FLT_DATE,'DDMONYY')  AS fltDate1    ,
+  TO_CHAR(FLT_DAT_2,'DDMONYY')  AS fltDate2    ,
+  TO_CHAR(FLT_DAT_3,'DDMONYY')  AS fltDate3    ,
+  TO_CHAR(FLT_DAT_4,'DDMONYY')  AS fltDate4    ,
+  TO_CHAR( FLT_DAT_5,'DDMONYY') AS fltDate5    ,
+  SUBSTR(trim(AWB_NO), 0, 3)    AS awbPre1     ,
+  SUBSTR(trim(AWB_NO), 4)       AS awbSuff1    ,
+  SUBSTR(trim(AWB_NO_2), 0, 3)  AS awbPre2     ,
+  SUBSTR(trim(AWB_NO_2), 4)     AS awbSuff2    ,
+  SUBSTR(trim(AWB_NO_3), 0, 3)  AS awbPre3     ,
+  SUBSTR(trim(AWB_NO_3), 4)     AS awbSuff3    ,
+  SUBSTR(trim(AWB_NO_4), 0, 3)  AS awbPre4     ,
+  SUBSTR(trim(AWB_NO_4), 4)     AS awbSuff4    ,
+  SUBSTR(trim(AWB_NO_5), 0, 3)  AS awbPre5     ,
+  SUBSTR(trim(AWB_NO_5), 4)     AS awbSuff5,
+  to_char(MSG_DATE,'DDMONYYYY HH24:MI') as msgDate,
+  PRIORITY as priority
+   FROM EDI_MSG_LOG_OUT
+  WHERE MSG_ID=#smsgId#
+AND MSG_SEQ_NO=#smsgSeqNo#
+</select>	
+<select id="edi_rept_allin_523"  parameterClass="cargo.cms.edi.report.bo.EnquireAllTelexMsg524_ReptBO" resultClass="cargo.cms.edi.report.bo.EnquireAllTelexMsg524_ReptBO">
+select 'Incoming' as msgFlow,LOG_IN.MSG_ID as msgId ,LOG_IN.MSG_SEQ_NO as msgSeqNo,
+		(SELECT STRAGG(STRINGDELIM(RECIPIENT,' , ')) FROM EDI_MSG_RECIPIENT_IN WHERE MSG_ID = LOG_IN.MSG_ID) as addressee,
+		MSG_TITLE as subject,ATTENTION as attention,COPY as copy,
+		SENDER_ID as ssender,MSG as messageText ,MSG_TYPE as msgType	 ,nvl(TO_CHAR( ATTACH_DATE,'DDMONYYYY HH24:MI'),'') as attachDate,
+		to_char(MSG_DATE,'DDMONYYYY HH24:MI') as msgDate
+		from EDI_MSG_LOG_IN LOG_IN
+		<isNotEmpty property="saddressee" >
+		,EDI_MSG_RECIPIENT_IN RCPT_IN
+		</isNotEmpty>
+		where MSG_TYPE='TLX' 
+		<isNotEmpty property="smsgDateFrom" >
+		<isNotEmpty property="smsgDateTo" >
+		and  MSG_DATE BETWEEN TO_DATE(#smsgDateFrom#,'DDMONYYHH24MI') AND TO_DATE(#smsgDateTo#,'DDMONYYHH24MI')
+		</isNotEmpty>
+		</isNotEmpty>	
+		<isNotEmpty property="smsgDateFrom" >
+		<isEmpty property="smsgDateTo" >
+		and  MSG_DATE>= TO_DATE(#smsgDateFrom#,'DDMONYYHH24MI')
+		</isEmpty>
+		</isNotEmpty>
+		<isEmpty property="smsgDateFrom" >
+		<isNotEmpty property="smsgDateTo" >
+		and TO_DATE(#smsgDateTo#,'DDMONYYHH24MI') > MSG_DATE
+		</isNotEmpty>	
+		</isEmpty>
+		<isNotEmpty property="smsgHeader" >
+		 and MSG_TITLE=#smsgHeader#
+		</isNotEmpty>
+		<isNotEmpty property="scsender" >
+		 and SENDER_ID=#scsender#
+		</isNotEmpty>
+		<isNotEmpty property="sprocessed" >
+			<isEqual property="sprocessed" 
+             compareValue="Y">
+              AND (READ='Y' or ATTACH_DATE is not null or PROCESSED='Y')
+             </isEqual>
+            <isEqual  
+             property="sprocessed" 
+             compareValue="N">
+            AND (nvl(READ,'N')!='Y' and ATTACH_DATE is null and nvl(PROCESSED,'N')!='Y')
+		</isEqual>
+		</isNotEmpty>
+		<isNotEmpty property="sfltKey"   >
+			<isNotEmpty property="sfltDate" >
+			AND (( FLT_KEY=#sfltKey# and  FLT_DATE=TO_DATE(#sfltDate#,'DDMONYY')) or 
+			( FLT_KEY_2=#sfltKey# and  FLT_DAT_2=TO_DATE(#sfltDate#,'DDMONYY')) or 
+			( FLT_KEY_3=#sfltKey# and  FLT_DAT_3=TO_DATE(#sfltDate#,'DDMONYY')) or 
+			( FLT_KEY_4=#sfltKey# and  FLT_DAT_4=TO_DATE(#sfltDate#,'DDMONYY')) or 
+			( FLT_KEY_5=#sfltKey# and  FLT_DAT_5=TO_DATE(#sfltDate#,'DDMONYY')))
+		    </isNotEmpty>
+		    <isEmpty  property="sfltDate" >
+		    	AND ( FLT_KEY=#sfltKey# or  FLT_KEY_2=#sfltKey# or 
+			     FLT_KEY_3=#sfltKey# or  FLT_KEY_4=#sfltKey# or  FLT_KEY_5=#sfltKey#)
+		    </isEmpty>
+		</isNotEmpty>
+		<isEmpty property="sfltKey" >
+			<isNotEmpty property="sfltDate" >
+				AND ( FLT_DATE=TO_DATE(#sfltDate#,'DDMONYY') or  FLT_DAT_2=TO_DATE(#sfltDate#,'DDMONYY') or 
+			 FLT_DAT_3=TO_DATE(#sfltDate#,'DDMONYY') or 	FLT_DAT_4=TO_DATE(#sfltDate#,'DDMONYY') or FLT_DAT_5=TO_DATE(#sfltDate#,'DDMONYY'))
+			</isNotEmpty>
+		</isEmpty>
+		<isNotEmpty  property="sawbNo">
+			AND( AWB_NO=#sawbNo# or  AWB_NO_2=#sawbNo# or 
+			 AWB_NO_3=#sawbNo# or  AWB_NO_4=#sawbNo# or  AWB_NO_5=#sawbNo#)
+		</isNotEmpty>
+		<isNotEmpty  property="saddressee">
+		 	and RCPT_IN.MSG_ID=LOG_IN.MSG_ID and (RCPT_IN.RECIPIENT=#saddressee1# or RCPT_IN.RECIPIENT=#saddressee2# or RCPT_IN.RECIPIENT=#saddressee3#)
+		</isNotEmpty>
+</select>	
+<select id="edi_rept_allout_523"  parameterClass="cargo.cms.edi.report.bo.EnquireAllTelexMsg524_ReptBO" resultClass="cargo.cms.edi.report.bo.EnquireAllTelexMsg524_ReptBO">
+		select 'Outgoing' as msgFlow,LOG_OUT.MSG_ID as msgId ,LOG_OUT.MSG_SEQ_NO as msgSeqNo,
+		(SELECT STRAGG(STRINGDELIM(RECIPIENT,' , ')) FROM EDI_MSG_RECIPIENT_OUT WHERE MSG_ID = LOG_OUT.MSG_ID) as addressee,
+		MSG_TITLE as subject,ATTENTION as attention,COPY as copy,
+		SENDER_ID as ssender,MSG as messageText ,MSG_TYPE as msgType	,nvl(TO_CHAR( ATTACH_DATE,'DDMONYYYY HH24:MI'),'') as attachDate,
+		to_char(MSG_DATE,'DDMONYYYY HH24:MI') as msgDate
+		from EDI_MSG_LOG_OUT LOG_OUT
+		<isNotEmpty property="saddressee" >
+		,EDI_MSG_RECIPIENT_OUT RCPT_OUT
+		</isNotEmpty>
+		where MSG_TYPE='TLX'
+		<isNotEmpty property="smsgDateFrom" >
+		<isNotEmpty property="smsgDateTo" >
+		and  MSG_DATE BETWEEN TO_DATE(#smsgDateFrom#,'DDMONYYHH24MI') AND TO_DATE(#smsgDateTo#,'DDMONYYHH24MI')
+		</isNotEmpty>
+		</isNotEmpty>	
+		<isNotEmpty property="smsgDateFrom" >
+		<isEmpty property="smsgDateTo" >
+		and  MSG_DATE>= TO_DATE(#smsgDateFrom#,'DDMONYYHH24MI')
+		</isEmpty>
+		</isNotEmpty>
+		<isEmpty property="smsgDateFrom" >
+		<isNotEmpty property="smsgDateTo" >
+		and TO_DATE(#smsgDateTo#,'DDMONYYHH24MI') > MSG_DATE
+		</isNotEmpty>	
+		</isEmpty>		
+		<isNotEmpty property="smsgHeader" >
+		 and MSG_TITLE=#smsgHeader#
+		</isNotEmpty>
+		<isNotEmpty property="scsender" >
+		 and SENDER_ID=#scsender#
+		</isNotEmpty>
+		<isNotEmpty property="sprocessed" >
+			<isEqual property="sprocessed" 
+             compareValue="Y">
+              AND (READ='Y' or ATTACH_DATE is not null or PROCESSED='Y')
+             </isEqual>
+            <isEqual  
+             property="sprocessed" 
+             compareValue="N">
+            AND (nvl(READ,'N')!='Y' and ATTACH_DATE is null and nvl(PROCESSED,'N')!='Y')
+		</isEqual>
+		</isNotEmpty>
+		<isNotEmpty property="sfltKey"   >
+			<isNotEmpty property="sfltDate" >
+			AND (( FLT_KEY=#sfltKey# and  FLT_DATE=TO_DATE(#sfltDate#,'DDMONYY')) or 
+			( FLT_KEY_2=#sfltKey# and  FLT_DAT_2=TO_DATE(#sfltDate#,'DDMONYY')) or 
+			( FLT_KEY_3=#sfltKey# and  FLT_DAT_3=TO_DATE(#sfltDate#,'DDMONYY')) or 
+			( FLT_KEY_4=#sfltKey# and  FLT_DAT_4=TO_DATE(#sfltDate#,'DDMONYY')) or 
+			( FLT_KEY_5=#sfltKey# and  FLT_DAT_5=TO_DATE(#sfltDate#,'DDMONYY')))
+		    </isNotEmpty>
+		    <isEmpty  property="sfltDate" >
+		    	AND ( FLT_KEY=#sfltKey# or  FLT_KEY_2=#sfltKey# or 
+			     FLT_KEY_3=#sfltKey# or  FLT_KEY_4=#sfltKey# or  FLT_KEY_5=#sfltKey#)
+		    </isEmpty>
+		</isNotEmpty>
+		<isEmpty property="sfltKey" >
+			<isNotEmpty property="sfltDate" >
+				AND ( FLT_DATE=TO_DATE(#sfltDate#,'DDMONYY') or  FLT_DAT_2=TO_DATE(#sfltDate#,'DDMONYY') or 
+			 FLT_DAT_3=TO_DATE(#sfltDate#,'DDMONYY') or 	FLT_DAT_4=TO_DATE(#sfltDate#,'DDMONYY') or FLT_DAT_5=TO_DATE(#sfltDate#,'DDMONYY'))
+			</isNotEmpty>
+		</isEmpty>
+		<isNotEmpty  property="sawbNo">
+			AND( AWB_NO=#sawbNo# or  AWB_NO_2=#sawbNo# or 
+			 AWB_NO_3=#sawbNo# or  AWB_NO_4=#sawbNo# or  AWB_NO_5=#sawbNo#)
+		</isNotEmpty>
+		<isNotEmpty  property="saddressee">
+		 	and RCPT_OUT.MSG_ID=LOG_OUT.MSG_ID and (RCPT_OUT.RECIPIENT=#saddressee1# or RCPT_OUT.RECIPIENT=#saddressee2# or RCPT_OUT.RECIPIENT=#saddressee3#)
+		</isNotEmpty>
+</select>	
+<select id="edi_rept_180"  parameterClass="cargo.cms.edi.report.bo.EnqFHLRept_180BO"  	resultClass="cargo.cms.edi.report.bo.EnqFHLRept_180BO">
+		
+						SELECT 	
+								TR_NO as trno, DOC_LINE_NO as docLineNo,HAWB_NO as hawbNo ,HAWB_ORG ||'/'|| HAWB_DEST as orgDest,
+								HAWB_PCS ||'/'|| TRIM(TO_CHAR(HAWB_NET_WT,'9999999.9')) as hawbPcWt,
+								TO_CHAR(HAWB_NET_WT,'99999.9') as hawbWt,
+								HAWB_WT_CODE,
+								SPL_CODE1
+							   ||decode(SPL_CODE2 ,null,'',CONCAT(', ',SPL_CODE2))
+							   ||decode(SPL_CODE3 ,null,'',CONCAT(', ',SPL_CODE3))
+							   ||decode(SPL_CODE4 ,null,'',CONCAT(', ',SPL_CODE4))
+							   ||decode(SPL_CODE5 ,null,'',CONCAT(', ',SPL_CODE5))
+							   ||decode(SPL_CODE6 ,null,'',CONCAT(', ',SPL_CODE6))
+							   ||decode(SPL_CODE7 ,null,'',CONCAT(', ',SPL_CODE7))
+							   ||SPL_CODE8  as splcode,
+								MANIFEST_DESC as content,   
+								SHPR_NAME as shipperName,
+								SHPR_ADD1 as shipperAddr1,
+								SHPR_ADD2 as shipperAddr2,
+								SHPR_ADD3 as shipperAddr3,
+								SHPR_ADD4 as shipperAddr4,
+								SHPR_ADD5 as shipperAddr5,
+								SHPR_PLACE  as shipperCity,
+								SHPR_CTRY_CODE as shipperCtryCode, SHPR_STATE_PROVINCE as shipperState,
+								SHPR_PIN_CODE as shipperPostalCode,SHPR_CONT_ID as shipperId ,SHPR_CONT_N as shipperNo, 
+								CSGNE_NAME as congName ,
+								CSGNE_ADD1 as consgAddr1,
+								CSGNE_ADD2 as consgAddr2,
+								CSGNE_ADD3 as consgAddr3,
+								CSGNE_ADD4 as consgAddr4,
+								CSGNE_ADD5 as consgAddr5,
+								CSGNE_PLACE as consgCity ,CSGNE_CTRY_CODE as consgCtryCode ,CSGNE_PIN_CODE as consgPostalCode ,CSGNE_STATE_PROVINCE as consgState, CSGNE_CONT_ID as consgId ,CSGNE_CONT_N as consgNo ,
+								NFY_ADD1 as notifyAddr1,
+								NFY_ADD2 as notifyAddr2,
+								NFY_ADD3 as notifyAddr3,
+								NFY_ADD4 as notifyAddr4,
+								NFY_ADD5 as notifyAddr5,
+								 NFY_NAME  as notifyName,
+								 NFY_PLACE as notifyCity,
+								NFY_CTRY_CODE as notifyCtryCode ,NFY_PIN_CODE as notifyPostalCode,NFY_CONT_ID as notifyId, NFY_CONT_N as notifyNo,     
+								NFY_LICENSE1||'' ||NFY_LICENSE2||'' ||NFY_LICENSE3||'' ||NFY_LICENSE4||'' ||NFY_LICENSE5||'' ||NFY_LICENSE6||'' || NFY_LICENSE7 ||'' ||NFY_LICENSE8 ||''||NFY_LICENSE9 as license, 
+								NFY_PERMIT1 ||'' ||NFY_PERMIT2 ||'' ||NFY_PERMIT3 ||'' ||NFY_PERMIT4 ||'' ||NFY_PERMIT5 ||''|| NFY_PERMIT6||'' || NFY_PERMIT7 ||'' ||NFY_PERMIT8 ||'' || NFY_PERMIT9 as permit, 
+								RMK as remarks,
+								FREE_TEXT_DESC1 as freeTextDesc1,
+								FREE_TEXT_DESC2 as freeTextDesc2,
+								FREE_TEXT_DESC3 as freeTextDesc3,
+								FREE_TEXT_DESC4 as freeTextDesc4,
+								FREE_TEXT_DESC5 as freeTextDesc5,
+								FREE_TEXT_DESC6 as freeTextDesc6,
+								FREE_TEXT_DESC7 as freeTextDesc7,
+								FREE_TEXT_DESC8 as freeTextDesc8,
+								FREE_TEXT_DESC9 as freeTextDesc9,
+								HTS_COMM_CODE1 as HTS_COMM_CODE1,
+								HTS_COMM_CODE2 as HTS_COMM_CODE2,
+								HTS_COMM_CODE3 as HTS_COMM_CODE3,
+								HTS_COMM_CODE4 as HTS_COMM_CODE4,
+								HTS_COMM_CODE5 as HTS_COMM_CODE5,
+								HTS_COMM_CODE6 as HTS_COMM_CODE6,
+								HTS_COMM_CODE7 as HTS_COMM_CODE7,
+								HTS_COMM_CODE8 as HTS_COMM_CODE8,
+								HTS_COMM_CODE9 as HTS_COMM_CODE9,
+								DECLN_CURR_CODE as currCode,DECLN_WT_VALN_PPCC_I as wt,DECLN_OTH_CHRG_PPCC_I as otherchrg,DECLN_CARR as carrDeclVal,DECLN_CTM as ctmDeclVal,
+								 A.LM_USER_ID as logonId,
+								  TO_CHAR(A.LM_DATE, 'DDMONYY HH24:MI') as amdDate,
+								DECLN_INSURCE as insurAmt ,ACCS_I,SOURCE,RMK_CTM,FHL_OWNER,A.LM_DATE,LM_VER ,
+								HBS_SLAC as slacNo,HTS_COMM_CODE1,HTS_COMM_CODE2,HTS_COMM_CODE3,HTS_COMM_CODE4,HTS_COMM_CODE5,HTS_COMM_CODE6,HTS_COMM_CODE7,HTS_COMM_CODE8,      
+								HTS_COMM_CODE9,DECODE(SOURCE,'CMS','WOS',SOURCE) AS tmpSrcDispName,
+								case when A.FHL_OWNER is null then
+									(select c.CODE_DESC from CUST_COMPANY C
+										where C.code = (SELECT S.CUST_NO FROM SEC_USER S WHERE S.CODE = A.CR_USER_ID))
+								else (select c.CODE_DESC from CUST_COMPANY C
+									where (C.code = (SELECT S.CUST_NO FROM SEC_USER S WHERE S.CODE = A.FHL_OWNER)
+											or C.code = A.FHL_OWNER))
+								end AS tmpCustName,
+								A.LM_USER_ID AS LM_USER_ID,decode(CHARGE_AGENT,'Y','N',CHARGE_AGENT) AS chargeAgentIndicator,NFY_STATE_PROVINCE as nfyState,
+								HBS_SLAC,
+								#ACASInd# as ACASInd,
+								#ACASCode# as ACASCode		
+						FROM EDI_FHL_HAWB A
+						WHERE A.TR_NO =#trno# 
+						AND A.HAWB_NO=#hawbNo#
+						AND ROWNUM = 1
+
+</select>	
+
+<select id="edi_rept_180_c"  parameterClass="cargo.cms.edi.report.bo.EnqFHLRept_180BO"  	resultClass="cargo.cms.edi.report.bo.EnqFHLRept_180BO">
+		
+			SELECT			TR_NO as trno, DOC_LINE_NO as docLineNo,CONT_ID as contactId, CCNT_NAME as contactName ,
+								   CONT_TYPE as contactType ,HDOC_LINE_NO as hdocLineNo   
+			
+			 FROM EDI_FHL_CONTACT 
+			 WHERE TR_NO =#trno# AND HDOC_LINE_NO=#hdocLineNo#
+
+</select>	
+
+<select id="edi_rept_180_l"  parameterClass="cargo.cms.edi.report.bo.EnqFHLRept_180BO"  	resultClass="cargo.cms.edi.report.bo.EnqFHLRept_180BO">
+		
+	SELECT	
+			TR_NO as trno,
+			HDOC_LINE_NO as docLineNo,
+			LIC_PER_TYPE as licType,  
+			decode(a.lic_per_type
+				   ,'LIC',(select stragg(stringdelim(LIC_PER_NO,' ,')) from EDI_FHL_HAWB_LIC_PER b where a.TR_NO = b.TR_NO and a.HDOC_LINE_NO=b.HDOC_LINE_NO and b.lic_per_type='LIC')
+                   ,'PER',(select stragg(stringdelim(LIC_PER_NO,' ,')) from EDI_FHL_HAWB_LIC_PER b where a.TR_NO = b.TR_NO and a.HDOC_LINE_NO=b.HDOC_LINE_NO and b.lic_per_type='PER')
+                  )as licNo
+	FROM	EDI_FHL_HAWB_LIC_PER a
+    WHERE	TR_NO = #trno# AND
+			HDOC_LINE_NO=#hdocLineNo#
+	group by  tr_no,hdoc_line_no,lic_per_type
+</select>
+
+<select id="edi_rept_180_o"  parameterClass="cargo.cms.edi.report.bo.EnqFHLRept_180BO"  	resultClass="cargo.cms.edi.report.bo.EnqFHLRept_180BO">
+	SELECT TR_NO trNo, DOC_LINE_NO docLineNo, HDOC_LINE_NO hdocLineNo, ISO_CTRY_CODE isoCtryCode, INFO_IDENTIFIER infoIdentifier, 
+    	CUSTOMS_INFO_IDENTIFIER customsInfoIdentifier, SUPP_CUSTOMS_INFO suppCustInfo
+		FROM EDI_FHL_HAWB_OCI WHERE TR_NO = #trno# AND HDOC_LINE_NO=#hdocLineNo#
+</select>
+
+<select id="edi_rept_535"  parameterClass="cargo.cms.edi.report.bo.MessageLogSumOut535_ReptBO"  	resultClass="cargo.cms.edi.report.bo.MessageLogSumOut535_ReptBO">
+	SELECT 
+  		    MSG_ID as msgStrId , 
+			MSG_SEQ_NO as msgSeqNo, 
+			(SELECT STRAGG(STRINGDELIM(RECIPIENT,' , ')) FROM EDI_MSG_RECIPIENT_OUT WHERE EDI_MSG_RECIPIENT_OUT.MSG_ID = edi_msg.MSG_ID)  as msgaddressee,
+			 DECODE(edi_msg.AWB_NO,NULL,'',SUBSTR(edi_msg.AWB_NO,1,3)||'-'||SUBSTR(edi_msg.AWB_NO,4,8)) 
+    ||DECODE(edi_msg.AWB_NO_2,null,'',','||SUBSTR(edi_msg.AWB_NO_2,1,3)||'-'||SUBSTR(edi_msg.AWB_NO_2,4,8)) 
+    || DECODE(edi_msg.AWB_NO_3,null,'',','||SUBSTR(edi_msg.AWB_NO_3,1,3)||'-'||SUBSTR(edi_msg.AWB_NO_3,4,8)) 
+    ||DECODE(edi_msg.AWB_NO_4,null,'',','||SUBSTR(edi_msg.AWB_NO_4,1,3)||'-'||SUBSTR(edi_msg.AWB_NO_4,4,8))
+    || DECODE(edi_msg.AWB_NO_5,null,'',','||SUBSTR(edi_msg.AWB_NO_5,1,3)||'-'||SUBSTR(edi_msg.AWB_NO_5,4,8))   as  awbNo,
+			AWB_DATE as awbDt , 
+			CARR_CODE as carrierCode , 
+     		FLT_NO as flightNo, 
+			FLT_DATE as flightDt , 
+			FLT_KEY as flightKey, 
+			to_char(MSG_DATE,'DDMONYY HH24:MI') as messageSendDt, 
+			MSG_TYPE as messageType, 
+			SENDER_ID as messageSenderID, 
+			MSG as messageContent, 
+			MSG_TITLE as msgTitleHeader , 
+			ATTENTION as messageAttn , 
+			COPY as messageCopyNo, 
+			SRF_NO as srfNo, 
+			LM_USER_ID as lmUserID, 
+			priority as priority,
+			LM_VER as lmVersion ,
+      decode(edi_msg.FLT_KEY,NULL,'',edi_msg.FLT_KEY||'/')||decode(edi_msg.FLT_DATE,NULL,'',	TO_CHAR(edi_msg.FLT_DATE,'DDMONYY')) as fltKeyDt
+	    FROM EDI_MSG_LOG_OUT edi_msg
+		WHERE MSG_ID = #msgStrId#
+</select>
+<!--Added by Manorama for Enquire FBL::: Starts -->
+<select id="edi_rept_178_awbflt"  parameterClass="cargo.cms.edi.report.bo.EnqFBLRept_178BO"  	resultClass="cargo.cms.edi.report.bo.EnqFBLRept_178BO">
+			select 	 edi_fbl.flt_key as fltNo , edi_fbl.flt_date as deptDate,		   
+					PKG_COMMON.get_flt_eta(flt_opr.flt_key, flt_opr.sch_date, 'D', 'DD') etd ,  
+					pkg_common.get_flt_sta(flt_opr.flt_key,flt_opr.sch_date,'D','DD') as std,
+				   flt_opr.acft_reg_no as acftRegn , edi_fbl.flt_rmk as remarks , 
+					(select max(decode(edi_fbl_shp.nil_ind,'Y','Y','N')) from
+					  edi_fbl_shp where edi_fbl_shp.tr_no = edi_fbl.tr_no
+					 and edi_fbl_shp.unldg_pt = #unldgPt#
+					  and edi_fbl_shp.ldg_pt = #ldgPt#
+					) as cargoInd
+	   from flt_opr left outer join edi_fbl on flt_opr.flt_key = edi_fbl.flt_key
+	   and flt_opr.sch_date = edi_fbl.flt_date
+     join edi_fbl_shp on edi_fbl_shp.tr_no = edi_fbl.tr_no and edi_fbl_shp.ldg_pt =#ldgPt#
+	     where flt_opr.flt_key=#fltNo#
+       and flt_opr.sch_date=to_date(#deptDate#,'ddmonyy')
+       and flt_opr.flt_type='D'
+       AND edi_fbl_shp.unldg_pt =  #unldgPt#
+       and rownum = 1
+</select>	
+
+<select id="edi_rept_178_uld"  parameterClass="cargo.cms.edi.report.bo.EnqFBLRept_178BO"  	resultClass="cargo.cms.edi.report.bo.EnqFBLRept_178BO">
+			 select 
+			       edi_fbl_uld.uld_key as  uldNo,			      
+			       edi_fbl_uld.load_ind as ldgInd,
+			       
+			       edi_fbl_uld.uld_wt as uldGrossWt,
+			       edi_fbl_uld.rmk as uldRemarks
+            from edi_fbl_uld
+				where edi_fbl_uld.tr_no = #trno#
+					and   edi_fbl_uld.sdoc_line_no = #docLineNo#
+			
+</select>
+
+<select id="edi_rept_work_sheet_awb"  parameterClass = "cargo.cms.edi.report.bo.EnqFBLRept_178BO"  	resultClass="cargo.cms.edi.report.bo.EnqFBLRept_178BO">
+SELECT a.LOCN_PCS AS   pcs,
+  a.LOCN_WT  AS wt,
+  a.LOC_CODE AS location,
+  DECODE(a.ULD_KEY,NULL,a.LSP_NO,a.uld_key) AS deviceNo
+FROM AWB_INVENTORY a
+WHERE a.AWB_NO=#awbNo# AND a.AWB_DATE=#awbDate#
+</select>
+<select id="cargo_rept_work_sheet_awb"  parameterClass = "cargo.cms.edi.report.bo.EnqFBLRept_178BO"  	resultClass="cargo.cms.edi.report.bo.EnqFBLRept_178BO">
+	SELECT a.LOCN_PCS AS   pcs,
+	  a.LOCN_WT  AS wt,
+	  a.LOC_CODE AS location,
+	  DECODE(a.ULD_KEY,NULL,a.LSP_NO,a.uld_key) AS deviceNo,
+	  b.PCS AS awbpcs,
+	  b.WT  AS awbwt,
+	  b.orig as orig,
+      b.dest as dest,
+      PKG_EXP_RPT.awb_spl_codes(b.awb_no, b.awb_date, ',') as splCode
+	FROM AWB_INVENTORY a , AWB b
+	WHERE a.AWB_NO= b.AWB_NO AND a.AWB_DATE= b.AWB_DATE AND a.AWB_NO=#awbNo# AND a.AWB_DATE=#awbDate#
+</select>
+<select id="edi_rept_178_awb"  parameterClass = "cargo.cms.edi.report.bo.EnqFBLRept_178BO"  	resultClass="cargo.cms.edi.report.bo.EnqFBLRept_178BO">
+
+select        edi_fbl.flt_key as fltNo , TO_CHAR(edi_fbl.flt_date,'DDMONYY') as deptDate,
+			       concat(concat(substr(edi_fbl_shp.awb_no,0,3),'-'),substr(edi_fbl_shp.awb_no,4))as awbNo,
+		           edi_fbl_shp.org as orig,
+			       edi_fbl_shp.dest as dest,
+		           edi_fbl_shp.shmpt_code as shpmcode,
+			       nvl(edi_fbl_shp.pcs,0) as pcs,
+			       nvl(edi_fbl_shp.net_wt,0) as wt,
+			       edi_fbl_shp.man_desc as cont,
+			       nvl(edi_fbl_shp.total_pcs,0) as totalPcs,				   
+				   edi_fbl_shp.spl_code1||decode(edi_fbl_shp.spl_code2 ,null,'',',')||edi_fbl_shp.spl_code2  as splCode,		          
+				   edi_fbl_shp.org_agent_name as agentName,
+			       edi_fbl_shp.org_movt_prty_c as mvmPrtyCode,				   
+				   edi_fbl_shp.spl_svc_req1||decode( edi_fbl_shp.spl_svc_req2 ,null,'',',')|| edi_fbl_shp.spl_svc_req2  as splSvcReq,				   
+				   edi_fbl_shp.other_svc_info1||decode( edi_fbl_shp.other_svc_info2 ,null,'',',')|| edi_fbl_shp.other_svc_info2 as otherSvcInfo,
+				    to_char(edi_fbl_shp.org_flt_date,'DDMONYY')       AS iwfltDate   ,
+		           edi_fbl_shp.org_flt_key as iwfltNo,
+               edi_fbl_shp.nil_ind  as   cargoInd
+	from 
+			edi_fbl inner join edi_fbl_shp 
+			on edi_fbl.tr_no = edi_fbl_shp.tr_no
+			and edi_fbl_shp.unldg_pt =#unldgPt#
+      AND edi_fbl_shp.awb_no IS NOT NULL 
+		 	where 
+			edi_fbl.flt_key = #fltNo#
+			and edi_fbl.flt_date = to_date(#deptDate#,'DDMONYY')
+			and edi_fbl.si_type IN('S','I')
+			and edi_fbl_shp.tr_no =#trno#
+			and edi_fbl_shp.doc_line_no = #docLineNo#
+</select>
+<select id="edi_rept_213_unldg"  parameterClass="cargo.cms.edi.report.bo.EnqFBLRept_178BO"  	resultClass="cargo.cms.edi.report.bo.EnqFBLRept_178BO">
+
+	select       #fltNo# as fltNo , #deptDate# as deptDate,
+					off_point as unldgPt from flt_opr_seg where tr_no in 
+					(select tr_no from flt_opr where flt_key = #fltNo#  and       sch_date=to_date(#deptDate#,'DDMONYY') and flt_type = 'D')    and brd_point='HKG'
+</select>	
+<select id="edi_rept_213_awb"  parameterClass="cargo.cms.edi.report.bo.EnqFBLRept_178BO"  	resultClass="cargo.cms.edi.report.bo.EnqFBLRept_178BO">
+
+	select         edi_fbl_shp.unldg_pt as unldgPt, edi_fbl.flt_key as fltNo , edi_fbl.flt_date as deptDate,
+			       rowNum as serialNo,concat(concat(substr(edi_fbl_shp.awb_no,0,3),'-'),substr(edi_fbl_shp.awb_no,4))as awbNo,
+		           edi_fbl_shp.org as orig,
+			       edi_fbl_shp.dest as dest,
+		           edi_fbl_shp.shmpt_code as shpmcode,
+			       nvl(edi_fbl_shp.pcs,0) as pcs,
+			       nvl(edi_fbl_shp.net_wt,0) as wt,
+			       edi_fbl_shp.man_desc as cont,
+			       nvl(edi_fbl_shp.total_pcs,0) as totalPcs,				   
+			       (decode(car.AWB_NO,NULL,decode(t7.awb_no,null,decode(edi_fbl_shp.spl_code1,null,'',edi_fbl_shp.spl_code1),t7.spl_code1),car.spl_code1)
+||decode(car.AWB_NO,'',decode(t7.awb_no,null,decode(edi_fbl_shp.spl_code2,null,'',decode(edi_fbl_shp.spl_code2,null,'','/')||edi_fbl_shp.spl_code2),decode(t7.spl_code2,null,'','/')||t7.spl_code2),decode(car.spl_code2,null,'','/')||car.spl_code2)
+||decode(car.AWB_NO,'',decode(t7.awb_no,null,decode(edi_fbl_shp.spl_code3,null,'',decode(edi_fbl_shp.spl_code3,null,'','/')||edi_fbl_shp.spl_code3),decode(t7.spl_code3,null,'','/')||t7.spl_code3),decode(car.spl_code3,null,'','/')||car.spl_code3)
+||decode(car.AWB_NO,'',decode(t7.awb_no,null,decode(edi_fbl_shp.spl_code4,null,'',decode(edi_fbl_shp.spl_code4,null,'','/')||edi_fbl_shp.spl_code4),decode(t7.spl_code4,null,'','/')||t7.spl_code4),decode(car.spl_code4,null,'','/')||car.spl_code4)
+||decode(car.AWB_NO,'',decode(t7.awb_no,null,decode(edi_fbl_shp.spl_code5,null,'',decode(edi_fbl_shp.spl_code5,null,'','/')||edi_fbl_shp.spl_code5),decode(t7.spl_code5,null,'','/')||t7.spl_code5),decode(car.spl_code5,null,'','/')||car.spl_code5)
+||decode(car.AWB_NO,'',decode(t7.awb_no,null,decode(edi_fbl_shp.spl_code6,null,'',decode(edi_fbl_shp.spl_code6,null,'','/')||edi_fbl_shp.spl_code6),decode(t7.spl_code6,null,'','/')||t7.spl_code6),decode(car.spl_code6,null,'','/')||car.spl_code6)
+||decode(car.AWB_NO,'',decode(t7.awb_no,null,decode(edi_fbl_shp.spl_code7,null,'',decode(edi_fbl_shp.spl_code7,null,'','/')||edi_fbl_shp.spl_code7),decode(t7.spl_code7,null,'','/')||t7.spl_code7),decode(car.spl_code7,null,'','/')||car.spl_code7)
+||decode(car.AWB_NO,'',decode(t7.awb_no,null,decode(edi_fbl_shp.spl_code8,null,'',decode(edi_fbl_shp.spl_code8,null,'','/')||edi_fbl_shp.spl_code8),decode(t7.spl_code8,null,'','/')||t7.spl_code8),decode(car.spl_code8,null,'','/')||car.spl_code8)
+||decode(car.AWB_NO,'',decode(t7.awb_no,null,decode(edi_fbl_shp.spl_code9,null,'',decode(edi_fbl_shp.spl_code9,null,'','/')||edi_fbl_shp.spl_code9),decode(t7.spl_code9,null,'','/')||t7.spl_code9),decode(car.spl_code9,null,'','/')||car.spl_code9)) splcode,			           edi_fbl_shp.org_agent_name as agentName,
+				   edi_fbl_shp.org_agent_name as agentName,
+			       edi_fbl_shp.org_movt_prty_c as mvmPrtyCode,				   
+				   edi_fbl_shp.spl_svc_req1||decode( edi_fbl_shp.spl_svc_req2 ,null,'',',')|| edi_fbl_shp.spl_svc_req2  as splSvcReq,				   
+				   edi_fbl_shp.other_svc_info1||decode( edi_fbl_shp.other_svc_info2 ,null,'',',')|| edi_fbl_shp.other_svc_info2 as otherSvcInfo,
+				   edi_fbl_shp.org_flt_carr as orgFltCarr,
+				   edi_fbl_shp.org_flt_date as iwfltDate,
+		           edi_fbl_shp.org_flt_key as iwfltNo,
+		           (select decode(count(edi_fbl_uld.tr_no),0,'N','Y')         
+		 		 from edi_fbl_uld where edi_fbl_uld.tr_no = edi_fbl_shp.tr_no       
+				  and edi_fbl_uld.sdoc_line_no = edi_fbl_shp.doc_line_no ) as moreFlag,
+				  (SELECT SUM (LOCN_PCS) FROM awb_inventory WHERE awb_inventory.awb_no = edi_fbl_shp.awb_No) AS invPcs,
+				  (SELECT SUM (LOCN_WT) FROM awb_inventory WHERE awb_inventory.awb_no = edi_fbl_shp.awb_No) AS invWt   
+			from 
+			edi_fbl 
+			inner join edi_fbl_shp on edi_fbl.tr_no = edi_fbl_shp.tr_no AND edi_fbl_shp.awb_no IS NOT NULL
+			LEFT JOIN EXP_CAR car on car.awb_no=edi_fbl_shp.awb_no and car.awb_date=edi_fbl_shp.awb_date
+			LEFT JOIN awb t7 on t7.awb_no= edi_fbl_shp.awb_no and t7.awb_date = edi_fbl_shp.awb_date
+			where 
+			edi_fbl.flt_key = #fltNo#
+			and edi_fbl.flt_date = to_date(#deptDate#,'ddmonyy')
+			and edi_fbl.si_type in('S','I') and edi_fbl.fbl_status ='P'
+			<isEmpty prepend="and" property="unldgPt">
+				(edi_fbl_shp.unldg_pt is null or 
+				edi_fbl_shp.unldg_pt in (select t22.off_point 
+	                  from     flt_opr t11, flt_opr_leg t22
+	                  where    t11.tr_no = t22.tr_no
+	                  and      t11.flt_key = #fltNo#
+	                  and      t11.sch_date =  #deptDate#
+	                  and      t11.flt_type = 'D')
+	                  OR edi_fbl_shp.unldg_pt in (select t11.UNLDG_PT2 
+	                  from     ITM_TRK_FLT t11
+	                  where    t11.TRUCK_FLT_NO = #fltNo#
+	                  and      t11.TRUCK_FLT_DATE =  #deptDate#))
+			</isEmpty>
+			<isNotEmpty prepend="and" property="unldgPt">
+            	edi_fbl_shp.unldg_pt = #unldgPt# 
+            </isNotEmpty>
+			ORDER BY edi_fbl_shp.unldg_pt,edi_fbl_shp.awb_no
+</select>
+<!--Added by Manorama for Enquire FBL:::Ends -->
+
+<select id="sql801fhl"  parameterClass="cargo.cms.edi.bo.EdiFhlBO"  	resultClass="cargo.cms.edi.bo.EdiFhlBO">
+
+SELECT fhl.awb_no AS AWB_NO,
+  c.orig     AS AWB_ORG,
+  c.dest     AS AWB_DEST,
+  c.pcs     AS AWB_PCS,
+  c.wt      AS AWB_WT,
+  (SELECT COUNT(*)
+  FROM edi_fhl g ,
+    edi_fhl_hawb h
+  WHERE g.tr_no=h.tr_no
+  AND g.awb_no =fhl.awb_no
+  AND g.awb_date=fhl.awb_date
+  ) AS hawbCount,
+  (SELECT SUM(h.hawb_pcs)
+  FROM edi_fhl g ,
+    edi_fhl_hawb h
+  WHERE g.tr_no=h.tr_no
+  AND g.awb_no =fhl.awb_no
+  AND g.awb_date=fhl.awb_date
+  ) AS hawbpctotal,
+  (SELECT SUM(h.hawb_net_wt)
+  FROM edi_fhl g ,
+    edi_fhl_hawb h
+  WHERE g.tr_no=h.tr_no
+  AND g.awb_no =fhl.awb_no
+  AND g.awb_date=fhl.awb_date
+  ) AS hawbwttotal,
+  (c.SPL_CODE1
+  || DECODE(c.SPL_CODE2 ,NULL,'',DECODE(c.SPL_CODE1,NULL,'',','))
+  || c.SPL_CODE2
+  || DECODE(c.SPL_CODE3 ,NULL,'',DECODE(c.SPL_CODE2,NULL,'',','))
+  || c.SPL_CODE3
+  || DECODE(c.SPL_CODE4 ,NULL,'',DECODE(c.SPL_CODE3,NULL,'',','))
+  || c.SPL_CODE4
+  || DECODE(c.SPL_CODE5 ,NULL,'',DECODE(c.SPL_CODE4,NULL,'',','))
+  || c.SPL_CODE5
+  || DECODE(c.SPL_CODE6 ,NULL,'',DECODE(c.SPL_CODE5,NULL,'',','))
+  || c.SPL_CODE6
+  || DECODE(c.SPL_CODE7 ,NULL,'',DECODE(c.SPL_CODE6,NULL,'',','))
+  || c.SPL_CODE7
+  || DECODE(c.SPL_CODE8 ,NULL,'',DECODE(c.SPL_CODE7,NULL,'',','))
+  || c.SPL_CODE8
+  || DECODE(c.SPL_CODE9 ,NULL,'',DECODE(c.SPL_CODE8,NULL,'',','))
+  || c.SPL_CODE9) AS shc ,
+C.AGENT_NAME  mawbAgent,
+ CASE
+		    WHEN C.awb_type='E' 
+		    THEN  nvl((SELECT SHPR_NAME FROM exp_car WHERE awb_no=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT SHPR_NAME FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+       
+		    WHEN C.awb_type='I'  
+		    THEN
+         nvl((SELECT SHPR_NAME FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT SHPR_NAME FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		      WHEN C.awb_type='T'  
+		    THEN 
+        case when ( select count(SHPR_NAME) from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         ( select SHPR_NAME from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(SHPR_NAME) from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         (select SHPR_NAME from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(SHPR_NAME) from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0
+         then (select SHPR_NAME from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         end 
+		  END mawbShpname,
+       CASE
+		    WHEN C.awb_type='E' 
+		    THEN nvl((SELECT SHPR_ADDR FROM exp_car WHERE awb_no=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT SHPR_ADDR FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		    WHEN C.awb_type='I' 
+		    THEN nvl((SELECT SHPR_ADD1 FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT SHPR_ADDR FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		     WHEN C.awb_type='T'  
+		    THEN   case when ( select count(SHPR_ADD1) from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         ( select SHPR_ADD1 from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(SHPR_ADDR) from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         (select SHPR_ADDR from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(SHPR_ADDR) from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0
+         then (select SHPR_ADDR from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         end 
+		  END mawbShpadd1,
+       CASE
+		    WHEN C.awb_type='E' 
+		    THEN nvl((SELECT SHPR_ADDR2 FROM exp_car WHERE awb_no=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT SHPR_ADDR2 FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		    WHEN C.awb_type='I'  
+		    THEN nvl((SELECT SHPR_ADD2 FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT SHPR_ADDR2 FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		     WHEN C.awb_type='T'  
+		    	   THEN 
+				     case when ( select count(SHPR_ADD2) from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         ( select SHPR_ADD2 from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(SHPR_ADDR2) from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         (select SHPR_ADDR2 from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(SHPR_ADDR2) from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0
+         then (select SHPR_ADDR2 from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         end 
+		  END mawbShpadd2,
+       CASE
+		    WHEN C.awb_type='E' 
+		    THEN (SELECT SHPR_ADDR3 FROM exp_car WHERE awb_no=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+		    WHEN C.awb_type='I'  
+		    THEN (SELECT SHPR_ADD3 FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+		     WHEN C.awb_type='T'  
+		    THEN NVL((SELECT SHPR_ADD3 FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+		    (SELECT SHPR_ADDR3 FROM exp_car WHERE awb_no=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		  END mawbShpadd3,
+       CASE
+		    WHEN C.awb_type='E' 
+		    THEN (SELECT SHPR_ADDR4 FROM exp_car WHERE awb_no=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+		    WHEN C.awb_type='I'  
+		    THEN (SELECT SHPR_ADD4 FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+		    WHEN C.awb_type='T'  
+		    THEN NVL((SELECT SHPR_ADD4 FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+		    (SELECT SHPR_ADDR4 FROM exp_car WHERE awb_no=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		  END mawbShpadd4,
+       CASE
+		    WHEN C.awb_type='E' 
+		    THEN ('')
+		    WHEN C.awb_type='I'  
+		    THEN (SELECT SHPR_ADD5 FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+		    WHEN C.awb_type='T'  
+		    THEN (SELECT SHPR_ADD5 FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+		  END mawbShpadd5,
+      CASE
+		    WHEN C.awb_type='E' 
+		    THEN NVL((SELECT SHPR_PLACE FROM exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT SHPR_PLACE FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		    WHEN C.awb_type='I'  
+		    THEN NVL((SELECT SHPR_PLACE FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT SHPR_PLACE FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		    WHEN C.awb_type='T'  
+		   THEN 
+		    case when ( select count(SHPR_PLACE) from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         ( select SHPR_PLACE from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(SHPR_PLACE) from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         (select SHPR_PLACE from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(SHPR_PLACE) from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0
+         then (select SHPR_PLACE from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         end 
+		  END mawbShpcity,
+      CASE
+		    WHEN C.awb_type='E' 
+		    THEN NVL((SELECT SHPR_CTRY_CODE FROM exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT SHPR_CTRY_CODE FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		    WHEN C.awb_type='I'  
+		    THEN NVL((SELECT SHPR_CTRY_CODE FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT SHPR_CTRY_CODE FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		    WHEN C.awb_type='T'  
+		      THEN 
+			    case when ( select count(SHPR_CTRY_CODE) from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         ( select SHPR_CTRY_CODE from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(SHPR_CTRY_CODE) from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         (select SHPR_CTRY_CODE from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(SHPR_CTRY_CODE) from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0
+         then (select SHPR_CTRY_CODE from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         end 
+		  END mawbShpcountry,
+      CASE
+		    WHEN C.awb_type='E' 
+		    THEN NVL((SELECT SHPR_PIN_CODE FROM exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT SHPR_PIN_CODE FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		    WHEN C.awb_type='I'  
+		    THEN NVL((SELECT SHPR_PIN_CODE FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT SHPR_PIN_CODE FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		     WHEN C.awb_type='T'  
+		     THEN 
+         case when ( select count(SHPR_PIN_CODE) from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         ( select SHPR_PIN_CODE from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(SHPR_PIN_CODE) from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         (select SHPR_PIN_CODE from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(SHPR_PIN_CODE) from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0
+         then (select SHPR_PIN_CODE from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         end 
+		  END mawbShpspin,
+ 
+ CASE
+		    WHEN C.awb_type='E' 
+		    THEN NVL((SELECT csgne_name FROM exp_car WHERE awb_no=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT csgne_name FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		    WHEN C.awb_type='I'  
+		    THEN NVL((SELECT CSGNE_NAME FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT csgne_name FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		    WHEN C.awb_type='T'
+        THEN 
+		  case when ( select count(csgne_name) from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         ( select csgne_name from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(csgne_name) from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         (select csgne_name from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(csgne_name) from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0
+         then (select csgne_name from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         end 
+		  END mawbConsname,
+       CASE
+		    WHEN C.awb_type='E' 
+		    THEN NVL((SELECT CSGNE_ADDR FROM exp_car WHERE awb_no=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT CSGNE_ADDR FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		    WHEN C.awb_type='I'  
+		    THEN NVL((SELECT CSGNE_ADDR1 FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT CSGNE_ADDR FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		      WHEN C.awb_type='T'  
+		    THEN 
+			  case when ( select count(CSGNE_ADDR1) from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         ( select CSGNE_ADDR1 from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(CSGNE_ADDR) from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         (select CSGNE_ADDR from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(CSGNE_ADDR) from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0
+         then (select CSGNE_ADDR from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         end 
+		  END mawbConsadd1,
+       CASE
+		    WHEN C.awb_type='E' 
+		    THEN NVL((SELECT CSGNE_ADDR2 FROM exp_car WHERE awb_no=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT CSGNE_ADDR2 FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		    WHEN C.awb_type='I'  
+		    THEN NVL((SELECT CSGNE_ADDR2 FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT CSGNE_ADDR2 FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		    WHEN C.awb_type='T'  
+		    THEN 
+			  case when ( select count(CSGNE_ADDR2) from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         ( select CSGNE_ADDR2 from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(CSGNE_ADDR2) from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         (select CSGNE_ADDR2 from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(CSGNE_ADDR2) from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0
+         then (select CSGNE_ADDR2 from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         end 
+		  END mawbConsadd2,
+       CASE
+		    WHEN C.awb_type='E' 
+		    THEN (SELECT CSGNE_ADDR3 FROM exp_car WHERE awb_no=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+		    WHEN C.awb_type='I'  
+		    THEN (SELECT CSGNE_ADDR3 FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+		    WHEN C.awb_type='T'  
+		    THEN 
+			NVL((SELECT CSGNE_ADDR3 FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+		    (SELECT CSGNE_ADDR3 FROM exp_car WHERE awb_no=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		  END mawbConsadd3,
+       CASE
+		    WHEN C.awb_type='E' 
+		    THEN (SELECT CSGNE_ADDR4 FROM exp_car WHERE awb_no=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+		    WHEN C.awb_type='I'  
+		    THEN (SELECT CSGNE_ADDR4 FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+		     WHEN C.awb_type='T'  
+		    THEN NVL((SELECT CSGNE_ADDR4 FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+		    (SELECT CSGNE_ADDR4 FROM exp_car WHERE awb_no=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		  END mawbConsadd4,
+       CASE
+		    WHEN C.awb_type='E' 
+		    THEN ('')
+		    WHEN C.awb_type='I' 
+		    THEN (SELECT CSGNE_ADDR5 FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+		     WHEN C.awb_type='T'  
+		    THEN (SELECT CSGNE_ADDR5 FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+		   
+		  END mawbConsadd5,
+      CASE
+		    WHEN C.awb_type='E' 
+		    THEN NVL((SELECT CSGNE_PLACE FROM exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT CSGNE_PLACE FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		    WHEN C.awb_type='I'  
+		    THEN NVL((SELECT CSGNE_PLACE FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT CSGNE_PLACE FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		     WHEN C.awb_type='T'  
+		   THEN 
+		     case when ( select count(CSGNE_PLACE) from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         ( select CSGNE_PLACE from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(CSGNE_PLACE) from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         (select CSGNE_PLACE from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(CSGNE_PLACE) from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0
+         then (select CSGNE_PLACE from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         end 
+		  END mawbConscity,
+      CASE
+		    WHEN C.awb_type='E' 
+		    THEN NVL((SELECT CSGNE_CTRY_CODE FROM exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT CSGNE_CTRY_CODE FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		    WHEN C.awb_type='I'  
+		    THEN NVL((SELECT CSGNE_CTRY_CODE FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT CSGNE_CTRY_CODE FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		    WHEN C.awb_type='T'  
+         THEN 
+		   case when ( select count(CSGNE_CTRY_CODE) from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         ( select CSGNE_CTRY_CODE from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(CSGNE_CTRY_CODE) from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         (select CSGNE_CTRY_CODE from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(CSGNE_CTRY_CODE) from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0
+         then (select CSGNE_CTRY_CODE from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         end 
+     END mawbConscountry,
+      CASE
+		    WHEN C.awb_type='E' 
+		    THEN NVL((SELECT CSGNE_PIN_CODE FROM exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT CSGNE_PIN_CODE FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		    WHEN C.awb_type='I'  
+		    THEN NVL((SELECT CSGNE_PIN_CODE FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT CSGNE_PIN_CODE FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		     WHEN C.awb_type='T'  
+         
+        THEN 
+		  case when ( select count(CSGNE_PIN_CODE) from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         ( select CSGNE_PIN_CODE from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(CSGNE_PIN_CODE) from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         (select CSGNE_PIN_CODE from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(CSGNE_PIN_CODE) from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0
+         then (select CSGNE_PIN_CODE from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         end 
+    
+		  END mawbConspin,
+		   CASE
+		    WHEN C.awb_type='E' 
+		    THEN NVL((SELECT CSGNE_STATE_PROVINCE FROM exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT CSGNE_STATE_PROVINCE FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		    WHEN C.awb_type='I'  
+		    THEN NVL((SELECT CSGNE_STATE_PROVINCE FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT CSGNE_STATE_PROVINCE FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		    WHEN C.awb_type='T'  
+        THEN
+		  case when ( select count(CSGNE_STATE_PROVINCE) from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         ( select CSGNE_STATE_PROVINCE from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(CSGNE_STATE_PROVINCE) from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         (select CSGNE_STATE_PROVINCE from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(CSGNE_STATE_PROVINCE) from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0
+         then (select CSGNE_STATE_PROVINCE from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         end 
+      
+		  END mawbConsstate,
+      
+      CASE
+		    WHEN C.awb_type='E' 
+		    THEN NVL((SELECT SHPR_STATE_PROVINCE FROM exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT SHPR_STATE_PROVINCE FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		    WHEN C.awb_type='I'  
+		    THEN NVL((SELECT SHPR_STATE_PROVINCE FROM IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1),
+			(SELECT SHPR_STATE_PROVINCE FROM edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1))
+		     WHEN C.awb_type='T'  
+		    THEN 
+			  case when ( select count(SHPR_STATE_PROVINCE) from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         ( select SHPR_STATE_PROVINCE from IMP_CAR_AWB WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(SHPR_NAME) from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0 then
+         (select SHPR_STATE_PROVINCE from exp_car WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         when (select count(SHPR_STATE_PROVINCE) from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)>0
+         then (select SHPR_STATE_PROVINCE from edi_fwb WHERE AWB_NO=fhl.awb_no AND awb_date = fhl.awb_date AND rownum=1)
+         end 
+		  END mawbShpstate,
+  c.content     AS mawbContent,
+  fhl.tr_no AS trNo,
+  #tmpAwbNoPfx# as tmpAwbNoPfx ,
+  #tmpAwbNoSfx# as tmpAwbNoSfx
+FROM edi_fhl fhl
+LEFT JOIN awb c
+ON c.awb_no   =fhl.awb_no and c.awb_date=fhl.awb_date
+WHERE fhl.awb_no=#tmpAwbNoPfx#
+  ||#tmpAwbNoSfx#
+AND fhl.awb_date=#AWB_DATE#
+
+</select>
+<select id="sql801hawbfhl"  parameterClass="cargo.cms.edi.bo.EdiFhlBO"  	resultClass="cargo.cms.edi.bo.EdiFhlBO">
+
+select
+a.hawb_no as hawbNo  ,
+a.hawb_org as hawbOrg,
+a.hawb_dest as hawbDest,
+a.hawb_pcs as hawbPc,
+a.hawb_net_wt as hawbWt,
+a.manifest_desc as hawbContent,
+a.csgne_name as hawbcngneName,
+a.csgne_add1 as hcnsgne1,
+a.csgne_add2 as hcnsgne2,
+a.csgne_add3  as hcnsgne3,
+a.csgne_add4   as hcnsgne4,
+a.CSGNE_ADD5  as hcnsgne5,
+a.csgne_ctry_code as hcnsgnectry,
+a.csgne_pin_code as hcnsgepin,
+a.shpr_name as hawbshpName,
+a.shpr_add1 as hshpr1,
+a.shpr_add2 as hshpr12,
+a.shpr_add3  as hshpr3,
+a.shpr_add4   as hshpr4,
+a.SHPR_ADD5  as hshpr5,
+a.shpr_ctry_code as hshprctry,
+a.shpr_pin_code as hshprpin,
+a.SHPR_STATE_PROVINCE as hshprstate,
+a.CSGNE_STATE_PROVINCE as hcnsgestate,
+a.CSGNE_PLACE AS hcnsgecity,
+A.SHPR_PLACE AS hshprcity
+from edi_fhl_hawb a where tr_no=#trNo# order by hawbNo
+
+</select>
+</sqlMap> 

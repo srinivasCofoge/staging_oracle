@@ -1,0 +1,1128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="GLSExternalModule">
+<select id="gls_imp_shpmt_action_lst" parameterClass="cargo.cms.external.bo.InbdShpActionListSearchBO" resultClass="cargo.cms.external.bo.InbdShpActionLstShpmntBO">
+		<![CDATA[
+		select a.* from (
+	 			select (case when carAwb.agent_cust_no = #loginCustNo#  then 'AGT' else 
+				   case when shp.TRUCKER_CUST_NO =  #loginCustNo#  then 'TRK'  end end ) listType,
+				   SUBSTR(shp.AWB_NO,1,3)  awbNoPfx , SUBSTR(shp.AWB_NO,4)  awbNoSfx , 	
+				SUBSTR(shp.AWB_NO,1,3)||'-'||SUBSTR(shp.AWB_NO,4) as awbNoDisp ,  shp.awb_no awbNo, to_char(shp.awb_date,'DDMONYY') awbDate ,
+				shp.flt_Key fltKey, to_char(shp.flt_date,'DDMONYY') fltDate, sta  ,
+				 (case when carAwb.awb_pcs <> shp.MANIFEST_PCS then 'Y'  else 'N' end ) partShpInd,
+        		(case when shp.MANIFEST_PCS <> deliveryPcs then 'Y'   else  'N' end) partRlsInd,
+				decode(fltTimes.WHSE_COMPL_DATE,null,'N','Y') bdcompl,
+				 decode(fltTimes.WHSE_COMPL_DATE , null, TO_CHAR(TO_DATE(FUN_GET_EST_COLL_TIME(shp.flt_Key,shp.flt_date,'A','BOOKING_EST_COLL_TIME',shp.AWB_NO,shp.awb_date), 'DDMONYY HH24:MI'),'HH24:MI'), 'Available' ) estCollTimeShow, 
+        		decode(fltTimes.WHSE_COMPL_DATE , null, TO_CHAR(TO_DATE(FUN_GET_EST_COLL_TIME(shp.flt_Key,shp.flt_date,'A','BOOKING_EST_COLL_TIME',shp.AWB_NO,shp.awb_date), 'DDMONYY HH24:MI'),'HH24:MI'), TO_CHAR(sysdate,'HH24:MI') ) estCollTimeHide,
+				FUN_GET_EST_COLL_TIME(shp.flt_Key,shp.flt_date,'A','BOOKING_EST_COLL_TIME',shp.AWB_NO,shp.awb_date) estCollTime,
+				shp.Manifest_pcs pcs, shp.Manifest_wt wt, nvl(awbInv.invPcs,0) invPcs, nvl(awbInv.invWt,0) invWt,
+				(select code_desc from cust_company where code = carAwb.agent_cust_no) agtName, carAwb.agent_cust_no agtCode, 
+				carAwb.CSGNE_NAME csgnName, carAwb.CNS_CUST_NO csgnCode, 
+				shp.DLV_MODE_RQS dlvModeRqs, shp.IMX_RQS imxRqs, carAwb.DOC_CHK_REQ docChkReq, DOC_CHK_COMP docChkCompl,
+				case when ( select count(*) from IMP_CUST_CLR_LIST t1, IMP_CCCL_DOC_LIST t2 
+					where t2.NOT_AVAILABLE = 'Y' and t1.tr_no = t2.tr_no and t1.awb_no = shp.awb_no and  t1.awb_date = shp.awb_date 
+					and t1.flt_key = shp.flt_key and t1.flt_DATE = shp.flt_date) > 0 then 'Y' else 'N' end   reqDocs,  
+				shp.NOA_IND noaInd, carAwb.VAL_FOR_SCH_COLL validforSchColl, 
+				decode(trkMnf.truck_manf_no,null, 'N', 'Y') schColl, 
+				(SELECT V.CC_CODE FROM V_CST_IMP_CC_CODE_AWB V
+					WHERE V.FLT_KEY = shp.FLT_KEY AND V.FLT_DATE = shp.FLT_DATE AND V.AWB_NO = shp.AWB_NO 
+				  AND NVL(V.HAWB_NO, '000000000000000000') =  '000000000000000000' AND ROWNUM = 1)  ccode, 
+				(SELECT nvl((SELECT BOOKING_ALLOW_IND FROM MAST_CONSTRAINT_CODE WHERE CODE = V.CC_CODE),'Y') bkgAllwYN FROM V_CST_IMP_CC_CODE_AWB V
+					where V.FLT_KEY = SHP.FLT_KEY and V.FLT_DATE = SHP.FLT_DATE and V.AWB_NO = SHP.AWB_NO 
+				  AND NVL(V.HAWB_NO, '000000000000000000') =  '000000000000000000' AND ROWNUM = 1)  bkgAllwYN,
+				nvl(carAwb.SPL_CODE1,'') ||' '|| nvl(carAwb.SPL_CODE2,'') ||' '|| nvl(carAwb.SPL_CODE3,'') ||' '|| nvl(carAwb.SPL_CODE4,'') 
+				||' '|| nvl(carAwb.SPL_CODE5,'') ||' '|| nvl(carAwb.SPL_CODE6,'') ||' '|| nvl(carAwb.SPL_CODE7,'') ||' '|| nvl(carAwb.SPL_CODE8,'') 
+				||' '|| nvl(carAwb.SPL_CODE9,'') shc,   
+				 decode(shp.TRUCKER_CUST_NO, #loginCustNo#, DECODE(booking.BOOKING_NO,NULL, 'NO Booking', 'Booked'), 
+				DECODE(shp.TRUCKER_CUST_NO, NULL, decode(booking.BOOKING_NO,NULL, 'NO Booking', 'Booked'),'Assigned'))  status,   
+				decode(shp.TRUCKER_CUST_NO, #loginCustNo#, DECODE(BOOKING.BOOKING_NO,null, '1', '2'), 
+				DECODE(shp.TRUCKER_CUST_NO, NULL, decode(booking.BOOKING_NO,NULL, '1', '2'),'3'))  sortStatus,  
+				TO_CHAR(shp.LM_DATE, 'DDMONYY HH24:MI:SSSSS') as lmDate,carAwb.CONSOLE_IND consol,
+		        (select BKG_YN from mast_spl_hand_code where code in (carAwb.SPL_CODE1, carAwb.SPL_CODE2, carAwb.SPL_CODE3, carAwb.SPL_CODE4,carAwb.SPL_CODE5, carAwb.SPL_CODE6, carAwb.SPL_CODE7, carAwb.SPL_CODE8,carAwb.SPL_CODE9) AND ROWNUM = 1 ) bkgAllow,
+		        (select count(1) from cust_airl_spl_code where carr_code = AWB.carr_code and spl_type = 'SPL_VAL' and spl_code in (carAwb.SPL_CODE1, carAwb.SPL_CODE2, carAwb.SPL_CODE3, carAwb.SPL_CODE4,carAwb.SPL_CODE5, carAwb.SPL_CODE6, carAwb.SPL_CODE7, carAwb.SPL_CODE8,carAwb.SPL_CODE9) AND ROWNUM = 1) valCnt,
+		        (select count(1) from cust_airl_spl_code where carr_code = AWB.carr_code and spl_type = 'SPL_ODD' and spl_code in (carAwb.SPL_CODE1, carAwb.SPL_CODE2, carAwb.SPL_CODE3, carAwb.SPL_CODE4,carAwb.SPL_CODE5, carAwb.SPL_CODE6, carAwb.SPL_CODE7, carAwb.SPL_CODE8,carAwb.SPL_CODE9) AND ROWNUM = 1) oddCnt,
+		         comp.NO_OF_BOOKING_PERDAY noBkgPerDay,
+            		(select code_desc from cust_company where code = shp.TRUCKER_CUST_NO) truckerName ,
+            		shp.TRUCKER_CUST_NO asgnTruckerCode ,   
+            	(select code_desc  from sec_user where code = shp.TRUCKER_ASSIGN_BY ) asgnLoginId,
+                (select HKID from SEC_USER USR  where  code = shp.TRUCKER_ASSIGN_BY) asgTruckerHkid,
+                (select HKID from SEC_USER USR  where CODE = shp.TRUCKER_ASSIGN_BY) loginHkid,
+                shp.Carr_code carrCode, ata,AWB.content as content
+			from IMP_CAR_SHP shp       
+			join IMP_CAR_AWB carAwb on shp.awb_no = carAwb.awb_no and  shp.awb_date = carAwb.awb_date                  
+			join AWB on shp.awb_no = AWB.awb_no and  shp.awb_date = AWB.awb_date and AWB.awb_type = 'I'                
+			left join (select sum(locn_pcs) invPcs, sum(locn_wt) invWt, awb_no, awb_date, flt_key, flt_date from AWB_INVENTORY 
+			  group by awb_no, awb_date, flt_key, flt_date) awbInv 
+			  on shp.awb_no = awbInv.awb_no and  shp.awb_date = awbInv.awb_date and awbInv.flt_Key = shp.flt_Key 
+			  and  awbInv.flt_Date = shp.flt_date 
+		left join (select max(to_number(bkg.BOOKING_NO)) BOOKING_NO,  bkgDtl.awb_no, bkgDtl.awb_date ,  
+          bkgDtl.flt_key, bkgDtl.flt_date 
+          from IMP_BOOKING bkg, IMP_BOOKING_DTL bkgDtl 
+          where bkg.BOOKING_NO = bkgDtl.BOOKING_NO
+          and  to_date( to_char(BKG_SLOT_DATE,'DDMONYY') ||' '||to_char(NVL(BKG_SLOT_FROM,0),'0000') , 'DDMONYY HH24MI') 	> sysdate
+          and bkg.status <> 'CANCEL'
+          group by bkgDtl.awb_no, bkgDtl.awb_date, bkgDtl.flt_key, bkgDtl.flt_date ) booking 
+          on shp.awb_no = booking.awb_no and  shp.awb_date = booking.awb_date 
+          and booking.flt_key = shp.flt_key and booking.flt_date = shp.flt_date
+			join (select  fltEvt.BRKDN_COMPL_YN, fltEvt.WHSE_COMPL_DATE , flt.FLT_TYPE, flt.sch_date, flt.flt_Key, 
+          flt.CARR_CODE, flt.ACFT_TYPE, flt.SCH_TIME estCollTimesta, flt.ACT_TIME estCollTimeata,
+          SUBSTR(TRIM(TO_CHAR(NVL(flt.SCH_TIME,0),'0000')),0,2)|| ':'||  SUBSTR(TRIM(TO_CHAR(NVL(flt.SCH_TIME,0),'0000')),3,4) AS sta, 
+          to_date(to_char(nvl(flt.ACT_DATE,flt.sch_date),'DDMONYY') || ' '|| to_char(NVL(NVL(flt.ACT_TIME,flt.SCh_TIME),0),'0000'),'DDMONYY HH24MI') AS ata 
+          from flt_opr flt, flt_opr_events fltEvt
+          where flt.flt_Key = fltEvt.flt_Key and  flt.sch_Date = fltEvt.sch_date and  flt.flt_type = fltEvt.flt_type) fltTimes  
+          on  shp.flt_Key = fltTimes.flt_Key and  shp.flt_Date = fltTimes.sch_date and fltTimes.flt_type = 'A'
+		 
+			left join  (select trkDtl.truck_manf_no truck_manf_no, trkDtl.awb_no, trkDtl.awb_date, trkDtl.flt_key, trkDtl.flt_date, SCH_COLL_FROM, 
+          decode(FINAL_TRUCK_MANF_NO, 'N', 'Y') trk_manf_flz
+          from TRUCK_MANIFEST trk,  TRUCK_MANIFEST_DTL trkDtl 
+          where trk.TRUCK_MANF_NO = trkDtl.TRUCK_MANF_NO 
+          and to_date( to_char(SCH_COLL_DATE,'DDMONYY') ||' '||to_char(NVL(SCH_COLL_FROM,0),'0000') , 'DDMONYY HH24MI') > sysdate
+          and FINAL_TRUCK_MANF_IND = 'N' ) trkMnf
+          on shp.awb_no = trkMnf.awb_no and  shp.awb_date = trkMnf.awb_date and shp.flt_key = trkMnf.flt_key and shp.flt_DATE = trkMnf.flt_date
+      left join (SELECT sf.awb_no, sf.awb_date, sf.flt_key, sf.flt_date, sum(sf.DLV_PCS) deliveryPcs,
+                  sum(case when s.STATUS in ('ISSUED') then 1 else 0 end) srfYN,sum(case when s.STATUS in ('ISSUED','VOID') then 1 else 0 end)dlvYn
+                FROM IMP_SRF s
+                join imp_srf_flt sf on s.srf_no = sf.srf_no 
+                WHERE ((SRF_EXPY_DATE > sysdate and s.STATUS = 'ISSUED') or s.STATUS = 'POSTED' 
+                      or s.SRF_NO in (select SRF_NO from IMP_CDIF where VOID_USER is null ))
+                group by  sf.awb_no, sf.awb_date, sf.flt_key, sf.flt_date) srf
+          on shp.awb_no = srf.awb_no and  shp.awb_date = srf.awb_date and srf.flt_Key = shp.flt_Key 
+          and  srf.flt_Date = shp.flt_date 
+			join cust_company comp on  (agent_yn = 'Y' or trucker_yn = 'Y')  and comp.code = #loginCustNo#
+      left join CUST_UNDERTAKING cusUnd ON cusUnd.carr_code = awb.CARR_CODE and cusUnd.AGENT_CODE  = carAwb.agent_cust_no
+			Where 
+      ((carAwb.agent_cust_no = #loginCustNo#  ) or (shp.TRUCKER_CUST_NO =  #loginCustNo# ))
+			and nvl(trkMnf.trk_manf_flz, 'N') = 'N' and nvl(srf.srfYN,0) = 0 and (shp.recd_pcs = 0 or (shp.recd_pcs > 0 and awbInv.invPcs > 0))
+			]]>
+			<isNotEmpty property="awbNo">
+			and shp.awb_no = nvl(#awbNo#,shp.awb_no) 
+			</isNotEmpty>
+			<isNotEmpty property="dlvYn">
+			and nvl(srf.dlvYn,1) = 0
+			</isNotEmpty>
+			<isNotEmpty property="fltDateFrom">
+			<isNotEmpty property="fltDateTo">
+			and shp.flt_date between #fltDateFrom# and #fltDateTo#	
+			</isNotEmpty>
+			</isNotEmpty>
+			) a
+			order by sortStatus,  bdcompl desc , to_date(estCollTime,'DDMONYY HH24:MI') desc, ata desc 
+		
+	</select>
+	
+	<select id="find_gls_agent_details" parameterClass="map" resultClass="java.util.HashMap">
+	SELECT A.AGENT_YN AS AGENT_YN, A.TRUCKER_YN AS TRUCKER_YN,A.CODE_DESC AS CUSTNAME,B.hkid AS HKID,B.CODE AS USER_ID FROM CUST_COMPANY A ,SEC_USER B WHERE	A.CODE = B.CUST_NO  AND B.CUST_NO = #agentCode# and B.hkid=#hkId# and rownum=1
+	</select>
+	<select id="find_gls_booking_no_details" parameterClass="cargo.cms.imprt.bo.ShipmentCollectionLstBO" resultClass="java.lang.String">
+	select
+    a.booking_no
+    from 
+    imp_booking a,
+    imp_booking_dtl b
+    where 
+    b.booking_no = a.booking_no and
+    b.awb_no=#awbNo# and 
+    b.awb_date=#awbDate# and
+    b.flt_key=#fltKey# and
+    b.flt_date=#fltDate# and
+    a.agent_id=#loginCustNo#
+	</select>
+	
+	<select id="FLT_fetchDailyFlightListwebService"  parameterClass="cargo.cms.flight.bo.FlightBO"  resultClass="cargo.cms.flight.bo.FlightBO">
+      SELECT 	TO_CHAR(OPR.TR_NO) txnNo, OPR.CARR_CODE flightCarr, OPR.FLT_NO flightNo, TO_CHAR(OPR.SCH_DATE,'DDMONYY') schDate,
+		        OPR.CARR_CODE || OPR.FLT_NO||' / '|| TO_CHAR(OPR.SCH_DATE,'DDMONYY') flightKey,
+		        TO_CHAR(OPR.EST_DATE,'DDMONYY HH24:MM') estDate,	TO_CHAR(OPR.ACT_DATE,'DDMONYY HH24:MM') actDate,
+						rtrim(SUBSTR(TRIM(TO_CHAR(OPR.SCH_TIME,'0000')),0,2)|| ':'||  SUBSTR(TRIM(TO_CHAR(OPR.SCH_TIME,'0000')),3,4), ':') hrAndMinSch,
+						rtrim(SUBSTR(TRIM(TO_CHAR(OPR.EST_TIME,'0000')),0,2)|| ':'||  SUBSTR(TRIM(TO_CHAR(OPR.EST_TIME,'0000')),3,4), ':') hrAndMinEst,
+						rtrim(SUBSTR(TRIM(TO_CHAR(OPR.ACT_TIME,'0000')),0,2)|| ':'||  SUBSTR(TRIM(TO_CHAR(OPR.ACT_TIME,'0000')),3,4), ':') hrAndMinAct,
+						OPR.FLT_TYPE flightType, DECODE(OPR.FLT_TYPE,'A',ORIG,'D',DEST,ORIG) fromLoc,
+						(SELECT CODE_DESC FROM MAST_CODE_DTL WHERE CODE =OPR.CGO_ACFT_TYPE AND CODE_TYPE='CGO_ACFT_TYPE')	cargoArcftType,
+						(SELECT CODE_DESC FROM MAST_ACFT_TYPE WHERE CODE =OPR.ACFT_TYPE) airCraftType, 
+						OPR.ACFT_REG_NO arcftRegionNo, 
+						OPR.STATUS	arrDepStatus,
+						OPR.SCH_GATE gate,OPR.ACFT_PRK_BAY bay, WTHR_COND weather,
+						OPR.RMK remarks, 
+						DECODE(OPR.FLT_TYPE,'A',NVL((SELECT 'Y' FROM EDI_FFM_MSG t
+													WHERE FLT_KEY = OPR.FLT_KEY AND FLT_DATE = OPR.SCH_DATE AND FFM_STATUS = 'P'
+													and exists (select null from EDI_FFM_ULD where tr_no = t.tr_no) 
+													AND ROWNUM = 1), 'N'),'D',EVENT.DLS_IND) as ffmInd,
+						PKG_COMMON.GET_FLT_ATA(OPR.FLT_KEY,OPR.SCH_DATE,OPR.FLT_TYPE,'DD') AS ata,
+						PKG_COMMON.GET_FLT_ETA(OPR.FLT_KEY,OPR.SCH_DATE,OPR.FLT_TYPE,'DD') AS eta,TO_CHAR(OPR.LM_DATE , 'DDMMYY HH24:MI:SS') AS lastModifiedDate
+						,TO_CHAR(EVENT.LM_DATE , 'DDMMYY HH24:MI:SS') AS lastModifiedDateEvent,
+						 case when (select count(1) from imp_ramp_chk_hd ii where ii.flt_key=OPR.FLT_KEY and to_char(ii.flt_date,'DDMONYY') = to_char(OPR.SCH_DATE,'DDMONYY')) >0
+            			then 'Y'else case when (select count(1) from imp_car_shp ss where ss.flt_key=OPR.FLT_KEY and to_char(ss.flt_date,'DDMONYY') = to_char(OPR.SCH_DATE,'DDMONYY'))>0
+            			then 'Y'  else 'N' end end as cargoContent
+				FROM	FLT_OPR OPR, FLT_OPR_EVENTS EVENT
+				WHERE	OPR.TR_NO = EVENT.TR_NO 	AND 
+        OPR.FLT_TYPE = NVL(DECODE(UPPER(#flightType#),'B',OPR.FLT_TYPE,UPPER(#flightType#)),OPR.FLT_TYPE) and
+        OPR.CARR_CODE LIKE UPPER(NVL(#flightCarr#,OPR.CARR_CODE)) and
+        OPR.FLT_NO LIKE UPPER (NVL(#flightNo#,OPR.FLT_NO)) and
+        DECODE(OPR.FLT_TYPE,'A',ORIG,'D',DEST,ORIG) LIKE UPPER(NVL(#fromLoc#,DECODE(OPR.FLT_TYPE,'A',ORIG,'D',DEST,ORIG))) AND
+        TO_CHAR(OPR.SCH_DATE) = TO_DATE(NVL(#schDate#,OPR.SCH_DATE))
+        <isEmpty property="schDate">
+			and TO_DATE(TO_CHAR(OPR.SCH_DATE,'DDMONYY') || 
+							TRIM(substr(LPAD(OPR.SCH_TIME,4,0),0,2)) ||
+              TRIM(substr(LPAD(OPR.SCH_TIME,4,0),3,2) 
+              ),'DDMONYYHH24MI')
+							BETWEEN SYSDATE-1/3  AND SYSDATE+1/2 
+			</isEmpty>
+        </select>
+        <select id="urf_webserviceerfdetails"  parameterClass="cargo.cms.uld.bo.URFSearchCriteriaBO"  resultClass="cargo.cms.uld.bo.URFSearchCriteriaBO">
+        select 
+         a.status as glsStatus,
+         (CASE WHEN A.EIR_EXPIRY_DATE >=  SYSDATE 
+	       THEN D.CODE_DESC
+	       ELSE
+	        CASE WHEN (A.STATUS = 'APPROVED' OR A.STATUS = 'PARTRELEASED')
+	        THEN 'Expired'
+	       ELSE D.CODE_DESC
+	      END
+	     END) AS status,
+         A.CARR_CODE AS carrCode,
+         A.AGENT_CUST_NO AS agentCode,
+         '' as refNo,
+         A.EIR_RMK AS allocationRemarks,
+         A.EIR_NO AS eirNo,
+         A.carr_code AS carrCode,
+         TO_CHAR(A.eir_date,'DDMONYY') AS eirDate,
+         (select rmk from ULD_REL_HD where eir_no=EIR_NO and rmk is not null and rownum=1) AS relRemarks,
+         A.FLT_NO AS FLTNO,
+         TO_CHAR(A.FLT_DATE,'DDMONYY') AS fltDate,
+         TO_CHAR(A.EST_TIME,'DDMONYY') AS estDateDate,
+         TO_CHAR(A.EST_TIME,'HH24') AS estDateFrom,
+         TO_CHAR(A.EST_TIME,'MI') AS estDateTo
+        from
+         uld_iss_hd A
+         LEFT JOIN MAST_CODE_DTL D ON A.STATUS = D.CODE AND D.CODE_TYPE = 'URF_STATUS'
+        where        
+         A.agent_cust_no=#agentCode#
+         <isNotEmpty property="eirNo">
+          AND A.eir_no=#eirNo#  
+         </isNotEmpty>
+         <isNotEmpty property="carrCode">
+         AND A.carr_code = #carrCode#
+         </isNotEmpty>
+         <isNotEmpty property="status">
+         AND A.status = #status#
+         </isNotEmpty>
+         <isNotEmpty property="fromDate">
+         <isNotEmpty property="toDate">
+         AND A.eir_date BETWEEN TO_DATE(#fromDate#, 'DDMONYY') AND TO_DATE(#toDate#, 'DDMONYY')
+         </isNotEmpty>
+         </isNotEmpty>
+        </select>
+        <select id="urf_webserviceallocationulddetails"  parameterClass="cargo.cms.uld.bo.URFSearchCriteriaBO"  resultClass="cargo.cms.uld.bo.URFSearchCriteriaBO">
+        select 
+          decodE(B.ULD_GROUP,'',B.ULD_TYPE,B.ULD_GROUP) AS allocationUld, NVL(B.ULD_REQ_QTY,0) AS allocationUldQty
+        from
+         uld_iss_hd A,
+         ULD_ISS_DTL B
+        where
+         B.eir_no = A.eir_no AND
+         A.eir_no=#eirNo# AND
+         A.agent_cust_no=#agentCode# 
+         <isNotEmpty property="carrCode">
+         AND A.carr_code = #carrCode#
+         </isNotEmpty>
+         <isNotEmpty property="glsStatus">
+         AND A.status = #glsStatus#
+         </isNotEmpty>
+         <isNotEmpty property="eirDate">
+         AND A.eir_date =TO_DATE(#eirDate#, 'DDMONYY')
+         </isNotEmpty>
+         AND ULD_EQUIP='U'
+         AND (ULD_GROUP IS NOT NULL OR ULD_TYPE IS NOT NULL)
+        </select>
+        <select id="urf_webserviceallocationtypedetails"  parameterClass="cargo.cms.uld.bo.URFSearchCriteriaBO"  resultClass="cargo.cms.uld.bo.URFSearchCriteriaBO">
+        select 
+         B.EQUIP_TYPE AS allocationAccrType, NVL(B.EQUIP_REQ_QTY, 0) AS allocationAccrTypeQty
+        from
+         uld_iss_hd A,
+         ULD_ISS_DTL B
+        where
+         B.eir_no = A.eir_no AND
+         A.eir_no=#eirNo# AND
+         A.agent_cust_no=#agentCode# 
+         <isNotEmpty property="carrCode">
+         AND A.carr_code = #carrCode#
+         </isNotEmpty>
+         <isNotEmpty property="glsStatus">
+         AND A.status = #glsStatus#
+         </isNotEmpty>
+         <isNotEmpty property="eirDate">
+         AND A.eir_date =TO_DATE(#eirDate#, 'DDMONYY')
+         </isNotEmpty>
+         AND (EQUIP_TYPE IS NOT NULL)
+        </select>
+        <select id="urf_webservicereleaseulddetails"  parameterClass="cargo.cms.uld.bo.URFSearchCriteriaBO"  resultClass="cargo.cms.uld.bo.URFSearchCriteriaBO">
+        select 
+         B.ULD_KEY AS releaseUld
+        from
+         uld_iss_hd A,
+         ULD_REL_DTL B
+        where
+         B.eir_no = A.eir_no AND
+         A.eir_no=#eirNo# AND
+         A.agent_cust_no=#agentCode# 
+         <isNotEmpty property="carrCode">
+         AND A.carr_code = #carrCode#
+         </isNotEmpty>
+         <isNotEmpty property="glsStatus">
+         AND A.status = #glsStatus#
+         </isNotEmpty>
+        <isNotEmpty property="eirDate">
+         AND A.eir_date =TO_DATE(#eirDate#, 'DDMONYY')
+         </isNotEmpty>
+         AND ULD_EQUIP = 'U'
+        </select>
+        <select id="urf_webservicereleaseaccessorytypedetails"  parameterClass="cargo.cms.uld.bo.URFSearchCriteriaBO"  resultClass="cargo.cms.uld.bo.URFSearchCriteriaBO">
+        select 
+          B.EQUIP_TYPE AS relAccesType, NVL(B.EQUIP_QTY,0) AS relAccesTypeQty
+        from
+         uld_iss_hd A,
+         ULD_REL_DTL B
+        where
+         B.eir_no = A.eir_no AND
+         A.eir_no=#eirNo# AND
+         A.agent_cust_no=#agentCode# 
+         <isNotEmpty property="carrCode">
+         AND A.carr_code = #carrCode#
+         </isNotEmpty>
+         <isNotEmpty property="glsStatus">
+         AND A.status = #glsStatus#
+         </isNotEmpty>
+         <isNotEmpty property="eirDate">
+         AND A.eir_date =TO_DATE(#eirDate#, 'DDMONYY')
+         </isNotEmpty>
+         AND ULD_EQUIP = 'E'
+        </select>
+        <select id="getAccesoryDocLineNo" parameterClass="cargo.cms.uld.bo.URFRequestAccessoryBO"	resultClass="java.lang.String">
+    	SELECT 
+		DOC_LINE_NO docLineNo
+		FROM ULD_ISS_DTL
+		WHERE EIR_NO =#eirNo#
+		AND ULD_EQUIP='E'
+        AND equip_type=#equipType#
+	</select>
+	<delete id="sqlDeleteDataInUldIssHd" parameterClass="java.lang.String">
+		DELETE ULD_ISS_DTL WHERE EIR_NO = #PARAM#
+	</delete>	
+	<delete id="sqlDeleteDataInUldIssDtl" parameterClass="java.lang.String">
+		DELETE ULD_ISS_HD WHERE EIR_NO = #PARAM#
+	</delete>	
+    <insert id="insertErrorMsgToDB" parameterClass="cargo.cms.gls.bo.WebErrBO">
+        insert into log_webservice_err(LOG_ID,ERR_CODE,ERR_DESC) values(#logId#,#errCode#,#errDesc#)
+     </insert>	
+     <select id="find_cargoinventorycheck_dtls" parameterClass="cargo.cms.imprt.bo.CargoInventoryCheckBO"	resultClass="cargo.cms.imprt.bo.CargoInventoryCheckBO">
+     SELECT A.CARR_CODE AS carrCode,
+            A.FLT_KEY AS fltNo, 
+            TO_CHAR(A.FLT_DATE ,'DDMONYY') AS fltDate,
+            A.AWB_NO AS awbNo,
+            TO_CHAR(A.AWB_DATE,'DDMONYY') AS awbDate,
+            SUBSTR(TRIM(A.AWB_NO),1,3) AS awbPfx,
+            SUBSTR(TRIM(A.AWB_NO),4) as awbSufx, 
+           (SELECT V.CC_CODE FROM V_CST_IMP_CC_CODE_AWB V
+                WHERE V.FLT_KEY = A.FLT_KEY AND V.FLT_DATE = A.FLT_DATE AND V.AWB_NO = A.AWB_NO 
+                      AND NVL(V.HAWB_NO, '000000000000000000') =  '000000000000000000' AND ROWNUM = 1)  AS constCode, 
+            0 AS credit, 
+            (SELECT SUM(CHRG_AMT) FROM BILL_CHARGE_DTL WHERE AWB_NO = A.AWB_NO AND AWB_DATE=A.AWB_DATE) AS cash,
+            0 AS volume,
+            C.ppk_type AS shipHandCode,
+            to_char(pkg_calculate.get_free_days(TO_DATE(A.FLT_DATE),A.FLT_KEY,A.AWB_NO,A.AWB_DATE,'A'),'DDMONYY') AS strgDate,
+            A.recd_pcs AS noOfUnits,
+            A.recd_wt AS weight,
+            C.DEST AS dest,
+            c.spl_code1 as handleCode,
+            C.CONTENT AS goodsDesc,
+            NVL((to_char((select nvl(min(CR_DATE),A.awb_date) strgDate from imp_awb_strg_dtl s where s.AWB_NO = a.AWB_NO and s.AWB_DATE = a.AWB_DATE and s.flt_key = a.flt_key and s.flt_date = a.flt_date
+             group by awb_no, awb_date, flt_key, flt_date),'DDMONYY')),TO_CHAR(AA.AWB_DATE,'DDMONYY')) AS recptDate,
+             (DECODE(A.TRUCKER_CUST_NO,NULL,DECODE(BOOKING.BOOKING_NO,NULL, 'NO Booking','Booked'),'Assigned')) AS bookStatus
+            FROM IMP_CAR_SHP A
+                 JOIN AWB C ON A.AWB_NO = C.AWB_NO AND A.AWB_DATE = C.AWB_DATE and c.AWB_TYPE = 'I'
+                  JOIN IMP_CAR_AWB AA ON A.AWB_NO = AA.AWB_NO AND A.AWB_DATE  = AA.AWB_DATE            
+                  JOIN (select FlT_DATE, FLT_KEY, AWB_NO, AWB_DATE, SUM(LOCN_PCS) INV_PCS, SUM(LOCN_WT) INV_WT
+                         FROM AWB_INVENTORY 
+                         GROUP BY FlT_DATE, FLT_KEY, AWB_NO, AWB_DATE) B 
+                        ON A.FLT_KEY = B.FLT_KEY AND A.FLT_DATE = B.FLT_DATE AND A.AWB_NO = B.AWB_NO    AND A.AWB_DATE = B.AWB_DATE 
+                 LEFT JOIN GT_OS_CHARGES GT ON GT.AWB_NO = A.AWB_NO AND GT.AWB_DATE = A.AWB_DATE
+                  LEFT JOIN IMP_BOOKING_DTL BOOKING ON BOOKING.AWB_NO = A.AWB_NO AND BOOKING.AWB_DATE = A.AWB_DATE 
+                  where aa.agent_cust_no = #agentCode#                 
+                  AND A.CARR_CODE = NVL(#carrCode#, A.CARR_CODE)
+                  ORDER BY A.FlT_DATE ,A.FLT_KEY, A.AWB_NO 
+     </select>
+     <select id="find_cargoinventorysummary_dtls" parameterClass="cargo.cms.imprt.bo.CargoInventoryCheckBO"	resultClass="cargo.cms.imprt.bo.CargoInventoryCheckBO">
+       SELECT count(a.awb_no) as totalCount,
+         sum(a.recd_pcs) as totalPcs,
+         sum(a.recd_wt) as totalWt,
+         #carrCode# AS carrCode,
+         0 as totalVolume
+            FROM IMP_CAR_SHP A
+                 JOIN AWB C ON A.AWB_NO = C.AWB_NO AND A.AWB_DATE = C.AWB_DATE and c.AWB_TYPE = 'I'
+                  JOIN IMP_CAR_AWB AA ON A.AWB_NO = AA.AWB_NO AND A.AWB_DATE  = AA.AWB_DATE            
+                  JOIN (select FlT_DATE, FLT_KEY, AWB_NO, AWB_DATE, SUM(LOCN_PCS) INV_PCS, SUM(LOCN_WT) INV_WT
+                         FROM AWB_INVENTORY 
+                         GROUP BY FlT_DATE, FLT_KEY, AWB_NO, AWB_DATE) B 
+                        ON A.FLT_KEY = B.FLT_KEY AND A.FLT_DATE = B.FLT_DATE AND A.AWB_NO = B.AWB_NO    AND A.AWB_DATE = B.AWB_DATE 
+                 LEFT JOIN GT_OS_CHARGES GT ON GT.AWB_NO = A.AWB_NO AND GT.AWB_DATE = A.AWB_DATE
+                  where aa.agent_cust_no = #agentCode#                  
+                  AND A.CARR_CODE = NVL(#carrCode#, A.CARR_CODE)
+                  ORDER BY A.FlT_DATE ,A.FLT_KEY, A.AWB_NO 
+     </select>
+     <select id="getWebDocRecieveDate" parameterClass="java.lang.String"	resultClass="cargo.cms.export.bo.AWBBO">
+     select to_char(awb_date,'DDMONYY') AS awbDate,to_char(sysdate,'DDMONYY HH24:MI') as docRecvdDate from awb where awb_no=#PARAM# and awb_closed_yn='N'
+     </select>
+     <select id="getGlsDeleteAssignList" parameterClass="cargo.cms.external.bo.BookDlvSlotBO"	resultClass="cargo.cms.external.bo.BookDlvSlotBO">
+     SELECT
+		  RCL.PRE_RCL_NO AS erclNo,
+		  RCL.AWB_NO AS awbNo,
+		  RCL.AWB_NO AS awbNoDisplay,
+		  substr(RCL.AWB_NO,0,3) as awbNoPfx,
+		  substr(RCL.AWB_NO,4,8) as awbNoSfx,
+		  (SELECT CODE_DESC FROM CUST_COMPANY WHERE CODE = (SELECT TRUCKER_CUST_NO FROM EXP_PRE_RCL_HD WHERE PRE_RCL_NO = RCL.PRE_RCL_NO)) AS truckName,
+		  RCL.ULD_KEY AS uldNo,
+		  RCL.AWB_DEST AS destination,
+		  RCL.CARR_CODE AS carrier,
+		  RCL.TTL_PCS AS erclPc,
+		  RCL.TTL_WT AS erclWt,
+		  TO_CHAR(RCL.assign_date,'DDMONYY') AS assignmentDate,
+		  RCL.spl_load_req AS specialReq,
+		  RCL.CUST_NO AS custNo,
+		  (DECODE((SELECT COUNT(TRUCKER_CUST_NO) FROM EXP_PRE_RCL_HD WHERE PRE_RCL_NO = RCL.PRE_RCL_NO),'0',DECODE((SELECT COUNT(ERCL_NO) FROM EXP_BOOKING_DTL WHERE ERCL_NO = RCL.PRE_RCL_NO),'0','NOT BOOKED','BOOKED'),'ASSIGNED')) AS status,
+		  (decode(spl_code1, null, '', decode(spl_code2,'',spl_code1,'/'))
+		               || decode(spl_code2, null, '',decode(spl_code3,'',spl_code2,'/'))
+		               || decode(spl_code3, null, '', spl_code3)) AS shcCode
+		FROM
+		EXP_PRE_RCL_HD RCL,
+		CUST_COMPANY CUST
+		WHERE
+		RCL.STATUS = 'SUBMITTED'				
+		AND CUST.CODE = RCL.CUST_NO
+		AND CUST.CODE = #agentCode# 
+		AND RCL.VOID_DATE IS NULL 
+		AND RCL.VOID_USER_ID IS NULL
+		AND RCL.PRE_RCL_NO NOT IN (select HD.PRE_RCL_NO FROM exp_pre_rcl_hd hd,exp_rcl_hd dtl where hd.pre_rcl_no = dtl.pre_rcl_no and hd.cust_no = #agentCode#)
+    AND RCL.TRUCKER_CUST_NO IS NOT NULL
+    <isNotEmpty property="awbNo">
+    AND UPPER(RCL.AWB_NO) = NVL(UPPER(#awbNo#),RCL.AWB_NO)
+    </isNotEmpty>
+    <isNotEmpty property="uldNo">
+    AND UPPER(RCL.ULD_KEY) = NVL(UPPER(#uldNo#),RCL.ULD_KEY)
+    </isNotEmpty>
+    <isNotEmpty property="erclType">
+    AND UPPER(RCL.PPK_TYPE) = NVL(UPPER(#erclType#),RCL.PPK_TYPE)
+    </isNotEmpty>
+    <isNotEmpty property="erclDateFrom">
+    <isNotEmpty property="erclDateTo">
+    AND RCL.ASSIGN_DATE BETWEEN TO_DATE(#erclDateFrom#,'DDMONYY') AND TO_DATE(#erclDateTo#,'DDMONYY')+1
+    </isNotEmpty></isNotEmpty>
+    <isNotEmpty property="truckName">
+    AND RCL.trucker_cust_no = (select code from cust_company where code_desc= upper(#truckName#) and rownum=1)
+    </isNotEmpty>
+     </select>
+     <select id="checkDataIsValidOrNot" parameterClass="cargo.cms.external.bo.InbdShpActionLstShpmntBO" resultClass="java.lang.Integer">
+     SELECT
+    count(*)
+    FROM 
+    IMP_CAR_SHP
+    WHERE
+    AWB_NO = #awbNo# and
+    awb_date = TO_DATE(#awbDate#, 'DDMONYY') and
+    flt_key = #fltKey# and
+    flt_date = TO_DATE(#fltDate#, 'DDMONYY')
+    </select>
+    
+    <select id="RCL_AGENT_DETAILS_GLS" parameterClass="java.lang.String"	resultClass="cargo.cms.export.bo.IssueRCLHeaderBO">
+    SELECT 
+	A.CUST_NO AS agentCode,
+	C.CODE_DESC AS agentName,
+	TO_CHAR(B.ACT_ACC_DATE,'DDMONYY') AS acceptDate,
+	B.ACT_ACC_TIME AS acceptTime,
+	A.CARR_CODE AS carrCode
+	FROM
+	EXP_RCL_HD A
+    left join EXP_PRE_RCL_HD B on B.PRE_RCL_NO = A.PRE_RCL_NO
+    left join CUST_COMPANY C on C.CODE = A.CUST_NO
+	where 
+	A.RCL_NO = #PARAM# AND
+	ROWNUM = 1
+    </select>
+    <select id="FETCH_GLS_ORIG_DEST_LIST" parameterClass="cargo.cms.edi.bo.EdiFhlBO"	resultClass="cargo.cms.edi.bo.EdiFhlBO">
+    SELECT ORG AS AWB_ORG,DES AS AWB_DEST FROM edi_fwb WHERE AWB_NO = #AWB_NO#
+    union
+    SELECT ORIG AS AWB_ORG,DEST AS AWB_DEST FROM AWB WHERE AWB_NO = #AWB_NO#
+    union
+    select b.hawb_org,b.hawb_dest from edi_fhl a,edi_fhl_hawb b where a.tr_no = b.tr_no and a.awb_no=#AWB_NO# and rownum=1
+    </select>
+	  <select id="check_ercl_is_valid_or_not"  parameterClass="java.lang.String" resultClass="java.lang.Integer">
+	  		select count(*) from exp_pre_rcl_hd where pre_rcl_no=#PARAM#
+	  </select>
+	  <select id="CHECK_RCL_WT_FOR_PRERCL"  parameterClass="java.lang.String" resultClass="cargo.cms.export.bo.ERCLBulkHeaderBO">
+	  		SELECT A.RCL_WT AS rclWeight,B.RCL_NO AS rclNo FROM EXP_PRE_RCL_HD A,EXP_RCL_HD B WHERE B.PRE_RCL_NO=A.PRE_RCL_NO AND A.PRE_RCL_NO=#PARAM#
+	  </select>
+	  <select id="check_ercl_uld_is_valid_or_not"  parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+	  		select count(*) from exp_pre_rcl_hd where pre_rcl_no=#preRclNo# and uld_key=#uldNo#
+	  </select>
+	  <select id="CHECK_GLS_PRE_RCL_STATUS"  parameterClass="java.lang.String" resultClass="java.lang.Integer">
+	  		SELECT COUNT(*) FROM EXP_PRE_RCL_HD WHERE pre_rcl_no=#PARAM# AND STATUS IN ('CONFIRMED','EXPIRED')
+	  </select>
+	  <select id="CHECK_GLS_DEL_PRE_RCL_STATUS"  parameterClass="java.lang.String" resultClass="java.lang.Integer">
+	   select COUNT(1) from
+	  (  SELECT trim(preheader.status) AS SEARCHSTATUS
+  		FROM exp_pre_rcl_hd preheader,cust_company customer      
+  		where 
+      preheader.cust_no = customer.code  	  	
+      and not exists(select pre_rcl_no from exp_rcl_hd where pre_rcl_no = preheader.pre_rcl_no)
+      and preheader.status in ('SUBMITTED','OUTSTANDING')
+      and preheader.act_acc_date is null and preheader.act_acc_time is null
+      and preheader.pre_rcl_no=#PARAM#
+      union 
+   		SELECT trim(preheader.status) AS SEARCHSTATUS
+  		FROM exp_pre_rcl_hd preheader,cust_company customer,exp_rcl_hd rcl        		
+  		 where 
+       rcl.pre_rcl_no=preheader.pre_rcl_no   
+       and  preheader.cust_no = customer.code  	  	
+       and preheader.status in ('SUBMITTED','CONFIRMED','OUTSTANDING')
+       and preheader.act_acc_date is not null and preheader.act_acc_time is not null
+       and preheader.pre_rcl_no=#PARAM#
+      )
+	  </select>
+	  <select id="CHECK_GLS_UPD_PRE_RCL_STATUS"  parameterClass="java.lang.String" resultClass="java.lang.Integer">
+	  		select count(1) from
+	( SELECT trim(preheader.status) AS SEARCHSTATUS
+  		FROM exp_pre_rcl_hd preheader
+  		left outer join exp_rcl_hd rclhd on rclhd.PRE_RCL_NO=preheader.PRE_RCL_NO
+  		join cust_company customer on preheader.cust_no = customer.code  	  	
+  		left outer join (select awb_no,awb_date from exp_doc_recd where awb_closed_yn='N' and AWB_FRZ_YN='Y') doc on doc.awb_no=preheader.awb_no and doc.awb_date=preheader.awb_date
+  		where preheader.ppk_type='M'  
+      and preheader.pre_rcl_no=#PARAM#
+    union 
+   		 SELECT trim(preheader.status) AS SEARCHSTATUS
+  	  FROM exp_pre_rcl_hd preheader 
+       inner join cust_company customer on preheader.cust_no = customer.code 	  	
+  	  left outer join (select awb_no,awb_date from exp_doc_recd where awb_closed_yn='N' and AWB_FRZ_YN='Y') doc on doc.awb_no=preheader.awb_no and doc.awb_date=preheader.awb_date
+  	  where preheader.pre_rcl_no not in (select pre_rcl_no from exp_rcl_hd where  pre_rcl_no is not null and ppk_type in('B','P')) and preheader.ppk_type in ('B','P')
+      and preheader.pre_rcl_no=#PARAM#
+   ) 
+   WHERE SEARCHSTATUS IN ('SUBMITTED','WT_DIFFERENCE','OUTSTANDING')
+	  </select>
+	  <select id="fetchRCLConfirmationData" parameterClass="java.lang.String" resultClass="java.util.HashMap">
+	  	SELECT
+			a.CARR_CODE AS CARR_CODE, 
+			TO_CHAR(a.RCL_DATE,'DDMONYY') AS RCL_DATE, 
+			TO_CHAR(a.RCL_DATE, 'HH24MI') AS RCL_TIME, 
+			a.CUST_NO, 
+			(SELECT CODE_DESC FROM CUST_COMPANY WHERE CODE = CUST_NO) AS CUST_NAME,
+			DECODE(a.PPK_TYPE, 'M','X','P','P','B') AS PPK_TYPE,
+			a.RCL_NO, 
+			a.uld_key AS ULD_KEY,
+			(select d.contr_code from exp_rcl_dtl d where d.rcl_no = a.rcl_no and d.uld_key = a.uld_key and rownum=1) AS CONTR_CODE,
+			a.RCL_WT,
+			a.RCL_PCS,
+			a.AWB_DEST
+		FROM
+			EXP_RCL_HD a,
+      uld_inventory b
+ 		WHERE
+			a.STATUS NOT IN ('V','R')
+			and a.ppk_type='M'
+			AND a.PRE_RCL_NO IS NOT NULL
+      		and b.uld_key = a.uld_key
+    		AND A.RCL_DATE BETWEEN TO_DATE(#requestDate#||'000000','DDMONYYHH24MISS') AND TO_DATE(#requestDate#||'235959','DDMONYYHH24MISS')
+    		AND (a.CARR_CODE = 'CX'
+            OR a.CARR_CODE IN (SELECT CARR_CODE FROM MAST_CARR_GRP WHERE GRP_CARR_CODE= 'CX'))	
+    		UNION ALL
+    		SELECT
+			a.CARR_CODE AS CARR_CODE, 
+			TO_CHAR(a.RCL_DATE,'DDMONYY') AS RCL_DATE, 
+			TO_CHAR(a.RCL_DATE, 'HH24MI') AS RCL_TIME, 
+			a.CUST_NO, 
+			(SELECT CODE_DESC FROM CUST_COMPANY WHERE CODE = CUST_NO) AS CUST_NAME,
+			DECODE(a.PPK_TYPE, 'M','X','P','P','B') AS PPK_TYPE,
+			a.RCL_NO, 
+			b.uld_key AS ULD_KEY,
+			b.contr_code AS CONTR_CODE,
+			b.net_wt,
+			b.PCS,
+			a.AWB_DEST
+		FROM
+			EXP_RCL_HD a,
+      exp_rcl_dtl b 
+		WHERE
+			a.STATUS NOT IN ('V','R')
+			and a.ppk_type='P'
+			AND a.PRE_RCL_NO IS NOT NULL
+      		and b.rcl_no = a.rcl_no
+      		AND A.RCL_DATE BETWEEN TO_DATE(#requestDate#||'000000','DDMONYYHH24MISS') AND TO_DATE(#requestDate#||'235959','DDMONYYHH24MISS')
+	        AND (a.CARR_CODE = 'CX'
+            OR a.CARR_CODE IN (SELECT CARR_CODE FROM MAST_CARR_GRP WHERE GRP_CARR_CODE= 'CX'))	
+	  </select>
+	  <select id="fetchRCLConfirmationAWBData" parameterClass="java.lang.String" resultClass="java.util.HashMap">
+	  	SELECT SUBSTR(AWB_NO, 1, 3) AS AWB_PFX, SUBSTR(AWB_NO, 4) AS AWB_SFX FROM EXP_RCL_HD WHERE RCL_NO = #rclNo#
+		UNION 
+		SELECT SUBSTR(AWB_NO, 1, 3) AS AWB_PFX, SUBSTR(AWB_NO, 4) AS AWB_SFX FROM EXP_RCL_BRKDN WHERE RCL_NO = #rclNo#
+	  </select>
+	  <select id="FetchPrercldateForGLS" parameterClass="java.lang.String" resultClass="java.lang.String">
+	  SELECT  TO_CHAR(CR_DATE,'DDMONYY HH24:MI') FROM EXP_PRE_RCL_HD WHERE PRE_RCL_NO=#preRclNo#
+	  </select>
+	  <select id="FetchHouseManifestErrMsgForGLS" parameterClass="java.lang.String" resultClass="java.lang.String">
+	  SELECT ERR_DESC FROM ERR_MSG WHERE ERR_CODE = (select ERR_CODE from log_webservice_err where log_id =#logId# AND ROWNUM=1)
+	  </select>
+	  <select id="fetchFHLTrDocLineNo" parameterClass="java.util.HashMap" resultClass="java.util.HashMap">
+	  	SELECT TR_NO, DOC_LINE_NO FROM (
+			SELECT EDI_FHL.TR_NO,EDI_FHL_HAWB.DOC_LINE_NO  FROM EDI_FHL, EDI_FHL_HAWB WHERE EDI_FHL.TR_NO = EDI_FHL_HAWB.TR_NO
+			AND EDI_FHL.AWB_NO = #awbNo# AND EDI_FHL.AWB_DATE = TO_DATE(#awbDate#,'DDMONYY') AND EDI_FHL_HAWB.HAWB_NO = #hawbNo#
+			AND EDI_FHL.TR_NO = (SELECT TR_NO  FROM EDI_FHL WHERE AWB_NO = #awbNo# AND AWB_DATE = TO_DATE(#awbDate#,'DDMONYY')) ORDER BY DOC_LINE_NO DESC) WHERE ROWNUM = 1
+	  </select>
+	  <select id="checkFhlMsgForGLSAwb" parameterClass="java.util.HashMap" resultClass="java.lang.String">
+  select tr_no from edi_fhl where awb_no=#awbNo# and awb_date=#awbDate#
+</select>
+<select id="checkGLSHawbisvalidornot" parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+  select count(1) from edi_fhl_hawb where tr_no=#trNo# and hawb_no=#hawbNo#
+</select>
+<select id="Export_mRCLMixedHouseDtlsForGls" parameterClass="java.util.HashMap" resultClass="cargo.cms.external.bo.mRCLBulkHeader" >
+ 
+SELECT 
+H.HAWB_NO AS hawbNo ,
+H.HAWB_ORG AS hawbOrg,
+H.HAWB_DEST AS hawbDest,
+H.HAWB_PCS AS fhlPcs,
+H.HAWB_NET_WT AS fhlWt,
+'0' as oldAvlPcs,
+'0.0' as oldAvlWt,
+ABS(H.HAWB_PCS - NVL((SELECT SUM(PC) FROM EXP_PRE_RCL_ULD_MANF U  WHERE A.AWB_NO = U.AWB_NO AND H.HAWB_NO    = U.HAWB_NO ),0)) AS avlPcs,
+ABS(H.HAWB_NET_WT- NVL((SELECT SUM(WT) FROM EXP_PRE_RCL_ULD_MANF U WHERE A.AWB_NO = U.AWB_NO AND H.HAWB_NO    = U.HAWB_NO),0)) AS avlWt ,
+'0' AS loadPcs,
+'0.0' AS loadWt ,
+A.AWB_PCS as awbPcs
+FROM EDI_FHL A
+JOIN EDI_FHL_HAWB H
+ON A.TR_NO = H.TR_NO
+WHERE A.AWB_NO =#awbNo#
+AND A.AWB_DATE = #awbDate#
+AND H.HAWB_NO = #hawbNo#  
+</select>
+<select id="Export_eRCLUpdateMixedHouseDtlsGLS" parameterClass="java.util.HashMap" resultClass="cargo.cms.export.bo.ERCLBulkHeaderBO" >
+	SELECT 
+	H.HAWB_NO AS hawbNo ,
+	H.HAWB_ORG AS hawbOrg,
+	H.HAWB_DEST AS hawbDest,
+	H.HAWB_PCS AS fhlPcs,
+	H.HAWB_NET_WT AS fhlWt,
+	ABS(H.HAWB_PCS - NVL((SELECT SUM(PC) FROM EXP_PRE_RCL_ULD_MANF U  WHERE A.AWB_NO = U.AWB_NO AND H.HAWB_NO    = U.HAWB_NO),0)) AS avlPcs,
+	ABS(H.HAWB_NET_WT- NVL((SELECT SUM(WT) FROM EXP_PRE_RCL_ULD_MANF U WHERE A.AWB_NO = U.AWB_NO AND H.HAWB_NO    = U.HAWB_NO),0)) AS avlWt ,
+	ABS(NVL((SELECT SUM(PC) FROM EXP_PRE_RCL_ULD_MANF U  WHERE A.AWB_NO = U.AWB_NO AND H.HAWB_NO    = U.HAWB_NO AND PRE_RCL_NO = #preRclNo# AND ULD_KEY=#uldNo#),0)) AS loadPcs,
+    ABS(NVL((SELECT SUM(WT) FROM EXP_PRE_RCL_ULD_MANF U WHERE A.AWB_NO = U.AWB_NO AND H.HAWB_NO    = U.HAWB_NO AND PRE_RCL_NO = #preRclNo# AND ULD_KEY=#uldNo#),0)) AS loadWt ,  
+	A.AWB_PCS as awbPcs
+	FROM EDI_FHL A
+	JOIN EDI_FHL_HAWB H
+	ON A.TR_NO = H.TR_NO	
+	WHERE A.AWB_NO =#awbNo#
+	AND A.AWB_DATE = #awbDate#
+	AND H.HAWB_NO = #hawbNo#  	
+</select>
+<select id="fetchHkId" parameterClass="java.util.HashMap" resultClass="java.lang.String">
+		SELECT AUTH_REP_ID FROM CUST_AGENT_AUTH_REP WHERE AUTH_REP_NAME=#authRepName# and cust_no=#custNo#
+	</select>
+	
+<select id="sqlGetAgtiPassEnquiryHistory" parameterClass="cargo.cms.tcs.bo.TCSRegisterResultBO"
+		resultClass="cargo.cms.tcs.bo.TCSRegisterResultBO">
+		<![CDATA[
+			SELECT IPASS_NO ipassNo, TYP.CODE_DESC type,
+			  TO_CHAR(IPASS.CR_DATE, 'DDMONYY HH24:MI') transactionDate,
+			  ACT.CODE_DESC transactionType,
+			  CONTACT_NO contactNo, NTFY_CONTACT_NO notifyContactNo
+			FROM TCS_IPASS_LOG IPASS
+			LEFT OUTER JOIN MAST_CODE_DTL ACT
+			ON IPASS.TR_TYPE = ACT.CODE	AND ACT.CODE_TYPE = 'TCS_IPASS_ACTION'
+			LEFT OUTER JOIN MAST_CODE_DTL TYP
+			ON IPASS.IPASS_TYPE = TYP.CODE	AND TYP.CODE_TYPE = 'TCS_IPASS_TYPE'
+			WHERE 1=1
+			]]>	
+			<isNotEmpty property="companyName"> <![CDATA[ AND  IPASS.CUST_NO = (SELECT MAX(CODE) FROM CUST_COMPANY WHERE UPPER(CODE_DESC) = UPPER(#companyName#) AND ACTIVE = 'Y')]]>
+			</isNotEmpty>
+			<isNotEmpty property="truckNo"> <![CDATA[ AND UPPER(IPASS.TRUCK_NO) = UPPER(#truckNo#) ]]>
+			</isNotEmpty>
+			<isNotEmpty property="type"> AND IPASS.IPASS_TYPE = #type#
+			</isNotEmpty>
+			<isNotEmpty property="ipassNo"> AND IPASS.IPASS_NO = #ipassNo#
+			</isNotEmpty> 				
+			
+	</select>
+	<select id="checkIfValidIpassNo" parameterClass="java.lang.String"
+		resultClass="java.lang.Integer">		
+			SELECT count(*) from TCS_IPASS_MASTER where 
+			IPASS_NO=#iPassNo# 		
+	</select>
+	<select id="checkValidAgentHkId" parameterClass="java.util.HashMap"
+		resultClass="java.lang.Integer">		
+			SELECT count(*) from CUST_AGENT_AUTH_REP where 
+			CUST_NO=#agentCode# and AUTH_REP_ID=#hkId#	
+	</select>	
+	<select id="sqlGLSTCSAgtSearchBanTruckInfo" parameterClass="cargo.cms.tcs.bo.TCSBanSearchBO"
+		resultClass="cargo.cms.tcs.bo.TCSBanResultBO">
+		SELECT
+			TRUCK.IPASS_NO ipassNo, TRUCK.BAN_REASON banReason, 
+			RESTRICTIONS restrictions, BANTYP.CODE_DESC banType, 
+			TO_CHAR(BAN_FROM, 'DDMONYY HH24:MI') banFrom, 
+			TO_CHAR(BAN_TO, 'DDMONYY HH24:MI') banTo, 
+			BAN_RMK remark, TO_CHAR(TRUCK.RLS_DATE, 'DDMONYY HH24:MI') releaseTime, 
+			DECODE(IPASS.STATUS, 'ACTIVE', 'Y', 'N') active, BANSTAT.CODE_DESC status,
+			TO_CHAR(TRUCK.CR_DATE, 'DDMONYY HH24:MI') crDate
+			FROM
+			TCS_BAN_TRUCK TRUCK
+			LEFT OUTER JOIN TCS_BAN_MASTER BAN
+			ON TRUCK.BAN_REASON = BAN.BAN_REASON
+			LEFT OUTER JOIN TCS_IPASS_MASTER IPASS
+			ON TRUCK.IPASS_NO = IPASS.IPASS_NO
+			LEFT OUTER JOIN MAST_CODE_DTL BANTYP
+			ON BAN.BAN_TYPE = BANTYP.CODE AND BANTYP.CODE_TYPE = 'TCS_BAN_TYPE'
+			LEFT OUTER JOIN MAST_CODE_DTL BANSTAT
+			ON TRUCK.STATUS = BANSTAT.CODE AND BANSTAT.CODE_TYPE = 'TCS_BAN_STATUS'    	
+			WHERE
+			UPPER(TRUCK.TRUCK_NO) = UPPER(#truckNo#)
+			ORDER BY TRUCK.CR_DATE DESC
+		</select>
+		<select id="sqlGLSTCSAgtSearchTruckMovementHistory"
+		parameterClass="cargo.cms.tcs.bo.TCSTrafficSearchBO" resultClass="cargo.cms.tcs.bo.TCSTrafficBO">		
+			SELECT TRIP.TRUCK_NO truckNo, TRIP.TRUCK_DOCK allocatedTruckDock, 
+			PURP.CODE_DESC incomingPurpose, 
+			TO_CHAR(EVENT.TRUCK_PARK_ENTRY_TIME, 'DDMONYY HH24:MI') truckParkEntryTime,
+			TO_CHAR(EVENT.DECL_PURPOSE_TIME, 'DDMONYY HH24:MI') declInPurposeTime,
+			TO_CHAR(EVENT.TRUCK_IN_QUEUE_TIME, 'DDMONYY HH24:MI') truckInQueue,
+			TO_CHAR(EVENT.DOCK_ALLOCATION_TIME, 'DDMONYY HH24:MI') dockAllocationTime,
+			TO_CHAR(EVENT.LEAVE_TRUCKPARK_TIME, 'DDMONYY HH24:MI') leaveTruckParkTime,
+			TO_CHAR(EVENT.TERMINAL_ENTRY_TIME, 'DDMONYY HH24:MI') terminalEntryTime,
+			TO_CHAR(EVENT.DOCK_OCCUPY_TIME, 'DDMONYY HH24:MI') dockOccupancyTime,
+			TO_CHAR(EVENT.LEAVE_DOCK_TIME, 'DDMONYY HH24:MI') leaveTruckDockTime,
+			TO_CHAR(EVENT.TERMINAL_EXIT_TIME, 'DDMONYY HH24:MI') terminalExitTime
+			FROM
+			TRUCK_TRIP TRIP
+			LEFT OUTER JOIN TRUCK_TRIP_EVENTS EVENT
+			ON TRIP.TRIP_ID = EVENT.TRIP_ID
+			LEFT OUTER JOIN MAST_TCS_INCOMING_PURPOSE PURP
+			ON TRIP.PURPOSE = PURP.CODE
+		    JOIN (
+		      SELECT IPASS_NO, IPASS.TRUCK_NO, IPASS.CUST_NO
+		      FROM TCS_IPASS_MASTER IPASS
+		      JOIN (
+			      SELECT MAX(CR_DATE) CR_DATE, TRUCK_NO
+			      FROM TCS_IPASS_MASTER IPASS
+			      GROUP BY TRUCK_NO
+		      ) GRP
+		      ON IPASS.TRUCK_NO = GRP.TRUCK_NO AND IPASS.CR_DATE = GRP.CR_DATE
+		      WHERE IPASS.CUST_NO IS NOT NULL
+		    ) IPASS
+		    ON TRIP.TRUCK_NO = IPASS.TRUCK_NO
+		    JOIN CUST_COMPANY CUST
+		    ON IPASS.CUST_NO = CUST.CODE
+			WHERE CLOSED = 'Y' AND UPPER(CUST.CODE_DESC) = UPPER(#companyName#) AND CUST.ACTIVE = 'Y' AND
+			(EVENT.TERMINAL_ENTRY_TIME IS NOT NULL OR EVENT.TRUCK_PARK_ENTRY_TIME IS NOT NULL) 
+		
+	            <isNotEmpty property="truckNos">
+	            AND UPPER(TRIP.TRUCK_NO)in 
+	            <iterate property="truckNos" open="(" close=")" conjunction=",">
+	                 #truckNos[]#  
+	            </iterate>	
+			</isNotEmpty>
+		<isNotEmpty property="fromDateTime"><![CDATA[ AND TRIP.ARR_TIME >= TO_DATE(#fromDateTime#, 'DDMONYY HH24:MI') ]]>
+		</isNotEmpty>
+		<isNotEmpty property="toDateTime"><![CDATA[ AND TRIP.ARR_TIME <= TO_DATE(#toDateTime#, 'DDMONYY HH24:MI') ]]>
+		</isNotEmpty>
+			
+	</select>
+	<select id="fetchTruckerNameList" resultClass="cargo.cms.customer.bo.GLSTCSBO">
+		select code truckerCode, code_desc truckerName from cust_company where trucker_yn='Y'
+	</select>
+	<select id="sqlGetAwbDateFromImpCar" parameterClass="cargo.cms.external.bo.InbdShpActionLstShpmntBO" resultClass="java.lang.String">
+		select to_char(awb_date,'DDMONYY') awbDate from imp_car_shp where awb_no=#awbNo# and flt_key=#fltKey# and flt_date=#fltDate#
+	</select>
+	<select id="sqlGetGLSAgtSearchiPassEnquiry" parameterClass="cargo.cms.tcs.bo.TCSRegisterSearchBO"
+		resultClass="cargo.cms.tcs.bo.TCSRegisterResultBO">
+		<![CDATA[
+			SELECT IPASS_NO ipassNo, TRUCK_NO truckNo,
+			  TYP.CODE_DESC type,
+			  TO_CHAR(ISSUED_ON, 'DDMONYY HH24:MI') issuedOn,
+			  CONTACT_NO contactNo, STAT.CODE_DESC status,
+			  TO_CHAR(IPASS.LM_DATE, 'DDMONYY HH24:MI:SS') lmMultiUserTime,
+			  #companyName# AS companyName
+			FROM TCS_IPASS_MASTER IPASS
+			LEFT OUTER JOIN MAST_CODE_DTL STAT
+			ON IPASS.STATUS = STAT.CODE	AND STAT.CODE_TYPE = 'TCS_IPASS_STATUS'
+	    	LEFT OUTER JOIN MAST_CODE_DTL TYP
+			ON IPASS.IPASS_TYPE = TYP.CODE	AND TYP.CODE_TYPE = 'TCS_IPASS_TYPE'
+			WHERE IPASS.CUST_NO = (SELECT MAX(CODE) FROM CUST_COMPANY WHERE UPPER(CODE_DESC) = UPPER(#companyName#) AND ACTIVE = 'Y')
+		]]>		
+			<isNotEmpty property="dateFrom">
+				<isNotEmpty property="dateTo"><![CDATA[
+				 AND (IPASS.ISSUED_ON >= TO_DATE(#dateFrom#, 'DDMONYY HH24:MI') AND IPASS.ISSUED_ON <= TO_DATE(#dateTo#, 'DDMONYY HH24:MI'))
+				 ]]>
+				</isNotEmpty>
+			</isNotEmpty>
+			<isEmpty property="dateTo">
+				<isNotEmpty property="dateFrom"><![CDATA[
+				 AND IPASS.ISSUED_ON >= TO_DATE(#dateFrom#, 'DDMONYY HH24:MI')
+				 ]]>
+				</isNotEmpty>
+			</isEmpty>
+			<isEmpty property="dateFrom">
+				<isNotEmpty property="dateTo"><![CDATA[
+				 AND IPASS.ISSUED_ON <= TO_DATE(#dateTo#, 'DDMONYY HH24:MI')
+				 ]]>
+				</isNotEmpty>
+			</isEmpty>	
+			<isNotEmpty property="truckNo"><![CDATA[ AND UPPER(IPASS.TRUCK_NO) = UPPER(#truckNo#) ]]>
+			</isNotEmpty>
+			<isNotEmpty property="type"> AND IPASS.IPASS_TYPE = #type#
+			</isNotEmpty>
+			<isNotEmpty property="ipassNo"> AND IPASS.IPASS_NO = #ipassNo#
+			</isNotEmpty>		
+		<dynamic prepend="ORDER BY ">
+			<isNotEmpty property="sortOrder.sortField">
+				$sortOrder.sortField$
+			</isNotEmpty>
+			<isEmpty property="sortOrder.sortField">
+				<![CDATA[ IPASS.ISSUED_ON DESC, IPASS.IPASS_NO, IPASS.TRUCK_NO, IPASS.STATUS ]]>
+			</isEmpty>
+		</dynamic>
+	</select>
+		<select id="sqlGetGLSTCSAgtSearchBanTruckInfo" parameterClass="cargo.cms.tcs.bo.TCSBanSearchBO"
+		resultClass="cargo.cms.tcs.bo.TCSBanResultBO">
+		<![CDATA[
+			WITH ACT_BAN AS (
+			  SELECT * FROM TCS_BAN_TRUCK WHERE STATUS IN ('BANNED', 'ONETIME')
+			),
+			CUR_BAN AS (
+			  SELECT 
+			    TR_NO, TRUCK_NO, IPASS_NO, BAN_REASON, RESTRICTIONS, 
+			    BAN_RMK, BAN_FROM, BAN_TO, STATUS, RLS_USER_ID, RLS_DATE, RLS_RMK, LM_DATE, 
+			    'Y' ACTIVE 
+			  FROM ACT_BAN ACT
+			  UNION
+			  SELECT DISTINCT
+			    TR_NO, TRUCK_NO, IPASS_NO, BAN_REASON, RESTRICTIONS, 
+			    BAN_RMK, BAN_FROM, BAN_TO, STATUS, RLS_USER_ID, RLS_DATE, RLS_RMK, LM_DATE, 
+			    'N' ACTIVE   
+			  FROM TCS_BAN_TRUCK BAN 
+			  WHERE TR_NO IN(SELECT MAX(TR_NO) FROM TCS_BAN_TRUCK WHERE TRUCK_NO NOT IN(SELECT TRUCK_NO FROM ACT_BAN) GROUP BY TRUCK_NO)
+			)
+			SELECT
+			TRUCK.TR_NO trNo,
+			TRUCK.TRUCK_NO truckNo,
+			TRUCK.IPASS_NO ipassNo,	PASTYP.CODE_DESC ipassType, 
+			TRUCK.BAN_REASON banReason, TRUCK.RESTRICTIONS restrictions,
+			BANTYP.CODE_DESC banType,
+			TO_CHAR(BAN_FROM, 'DDMONYY') || NVL2(BAN_FROM, '-', NULL) || TO_CHAR(BAN_TO, 'DDMONYY') banPeriod,
+			BANSTAT.CODE_DESC status
+			FROM
+			CUR_BAN TRUCK
+			LEFT OUTER JOIN TCS_IPASS_MASTER IPASS
+			ON TRUCK.IPASS_NO = IPASS.IPASS_NO    
+			LEFT OUTER JOIN MAST_CODE_DTL BANSTAT
+			ON TRUCK.STATUS = BANSTAT.CODE AND BANSTAT.CODE_TYPE = 'TCS_BAN_STATUS'
+			LEFT OUTER JOIN TCS_BAN_MASTER BAN
+			ON TRUCK.BAN_REASON = BAN.BAN_REASON
+			LEFT OUTER JOIN MAST_CODE_DTL BANTYP
+			ON BAN.BAN_TYPE = BANTYP.CODE AND BANTYP.CODE_TYPE = 'TCS_BAN_TYPE'
+			LEFT OUTER JOIN MAST_CODE_DTL PASTYP
+			ON IPASS.IPASS_TYPE = PASTYP.CODE AND PASTYP.CODE_TYPE = 'TCS_IPASS_TYPE'
+			WHERE IPASS.CUST_NO = (SELECT MAX(CODE) FROM CUST_COMPANY WHERE UPPER(CODE_DESC) = UPPER(#companyName#) AND ACTIVE = 'Y')
+		]]>		
+			<isNotEmpty property="truckNo"><![CDATA[ AND UPPER(TRUCK.TRUCK_NO) = UPPER(#truckNo#) ]]>
+			</isNotEmpty>
+			<isNotEmpty property="ipassNo"><![CDATA[ AND TRUCK.IPASS_NO = #ipassNo# ]]>
+			</isNotEmpty>
+			<isNotEmpty property="type"><![CDATA[ AND IPASS.IPASS_TYPE = #type# AND TRUCK.ACTIVE = 'Y' ]]>
+			</isNotEmpty>
+			<isNotEmpty property="banNature"><![CDATA[ AND BAN.BAN_NATURE = #banNature# AND TRUCK.ACTIVE = 'Y' ]]>
+			</isNotEmpty>		
+			<isNotEmpty property="banFrom">
+				<isNotEmpty property="banTo"><![CDATA[
+				 AND (
+				 	(TRUCK.BAN_FROM <= TO_DATE(#banFrom#, 'DDMONYY') AND TRUCK.BAN_TO >= TO_DATE(#banFrom#, 'DDMONYY')) OR 
+				 	(TRUCK.BAN_FROM <= TO_DATE(#banTo#, 'DDMONYY') AND TRUCK.BAN_TO >= TO_DATE(#banTo#, 'DDMONYY')) OR
+				 	(TO_DATE(#banFrom#, 'DDMONYY') <= TRUCK.BAN_FROM AND TO_DATE(#banTo#, 'DDMONYY') >= TRUCK.BAN_FROM) OR 
+				 	(TO_DATE(#banFrom#, 'DDMONYY') <= TRUCK.BAN_TO AND TO_DATE(#banTo#, 'DDMONYY') >= TRUCK.BAN_TO)  
+				 	)
+				 AND TRUCK.ACTIVE = 'Y'
+				 ]]>
+				</isNotEmpty>
+			</isNotEmpty>
+			<isEmpty property="banTo">
+				<isNotEmpty property="banFrom"><![CDATA[
+				 AND (
+				 	(TRUCK.BAN_FROM <= TO_DATE(#banFrom#, 'DDMONYY') AND TRUCK.BAN_TO >= TO_DATE(#banFrom#, 'DDMONYY')) OR 
+				 	TRUCK.BAN_FROM >= TO_DATE(#banFrom#, 'DDMONYY')
+				 	)
+				 AND TRUCK.ACTIVE = 'Y'
+				 ]]>
+				</isNotEmpty>
+			</isEmpty>
+			<isEmpty property="banFrom">
+				<isNotEmpty property="banTo"><![CDATA[
+				 AND (
+				 	(TRUCK.BAN_FROM <= TO_DATE(#banTo#, 'DDMONYY') AND TRUCK.BAN_TO >= TO_DATE(#banTo#, 'DDMONYY')) OR 
+				 	TRUCK.BAN_TO <= TO_DATE(#banTo#, 'DDMONYY')
+				 	)
+				 AND TRUCK.ACTIVE = 'Y'
+				 ]]>
+				</isNotEmpty>
+			</isEmpty>
+		
+		<dynamic prepend="ORDER BY ">
+			<isNotEmpty property="sortOrder.sortField">
+				$sortOrder.sortField$
+			</isNotEmpty>
+			<isEmpty property="sortOrder.sortField">
+				TRUCK.BAN_FROM DESC, TRUCK.BAN_TO
+			</isEmpty>
+		</dynamic>
+	</select>
+	<select id="checkERCLAWBNoUldNo" parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+		select count(*) from exp_pre_rcl_hd where (awb_no=#awbNo# or uld_key=#uldNo#) and pre_rcl_no=#preRclNo#
+	</select>
+	<select id="checkBookingExists" parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+	select count(*) from exp_booking book,exp_booking_dtl bookDtl where book.booking_no=bookDtl.booking_no and book.cust_no=#agentCode# and book.booking_no=#bookingNo# 
+	</select>
+	
+	
+	<!--  GLS Ranjith -->
+	<select id="sqlGetTCSAgtSearchSchCollGls" parameterClass="cargo.cms.tcs.bo.TCSBookingSearchBO"
+		resultClass="cargo.cms.tcs.bo.TCSBookingResultBO">
+		<![CDATA[
+			SELECT TR_NO trNo,
+			TRIM(TO_CHAR(TIME_FROM, '0000')) timeFrom, 
+			TRIM(TO_CHAR(TIME_TO, '0000')) timeTo,
+			TO_CHAR(EFF_FROM, 'DDMONYYYY') effectiveFrom, TO_CHAR(EFF_TO, 'DDMONYYYY') effectiveTo,
+			DAY_FRQ dayFrequency, 
+			(SELECT STRAGG(STRINGDELIM(TRUCK_DOCK, ',')) FROM CUST_AGENT_SCH_COLL_TRUCK_DOCK DOCK WHERE DOCK.TR_NO = COLL.TR_NO) truckDock
+			FROM CUST_AGENT_SCH_COLL_TIME COLL
+			WHERE PURPOSE = #purpose# AND COLL.CUST_NO = #companyName#
+		]]>
+		<isNotEmpty property="day"><![CDATA[ AND DAY_FRQ LIKE #dayFreq# ]]></isNotEmpty>
+		<isNotEmpty property="effectiveFrom">
+			<isNotEmpty property="effectiveTo"><![CDATA[
+			 AND (
+			 	(COLL.EFF_FROM <= TO_DATE(#effectiveFrom#, 'DDMONYY') AND COLL.EFF_TO >= TO_DATE(#effectiveFrom#, 'DDMONYY')) OR 
+			 	(COLL.EFF_FROM <= TO_DATE(#effectiveTo#, 'DDMONYY') AND COLL.EFF_TO >= TO_DATE(#effectiveTo#, 'DDMONYY')) OR
+        		(TO_DATE(#effectiveFrom#, 'DDMONYY') <= COLL.EFF_FROM AND TO_DATE(#effectiveTo#, 'DDMONYY') >= COLL.EFF_FROM) OR 
+			 	(TO_DATE(#effectiveFrom#, 'DDMONYY') <= COLL.EFF_TO AND TO_DATE(#effectiveTo#, 'DDMONYY') >= COLL.EFF_TO) 			 	
+			 	)
+			 ]]>
+			</isNotEmpty>
+		</isNotEmpty>
+		<isEmpty property="effectiveTo">
+			<isNotEmpty property="effectiveFrom"><![CDATA[
+			 AND (
+			 	(COLL.EFF_FROM <= TO_DATE(#effectiveFrom#, 'DDMONYY') AND COLL.EFF_TO >= TO_DATE(#effectiveFrom#, 'DDMONYY')) OR 
+			 	COLL.EFF_FROM >= TO_DATE(#effectiveFrom#, 'DDMONYY')
+			 )
+			 ]]>
+			</isNotEmpty>
+		</isEmpty>
+		<isEmpty property="effectiveFrom">
+			<isNotEmpty property="effectiveTo"><![CDATA[
+			 AND (
+			 	(COLL.EFF_FROM <= TO_DATE(#effectiveTo#, 'DDMONYY') AND COLL.EFF_TO >= TO_DATE(#effectiveTo#, 'DDMONYY')) OR 
+			 	COLL.EFF_TO <= TO_DATE(#effectiveTo#, 'DDMONYY')
+			 )
+			 ]]>
+			</isNotEmpty>
+		</isEmpty>
+		<dynamic prepend="ORDER BY ">
+			<isNotEmpty property="sortOrder.sortField">
+				$sortOrder.sortField$
+			</isNotEmpty>
+			<isEmpty property="sortOrder.sortField">
+				EFF_FROM, TIME_FROM, EFF_TO
+			</isEmpty>
+		</dynamic>
+	</select>
+	
+	<select id="glsIsAgebtCollPerson" parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+		SELECT COUNT(1) FROM CUST_AGENT_AUTH_REP WHERE AUTH_REP_ID=#HKID# and cust_no=#AGENT#
+	</select>
+	
+	<select id="glsGetCollPersonIdForBooking" parameterClass="java.lang.String" resultClass="java.lang.String">
+		SELECT coll_person_id from imp_booking where booking_no = #bkgNo#
+	</select>
+	
+	<select id="glsIsHaffaMember" parameterClass="java.lang.String" resultClass="java.lang.Integer">
+		SELECT count(1) from cust_company  where code = #agtCode# and nvl(haffa_member,'N') = 'Y'
+	</select>
+		
+	<update id="glsCancelBooking" parameterClass="cargo.cms.imprt.bo.AmendCollSlotSearchBO" >
+			update IMP_BOOKING set status = 'CANCEL' , lm_date = sysdate , lm_user_id = 'SYSTEM' where BOOKING_NO = #bkgNo#				
+	</update>
+	
+		<!-- and LM_DATE = TO_DATE(#lmDate#, 'DDMONYY HH24:MI:SSSSS')  -->
+	<update id="glsUpdateDLVMode" parameterClass="cargo.cms.external.bo.InbdShpActionLstShpmntBO">
+		update IMP_CAR_SHP 
+				set 
+				DLV_MODE_RQS  = #dlvModeRqs# ,        
+				IMX_RQS = #imxRqs# ,	
+				IMX_RQS_DATE = sysdate,		
+				LM_USER_ID = #loginId# , 
+				LM_DATE  = sysdate 
+				where 
+				AWB_NO = #awbNo# and awb_date = TO_DATE(#awbDate#, 'DDMONYY') 
+				and flt_key = #fltKey# and flt_date = TO_DATE(#fltDate#, 'DDMONYY')					
+	</update>
+	
+	
+	<select id="gls_coll_slot_info" parameterClass="map" 
+ 		resultClass="cargo.cms.imprt.bo.EnquireCollSlotBkgLstBO">
+ 		SELECT AGENT_ID loginCustNo, 
+ 			   HK_ID loginHkid, 
+ 			   TO_CHAR(BKG_SLOT_DATE, 'DDMONYY') || ' ' || 
+ 			   SUBSTR(TRIM(TO_CHAR(NVL(BKG_SLOT_FROM,0),'0000')),0,2)|| ':' || 
+ 			   SUBSTR(TRIM(TO_CHAR(NVL(BKG_SLOT_FROM,0),'0000')),3,4)|| ' - ' || 
+ 			   SUBSTR(TRIM(TO_CHAR(NVL(BKG_SLOT_TO,0),'0000')),0,2)|| ':'|| 
+ 			   SUBSTR(TRIM(TO_CHAR(NVL(BKG_SLOT_TO,0),'0000')),3,4) as timeSlot, 
+ 			   COLL_PERSON_NAME as collBy,
+ 			   COLL_PERSON_ID as hkId, 
+ 			   COLLECT_ULD collectUld, 
+ 			   PHONE_NO as phoneNo 
+ 		FROM 
+ 			IMP_BOOKING 
+    	WHERE 
+      		BOOKING_NO = #bkgNo#
+ 	</select>
+ 	
+ 	<select id="gls_bkg_shipment_dtls" parameterClass="map" 
+ 		resultClass="cargo.cms.imprt.bo.EnquireCollSlotShpDtlsBO">
+ 		<![CDATA[
+ 		select  ROWNUM glsSequence, bkg.BOOKING_NO, SUBSTR(bkgDtl.AWB_NO,1,3)  awbNoPfx , SUBSTR(bkgDtl.AWB_NO,4)  awbNoSfx , 
+				SUBSTR(bkgDtl.AWB_NO,1,3)||'-'||SUBSTR(bkgDtl.AWB_NO,4) as awbNoDisp ,  bkgDtl.awb_no awbNo, to_char(bkgDtl.awb_date,'DDMONYY') awbDate ,
+				bkgDtl.flt_Key fltKey, to_char(bkgDtl.flt_date,'DDMONYY') fltDate, sta, eta, ata,
+      				decode(WHSE_COMPL_DATE,null,'N','Y') bdcompl,
+        		decode(WHSE_COMPL_DATE , null, TO_CHAR(TO_DATE(FUN_GET_EST_COLL_TIME(bkgDtl.flt_Key,bkgDtl.flt_date,'A','BOOKING_EST_COLL_TIME',bkgDtl.AWB_NO,bkgDtl.awb_date), 'DDMONYY HH24:MI'),'DDMONYY HH24:MI'), 'Available' ) estCollTimeShow, 
+        		decode(WHSE_COMPL_DATE , null, TO_CHAR(TO_DATE(FUN_GET_EST_COLL_TIME(bkgDtl.flt_Key,bkgDtl.flt_date,'A','BOOKING_EST_COLL_TIME',bkgDtl.AWB_NO,bkgDtl.awb_date), 'DDMONYY HH24:MI'),'HH24:MI'), TO_CHAR(sysdate,'HH24:MI') ) estCollTimeHide,
+				TO_CHAR(TO_DATE(FUN_GET_EST_COLL_TIME(bkgDtl.flt_Key,bkgDtl.flt_date,'A','BOOKING_EST_COLL_TIME',bkgDtl.AWB_NO,bkgDtl.awb_date), 'DDMONYY HH24:MI'),'DDMONYY HH24:MI') estCollTime,
+          		nvl(shp.Manifest_pcs,0) pcs, nvl(shp.Manifest_wt,0) wt, nvl(awbInv.invPcs,0) invPcs, nvl(awbInv.invWt,0) invWt,
+				(select code_desc from cust_company where code = carAwb.agent_cust_no) agtName, carAwb.agent_cust_no agtCode, 
+				carAwb.CSGNE_NAME csgnName, carAwb.CNS_CUST_NO csgnCode, 
+				shp.DLV_MODE_RQS dlvModeRqs, shp.IMX_RQS imxRqs,
+				AWB.content as content,
+				carAwb.DOC_CHK_REQ docChkReq, DOC_CHK_COMP docChkCompl,
+        		case when ( select COUNT(1) from IMP_CUST_CLR_LIST t1, IMP_CCCL_DOC_LIST t2 
+					where t2.NOT_AVAILABLE = 'Y' and t1.tr_no = t2.tr_no and t1.awb_no = bkgDtl.awb_no and  t1.awb_date = bkgDtl.awb_date 
+					and t1.flt_key = bkgDtl.flt_key and t1.flt_DATE = bkgDtl.flt_date) > 0 then 'Y' else 'N' end   reqDocs,  
+				shp.NOA_IND noaInd, carAwb.VAL_FOR_SCH_COLL validforSchColl, 
+				decode(trkMnf.truck_manf_no,null, 'Y', 'N') schColl, 
+				(SELECT V.CC_CODE FROM V_CST_IMP_CC_CODE_AWB V
+					WHERE V.FLT_KEY = bkgDtl.FLT_KEY AND V.FLT_DATE = bkgDtl.FLT_DATE AND V.AWB_NO = bkgDtl.AWB_NO 
+				  AND NVL(V.HAWB_NO, '000000000000000000') =  '000000000000000000' AND ROWNUM = 1)  ccode, 
+				nvl(carAwb.SPL_CODE1,'') ||' '|| nvl(carAwb.SPL_CODE2,'') ||' '|| nvl(carAwb.SPL_CODE3,'') ||' '|| nvl(carAwb.SPL_CODE4,'') 
+				||' '|| nvl(carAwb.SPL_CODE5,'') ||' '|| nvl(carAwb.SPL_CODE6,'') ||' '|| nvl(carAwb.SPL_CODE7,'') ||' '|| nvl(carAwb.SPL_CODE8,'') 
+				||' '|| nvl(carAwb.SPL_CODE9,'') shc  ,    
+				osCharge chrgs, TO_CHAR(shp.LM_DATE, 'DDMONYY HH24:MI:SSSSS') as lmDate,carAwb.CONSOLE_IND consol,
+		        (select BKG_YN from mast_spl_hand_code where code in (carAwb.SPL_CODE1, carAwb.SPL_CODE2, carAwb.SPL_CODE3, carAwb.SPL_CODE4,carAwb.SPL_CODE5, carAwb.SPL_CODE6, carAwb.SPL_CODE7, carAwb.SPL_CODE8,carAwb.SPL_CODE9) AND ROWNUM = 1 ) bkgAllow,
+		        (select count(1) from cust_airl_spl_code where carr_code = AWB.carr_code and spl_type = 'SPL_VAL' and spl_code in (carAwb.SPL_CODE1, carAwb.SPL_CODE2, carAwb.SPL_CODE4, carAwb.SPL_CODE3,carAwb.SPL_CODE5, carAwb.SPL_CODE6, carAwb.SPL_CODE7, carAwb.SPL_CODE8,carAwb.SPL_CODE9) AND ROWNUM = 1) valCnt,
+		        (select count(1) from cust_airl_spl_code where carr_code = AWB.carr_code and spl_type = 'SPL_ODD' and spl_code in (carAwb.SPL_CODE1, carAwb.SPL_CODE2, carAwb.SPL_CODE4, carAwb.SPL_CODE3,carAwb.SPL_CODE5, carAwb.SPL_CODE6, carAwb.SPL_CODE7, carAwb.SPL_CODE8,carAwb.SPL_CODE9) AND ROWNUM = 1) oddCnt,
+            	shp.TRUCKER_CUST_NO asgnTruckerCode ,   shp.TRUCKER_ASSIGN_BY asgnLoginId,
+                (select HKID from SEC_USER USR  where  CUST_NO = shp.TRUCKER_CUST_NO and code = shp.TRUCKER_ASSIGN_BY) asgTruckerHkid,
+                (select HKID from SEC_USER USR  where  CUST_NO = carAwb.agent_cust_no and CODE = #loginId#) loginHkid, bkgDtl.CHARGES charges
+			from IMP_BOOKING bkg
+      join IMP_BOOKING_DTL bkgDtl on bkg.BOOKING_NO = bkgDtl.BOOKING_NO      
+      join (select  fltEvt.WHSE_COMPL_DATE , flt.FLT_TYPE, flt.sch_date, flt.flt_Key, 
+          flt.CARR_CODE, flt.ACFT_TYPE, flt.SCH_TIME estCollTimesta, flt.ACT_TIME estCollTimeata,
+          SUBSTR(TRIM(TO_CHAR(NVL(flt.SCH_TIME,0),'0000')),0,2)|| ':'||  SUBSTR(TRIM(TO_CHAR(NVL(flt.SCH_TIME,0),'0000')),3,4) AS sta, 
+          PKG_COMMON.get_flt_eta(flt.FLT_KEY,FLT.SCH_DATE,'A') AS eta,    
+    	  PKG_COMMON.get_flt_ata(flt.FLT_KEY,FLT.SCH_DATE,'A') AS ata
+          from flt_opr flt, flt_opr_events fltEvt
+          where flt.flt_Key = fltEvt.flt_Key and  flt.sch_Date = fltEvt.sch_date and  flt.flt_type = fltEvt.flt_type) fltTimes  
+          on  bkgDtl.flt_Key = fltTimes.flt_Key and  bkgDtl.flt_Date = fltTimes.sch_date and fltTimes.flt_type = 'A'
+    join IMP_CAR_SHP shp  on shp.awb_no = bkgDtl.awb_no and  shp.awb_date = bkgDtl.awb_date and shp.flt_Key = bkgDtl.flt_Key 
+          and  shp.flt_Date = bkgDtl.flt_date  
+    join IMP_CAR_AWB carAwb on bkgDtl.awb_no = carAwb.awb_no and  bkgDtl.awb_date = carAwb.awb_date                  
+    join AWB on bkgDtl.awb_no = AWB.awb_no and  bkgDtl.awb_date = AWB.awb_date                  
+    left join (select sum(locn_pcs) invPcs, sum(locn_wt) invWt, awb_no, awb_date, flt_key, flt_date from AWB_INVENTORY 
+          group by awb_no, awb_date, flt_key, flt_date) awbInv 
+          on bkgDtl.awb_no = awbInv.awb_no and  bkgDtl.awb_date = awbInv.awb_date and awbInv.flt_Key = bkgDtl.flt_Key 
+          and  awbInv.flt_Date = bkgDtl.flt_date 
+    left join  (select trkDtl.truck_manf_no truck_manf_no, trkDtl.awb_no, trkDtl.awb_date, trkDtl.flt_key, trkDtl.flt_date, SCH_COLL_FROM, 
+          decode(FINAL_TRUCK_MANF_NO, 'N', 'Y') trk_manf_flz
+          from TRUCK_MANIFEST trk,  TRUCK_MANIFEST_DTL trkDtl 
+          where trk.TRUCK_MANF_NO = trkDtl.TRUCK_MANF_NO 
+          and to_date( to_char(SCH_COLL_DATE,'DDMONYY') ||' '||to_char(NVL(SCH_COLL_FROM,0),'0000') , 'DDMONYY HH24MI') > sysdate ) trkMnf
+          on bkgDtl.awb_no = trkMnf.awb_no and  bkgDtl.awb_date = trkMnf.awb_date and bkgDtl.flt_key = trkMnf.flt_key and bkgDtl.flt_DATE = trkMnf.flt_date
+      left join CUST_UNDERTAKING cusUnd ON cusUnd.carr_code = awb.CARR_CODE and cusUnd.AGENT_CODE  = carAwb.agent_cust_no
+      										and cusUnd.EFF_FROM < SYSDATE AND NVL(cusUnd.EFF_TO, SYSDATE) >= SYSDATE
+			left JOIN (select AWB_NO, AWB_DATE, sum(AAT_OS + AIRL_OS) osCharge from GT_OS_CHARGES group by AWB_NO, AWB_DATE) GT  	ON GT.AWB_NO = bkgDtl.AWB_NO AND GT.AWB_DATE = bkgDtl.AWB_DATE	 
+    Where bkg.BOOKING_NO = #bkgNo# 
+    ]]>
+ 		<isNotEmpty prepend="AND" property="loginCustNo">
+ 			 ( bkg.Agent_id = #loginCustNo# or bkg.Trucker_id = #loginCustNo#)  
+ 		 </isNotEmpty>
+
+ 	</select>
+	<select id="FETCH_GLS_ERCL_LIST"  parameterClass="cargo.cms.external.bo.BookDlvSlotBO" resultClass="cargo.cms.external.bo.BookDlvSlotBO" >
+	SELECT MIN(ERCLNO) AS ERCLNO,AWBNO,AWBNODISPLAY,AWBNOPFX,AWBNOSFX,AGENTNAME,TRUCKNAME,ULDNO,DESTINATION,CARRIER,ERCLPC,ERCLWT,CUSTNO,SPECIALREQ,SHCCODE1,SHCCODE2,SHCCODE3,LASTMODIFIEDDATE,ASSIGNMENTDATE,AGENTSTATUS,STATUS,SHCCODE,CHECKDISABLESTATUS FROM (
+		SELECT
+		  RCL.PRE_RCL_NO AS erclNo,
+			decode(RCL.PPK_TYPE,'M',NULL,RCL.AWB_NO) AS awbNo,
+	  		decode(RCL.PPK_TYPE,'M',NULL,RCL.AWB_NO) AS awbNoDisplay,
+	  		decode(RCL.PPK_TYPE,'M',NULL,substr(RCL.AWB_NO,0,3)) as awbNoPfx,
+	  		decode(RCL.PPK_TYPE,'M',NULL,substr(RCL.AWB_NO,4,8)) as awbNoSfx,
+		  RCL.CUST_NO,
+		  (SELECT CODE_DESC FROM CUST_COMPANY WHERE CODE = RCL.CUST_NO) AS agentName,
+		  (SELECT CODE_DESC FROM CUST_COMPANY WHERE CODE = (SELECT TRUCKER_CUST_NO FROM EXP_PRE_RCL_HD WHERE PRE_RCL_NO = RCL.PRE_RCL_NO)) AS truckName,
+		  decode(RCL.PPK_TYPE,'M',RCL.ULD_KEY,NULL) AS uldNo,
+		  RCL.AWB_DEST AS destination,
+		  RCL.CARR_CODE AS carrier,
+		  RCL.TTL_PCS AS erclPc,
+		  RCL.TTL_WT AS erclWt,
+		  RCL.CUST_NO AS custNo,
+		  (SELECT CODE_DESC FROM MAST_CODE_DTL WHERE CODE = RCL.SPL_LOAD_REQ AND CODE_TYPE = 'SPL_LOAD_REQUIREMENT')AS specialReq,
+		  RCL.SPL_CODE1 AS shcCode1,
+		  RCL.SPL_CODE2 AS shcCode2,
+		  RCL.SPL_CODE3 AS shcCode3,
+		  TO_CHAR(RCL.ASSIGN_DATE,'DDMONYY HH24:MI:SS') AS lastModifiedDate,
+		  TO_CHAR(RCL.ASSIGN_DATE,'DDMONYY') AS assignmentDate,
+		  DECODE(CUST.AGENT_YN,'Y','Agent',DECODE(CUST.TRUCKER_YN,'Y','Trucker','null')) as agentStatus,
+		  (DECODE((SELECT COUNT(TRUCKER_CUST_NO) FROM EXP_PRE_RCL_HD WHERE PRE_RCL_NO = RCL.PRE_RCL_NO),'0',DECODE((SELECT COUNT(ERCL_NO) FROM EXP_BOOKING_DTL WHERE ERCL_NO = RCL.PRE_RCL_NO),'0','NOT BOOKED','BOOKED'),'ASSIGNED')) AS status,
+		 (decode(RCL.SPL_CODE1, null, '',RCL.SPL_CODE1)) || (decode(RCL.SPL_CODE2, null, '','/'||RCL.SPL_CODE2))|| (decode(RCL.SPL_CODE3, null, '','/'||RCL.SPL_CODE3)) AS shcCode,
+	    (DECODE((SELECT CODE FROM MAST_SPL_HAND_CODE WHERE BKG_YN = 'N' AND CODE = RCL.SPL_CODE1),'',DECODE((SELECT CODE FROM MAST_SPL_HAND_CODE WHERE BKG_YN = 'N' AND CODE = RCL.SPL_CODE2),'',DECODE((SELECT CODE FROM MAST_SPL_HAND_CODE WHERE BKG_YN = 'N' AND CODE = RCL.SPL_CODE3),'','N','Y'),'Y'),'Y')) AS checkDisableStatus
+		FROM
+		EXP_PRE_RCL_HD RCL,
+		CUST_COMPANY CUST
+		WHERE
+		RCL.STATUS = 'SUBMITTED'				
+		AND CUST.CODE = RCL.CUST_NO		
+		AND RCL.VOID_DATE IS NULL 
+		AND RCL.VOID_USER_ID IS NULL		
+		<isNotEmpty prepend="AND" property="awbNo">
+			RCL.AWB_NO = NVL(UPPER(#awbNo#),RCL.AWB_NO)
+		</isNotEmpty>		
+		<isNotEmpty  property="uldNo">
+			and (RCL.ULD_KEY = #uldNo# OR exists (select null from EXP_PRE_RCL_dtl DTL where  DTL.PRE_RCL_NO =  RCL.PRE_RCL_NO and  DTL.ULD_KEY = #uldNo#) )
+		</isNotEmpty>		
+		<isNotEmpty prepend="AND" property="agentName">
+			CUST.CODE_DESC = NVL(UPPER(#agentName#),CUST.CODE_DESC)
+		</isNotEmpty>	
+		<isEqual property="erclType" compareValue="All">
+		<isNotEmpty prepend="AND" property="erclType">
+		    RCL.PPK_TYPE = NVL(DECODE(#erclType#,'All','',#erclType#),RCL.PPK_TYPE)
+		</isNotEmpty>	
+		</isEqual>	
+		<isNotEqual property="erclType" compareValue="All">
+		<isNotEmpty prepend="AND" property="erclType">
+		    RCL.PPK_TYPE = DECODE(#erclType#,'Prepack','P',DECODE(#erclType#,'Bulk','B',DECODE(#erclType#,'Mix Prepack','M','')))
+		</isNotEmpty>	
+		</isNotEqual>	
+		<isNotEmpty property="erclDateFrom">
+		<isNotEmpty property="erclDateTo">
+		AND RCL.CR_DATE BETWEEN TO_DATE(#erclDateFrom#,'DDMONYY') AND TO_DATE(#erclDateTo#,'DDMONYY')+1
+		</isNotEmpty>
+		</isNotEmpty>)
+		GROUP BY AWBNO,AWBNODISPLAY,AWBNOPFX,AWBNOSFX,AGENTNAME,TRUCKNAME,ULDNO,DESTINATION,CARRIER,ERCLPC,ERCLWT,CUSTNO,SPECIALREQ,SHCCODE1,SHCCODE2,SHCCODE3,LASTMODIFIEDDATE,ASSIGNMENTDATE,AGENTSTATUS,STATUS,SHCCODE,CHECKDISABLESTATUS
+		<dynamic prepend="ORDER BY ">
+       			 <isNotEmpty property="sortOrder.sortField">
+             		$sortOrder.sortField$
+        		</isNotEmpty>
+ 		</dynamic>			
+</select>
+
+
+</sqlMap>

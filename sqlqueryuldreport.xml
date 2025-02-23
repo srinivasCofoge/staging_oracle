@@ -1,0 +1,1348 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://www.ibatis.com/dtd/sql-map-2.dtd">
+
+	<!--
+		The SQL in these maps files has purposely been typed with more
+		verbosity than is actually required. For example, many of the selects
+		could have just used SELECT * FROM... instead of listing all of the
+		columns. This is to demonstrate that even complex SQL can be handled
+		and coded and formatted the way SQL was meant to be (i.e. not a bunch
+		of concatenated strings in a Java class).
+	-->
+	<!-- This XML file will hold only the queries which would be used for ULD module Reports -->
+	<!-- Added by Varadaraj Muni 01-Sep-2010 -->
+<sqlMap namespace="ULDReportModule">
+
+<select id="uld_rept_193"  parameterClass="cargo.cms.uld.report.bo.EnqULDAllotRept_193BO"  resultClass="cargo.cms.uld.report.bo.EnqULDAllotRept_193BO">
+		select #userID# as userID,
+		g.ULD_ALLOT as uldAllotment, g.ULD_GROUP as uldGroup, a.ULD_TYPE as uldType, b.CONTR_CODE as contourCode
+		from ULD_GROUP_TYPE a 
+		join MAST_ULD_ALLOT_GROUP g on g.ULD_GROUP = a.ULD_GROUP 
+		left join ULD_TYPE_CONTR b on a.ULD_TYPE = b.ULD_TYPE
+		 <dynamic prepend="WHERE">
+			  	g.ULD_ALLOT = g.ULD_ALLOT
+		   <isNotEmpty  prepend="AND" property="uldAllotment">
+		   g.ULD_ALLOT = #uldAllotment#
+		   </isNotEmpty>		   
+		   <isNotEmpty prepend="AND" property="uldGroup">
+		   a.ULD_GROUP = #uldGroup#
+		   </isNotEmpty>		   
+		  <isNotEmpty prepend="AND" property="uldType">
+		  a.ULD_TYPE = #uldType#
+		   </isNotEmpty>	
+		 </dynamic>	 
+		 order by g.ULD_ALLOT, g.ULD_GROUP, a.ULD_TYPE
+ </select>
+
+
+<select id="uld_rept_194"  parameterClass="cargo.cms.uld.report.bo.EnqULDAllotRept_193BO"  resultClass="cargo.cms.uld.report.bo.EnqULDAllotRept_193BO">
+		select
+		#userID# as userID,
+		g.ULD_ALLOT as uldAllotment, g.ULD_GROUP as uldGroup, a.ULD_TYPE as uldType, b.CONTR_CODE as contourCode
+		from ULD_GROUP_TYPE a 
+		join MAST_ULD_ALLOT_GROUP g on g.ULD_GROUP = a.ULD_GROUP 
+		left join ULD_TYPE_CONTR b on a.ULD_TYPE = b.ULD_TYPE
+		 <dynamic prepend="WHERE">
+			g.ULD_ALLOT = g.ULD_ALLOT		  	   
+		   <isNotEmpty property="uldAllotment">
+		   AND g.ULD_ALLOT = #uldAllotment#
+		   </isNotEmpty>
+		   
+		   <isNotEmpty property="uldGroup">
+		   AND a.ULD_GROUP = #uldGroup# 
+		   </isNotEmpty>
+		   
+		  <isNotEmpty property="uldType">
+		  AND a.ULD_TYPE = #uldType#
+		   </isNotEmpty>		   
+		 </dynamic>
+		 order by g.ULD_ALLOT, g.ULD_GROUP, a.ULD_TYPE
+	
+</select>
+<select id="uld_rept_195"  parameterClass="cargo.cms.uld.report.bo.EnqULDAllotRept_193BO"  resultClass="cargo.cms.uld.report.bo.EnqULDAllotRept_193BO">
+		select
+		#userID# as userID,
+     	g.ULD_ALLOT as uldAllotment, g.ULD_GROUP as uldGroup, a.ULD_TYPE as uldType, b.CONTR_CODE as contourCode
+		from ULD_GROUP_TYPE a 
+		join MAST_ULD_ALLOT_GROUP g on g.ULD_GROUP = a.ULD_GROUP 
+		left join ULD_TYPE_CONTR b on a.ULD_TYPE = b.ULD_TYPE
+		 <dynamic prepend="WHERE">
+			g.ULD_ALLOT = g.ULD_ALLOT		  	   
+		   <isNotEmpty property="uldAllotment">
+		   AND g.ULD_ALLOT = #uldAllotment#
+		   </isNotEmpty>
+		   
+		   <isNotEmpty property="uldGroup">
+		   AND a.ULD_GROUP = #uldGroup# 
+		   </isNotEmpty>
+		   
+		  <isNotEmpty property="uldType">
+		  AND a.ULD_TYPE = #uldType#
+		   </isNotEmpty>		   
+		 </dynamic>
+		 order by g.ULD_ALLOT, g.ULD_GROUP, a.ULD_TYPE
+</select>
+
+<select id="sqlFetchMixLoadCSDReport"  parameterClass="cargo.cms.uld.bo.MixLoadCSDBO"  resultClass="cargo.cms.uld.bo.MixLoadCSDBO">
+		select TO_CHAR(CR_DATE,'DDMONYY HH24:MI') recordDate,
+		LSP_NO csd,
+		LOCN locn,
+		AWB_NO awb,
+		CATEGORY category,
+		LSP_PCS pcs,
+		to_char(LSP_WT,'99999999999999999.99') wt,
+		AWB_TYPE type,
+		decode(SHC_1, null, '', SHC_1 
+		|| decode(SHC_2, null, '', ','))
+		|| decode(SHC_2, null, '', SHC_2 || decode(SHC_3, null, '', ','))
+		|| decode(SHC_3, null, '', SHC_3 || decode(SHC_4, null, '', ','))
+		|| decode(SHC_4, null, '', SHC_4 || decode(SHC_5, null, '', ','))
+		|| decode(SHC_5, null, '', SHC_5 || decode(SHC_6, null, '', ','))
+		|| decode(SHC_6, null, '', SHC_6 || decode(SHC_7, null, '', ','))
+		|| decode(SHC_7, null, '', SHC_7 || decode(SHC_8, null, '', ','))
+		|| decode(SHC_8, null, '', SHC_8 || decode(SHC_9, null, '', ','))
+		|| decode(SHC_9, null, '', SHC_9) splCode,
+		TO_CHAR(STRG_DATE,'DDMONYY HH24:MI') updateDate,
+		CR_USER updateUserId
+		from REPT_MIX_CSD_AWB_DTLS
+		where 1=1 
+		<isNotEmpty property="csd">
+		AND LSP_NO = #csd#
+		</isNotEmpty>
+		<isNotEmpty property="awb">
+		AND AWB_NO = #awb# 
+		</isNotEmpty>
+		<isNotEmpty property="fromDate">
+			<isNotEmpty property="toDate">
+			AND trunc(CR_DATE) between to_date(#fromDate#,'DDMONYY') AND TO_DATE(#toDate#,'DDMONYY')
+			</isNotEmpty>	
+		</isNotEmpty>
+		order by CR_DATE DESC,STRG_DATE desc,LSP_NO ASC
+</select>
+
+  	<select id="uld_rept_005_LUCDtls"  parameterClass="cargo.cms.uld.report.bo.EnqLUC_005ReptBO"  resultClass="cargo.cms.uld.report.bo.EnqLUC_005ReptBO">
+		select #slucNo# as slucNo,
+			row_number() over (order by LUC_NO) serialNo,
+			OUT_CARR_CODE As isueCarr , IN_CARR_CODE As recCarr, decode(LUC_STAT,
+			'I', 'Issued', 'V', 'Void', 'P', 'Posted') AS status,to_CHAR(TRANS_DATE, 'DDMONYY') AS transferDate ,
+			TO_CHAR(TRANS_DATE, 'hh24:mi') AS transferTime,  TRANS_USER_ID AS transUser,to_CHAR(TR_POST_DATE, 'DDMONYY') AS postDate, 
+			TO_CHAR(TR_POST_DATE, 'hh24:mi') AS postTime, TR_POST_USER_ID AS postUser, to_char(LM_DATE, 'ddMMYY hh24:mi') AS lmDate , 
+			CR_USER_ID AS crUserId ,  to_char(TR_POST_DATE, 'ddMONyy hh24:mi') AS postDateTime ,
+			TR_POST_USER_ID AS postUser, TR_POST_RMK AS postRemark 
+			from luc_hd WHERE 1=1 AND 
+			upper(LUC_NO) = #slucNo#  
+			<isNotEmpty prepend="AND" property="loginCarrier">
+				upper(OUT_CARR_CODE) = #loginCarrier# 
+			</isNotEmpty> 
+			order by 1 desc
+	</select>
+
+	<select id="uld_rept_005_DateDtls"  parameterClass="cargo.cms.uld.report.bo.EnqLUC_005ReptBO"  resultClass="cargo.cms.uld.report.bo.EnqLUC_005ReptBO">
+			select LUC_NO AS lucNumber , OUT_CARR_CODE As isueCarr , IN_CARR_CODE
+			As recCarr,
+			decode(LUC_STAT, 'I', 'Issued', 'V', 'Void', 'P', 'Posted') AS
+			status,to_CHAR(TRANS_DATE, 'DDMONYY') AS transferDate ,
+			TO_CHAR(TRANS_DATE, 'hh24:mi') AS transferTime, TRANS_USER_ID AS
+			transUser, to_CHAR(TR_POST_DATE, 'DDMONYY') AS postDate,
+			TO_CHAR(TR_POST_DATE, 'hh24:mi') AS postTime, TR_POST_USER_ID AS
+			postUser, to_char(LM_DATE, 'ddMMYY hh24:mi') AS lmDate ,
+			CR_USER_ID AS crUserId , to_char(TR_POST_DATE, 'ddMONyy hh24:mi') AS
+			postDateTime ,TR_POST_USER_ID AS postUser,
+			TR_POST_RMK AS postRemark from luc_hd
+			WHERE 1=1
+			<isNotEmpty prepend="AND" property="transferDateFrom">
+		<![CDATA[
+			TRANS_DATE >= TO_DATE(#transferDateFrom#, 'DDMONYY')
+		]]>
+		</isNotEmpty>
+
+		<isNotEmpty prepend="AND" property="transferDateTo">
+		<![CDATA[
+			TRANS_DATE < TO_DATE(#transferDateTo#, 'DDMONYY') + 1 
+		]]>
+		</isNotEmpty>
+		<isNotEmpty prepend="AND" property="s_issueCarr">
+			OUT_CARR_CODE = #s_issueCarr#
+		</isNotEmpty>
+		<isNotEmpty prepend="AND" property="s_recCarr">
+			IN_CARR_CODE = #s_recCarr#
+		</isNotEmpty>
+		<isEmpty property="s_recCarr">
+			<isNotEmpty prepend="AND" property="loginCarrier">
+				(OUT_CARR_CODE = #loginCarrier#
+				OR OUT_CARR_CODE IN (SELECT CARR_CODE FROM MAST_CARR_GRP
+				WHERE GRP_CARR_CODE = #loginCarrier#))	 
+			</isNotEmpty>
+		</isEmpty>
+		order by 1 desc
+	</select>
+	
+	<select id="uld_rept_005_AllDtls"  parameterClass="cargo.cms.uld.report.bo.EnqLUC_005ReptBO"  resultClass="cargo.cms.uld.report.bo.EnqLUC_005ReptBO">
+		select A.LUC_NO AS lucNumber , A.OUT_CARR_CODE As isueCarr , A.IN_CARR_CODE As recCarr, decode(A.LUC_STAT,
+		'I', 'Issued', 'V', 'Void', 'P', 'Posted') AS status,to_CHAR(A.TRANS_DATE, 'DDMONYY') AS transferDate ,
+		TO_CHAR(A.TRANS_DATE, 'hh24:mi') AS transferTime,  A.TRANS_USER_ID AS transUser,to_CHAR(A.TR_POST_DATE, 'DDMONYY') AS postDate, 
+		TO_CHAR(A.TR_POST_DATE, 'hh24:mi') AS postTime, A.TR_POST_USER_ID AS postUser, to_char(A.LM_DATE, 'ddMMYY hh24:mi') AS lmDate , 
+		A.CR_USER_ID AS crUserId ,  to_char(A.TR_POST_DATE, 'ddMONyy hh24:mi') AS postDateTime ,
+		A.TR_POST_USER_ID AS postUser, A.TR_POST_RMK AS postRemark 
+		from luc_hd A, luc_dtl B WHERE A.LUC_NO = B.LUC_NO 
+		<isNotEmpty prepend="AND" property="s_uldNo">
+						B.ULD_KEY = upper(#s_uldNo#) 
+			</isNotEmpty> 
+			<isNotEmpty prepend="AND" property="s_ctrlRecieptNo">
+						B.RECPT_NO = upper(#s_ctrlRecieptNo#) 
+			</isNotEmpty> 
+			<isNotEmpty prepend="AND" property="s_uldType">
+						B.ULD_TYPE = upper(#s_uldType#) 
+			</isNotEmpty> 
+			<isNotEmpty prepend="AND" property="s_uldOwner">
+						A.OUT_CARR_CODE = upper(#s_uldOwner#) 
+			</isNotEmpty> 
+			
+			<isNotEmpty prepend="AND" property="loginCarrier">
+			(OUT_CARR_CODE = #loginCarrier#
+			OR OUT_CARR_CODE IN (SELECT CARR_CODE FROM MAST_CARR_GRP
+			WHERE GRP_CARR_CODE = #loginCarrier#))	 
+			</isNotEmpty>
+			group by  A.LUC_NO  , A.OUT_CARR_CODE  , A.IN_CARR_CODE , decode(A.LUC_STAT,
+			      'I', 'Issued', 'V', 'Void', 'P', 'Posted') ,to_CHAR(A.TRANS_DATE, 'DDMONYY')  ,
+			      TO_CHAR(A.TRANS_DATE, 'hh24:mi') ,  A.TRANS_USER_ID ,to_CHAR(A.TR_POST_DATE, 'DDMONYY') , 
+			      TO_CHAR(A.TR_POST_DATE, 'hh24:mi') , A.TR_POST_USER_ID , to_char(A.LM_DATE, 'ddMMYY hh24:mi')  , 
+			      A.CR_USER_ID  ,  to_char(A.TR_POST_DATE, 'ddMONyy hh24:mi')  ,
+			      A.TR_POST_USER_ID , A.TR_POST_RMK  
+			order by 1 desc
+
+	</select>
+	
+	<!--  Added by Rahul Data for Enquire ULD Transfer (UT) -> Details -->
+	<select id="uld_rept_005_UTD"  parameterClass="cargo.cms.uld.report.bo.EnqLUC_005ReptBO"  resultClass="cargo.cms.uld.report.bo.EnqLUC_005ReptBO">
+	SELECT   
+		Distinct luc_hd.LUC_NO AS lucNumber, 
+		luc_hd.RCV_CARR_TERM AS rcvCarrTerm,
+		luc_hd.UPLOAD_DOC AS transactionId, 
+		LUC_DATE As lucDate, 
+		LUC_STAT AS lucStat, 
+		RMK AS remark,  
+		RMK AS lucRemark,
+		to_char(luc_hd.LM_DATE, 'ddMMYY hh24:mi:ss') As lmDate ,   
+		OUT_CARR_CODE as isueCarr, 
+		IN_CARR_CODE as recCarr,
+		to_CHAR(TRANS_DATE, 'DDMONYY') As transferDate, 
+		TO_CHAR(TRANS_DATE, 'hh24:mi') As transferTime, 
+		TO_CHAR(TRANS_DATE, 'hh24') As transferTimeHH, 
+		TO_CHAR(TRANS_DATE, 'MI') As transferTimeMM,  
+		ULD_key As uldNo, 
+		RECPT_NO As ctrlRecptNo, 
+		DEST_CODE As lucLoc, c.luc_send as lucSend ,
+		LUC_STAT AS lucStat, 
+		decode(LUC_STAT, 'I', 'Issued', 'V', 'Void', 'P', 'Posted') AS status, 
+		TRANS_USER_ID AS transUser,
+		to_char(TR_POST_DATE, 'ddMONyy hh24:mi') AS postDateTime , 
+		TR_POST_USER_ID AS postUser, 
+		TR_POST_RMK AS postRemark , 
+		sys_param.BASE_PORT AS basePort,
+		sys_param.EDI_ORI_ADD AS ediOriAdd ,
+		luc_hd.LM_USER_ID as lmUserId , 
+		luc_hd.CR_USER_ID AS crUserId , 
+		to_char(luc_hd.LM_DATE, 'ddMMYY hh24:mi') As lmDate, 
+		to_char(luc_hd.CR_DATE, 'ddMMYY hh24:mi')  as crDate,
+		to_char(TR_POST_DATE,'DDMONYY') postDate,
+		to_char(TR_POST_DATE,'HH24') postTimeHH,
+		to_char(TR_POST_DATE,'MI') postTimeMM 
+	FROM 
+		luc_hd 
+		left join luc c on luc_hd.luc_no = c.luc_no , 
+		luc_dtl , sys_param 
+	WHERE 
+		luc_hd.luc_no=luc_dtl.luc_no 
+		<isNotEmpty property="lucNumber"  >
+			and luc_hd.LUC_NO=UPPER(#lucNumber#)
+		</isNotEmpty>
+		<isNotEmpty property="uldNo" >
+			and luc_dtl.uld_key=UPPER(#uldNo#)
+		</isNotEmpty> 
+
+	</select>
+	<!-- END -->
+	
+	<!--  Added by Surendra Gollapalli on 16th Sep 2010 for Enquire CSD Reports START for all Loc,Movement and Enquire  -->
+	
+	
+<select id="uld_rept_048"  parameterClass="cargo.cms.uld.report.bo.LSPMovReptBO"  resultClass="cargo.cms.uld.report.bo.LSPMovReptBO">
+		select TO_CHAR(MOV_DATE,'DDMONYY HH24:MI') movementDate ,b.EVENT_DESC event,
+	 ORG_LOC_CODE originalLocationCode ,
+	 DEST_LOC_CODE locationCode,LM_USER_ID staffId 
+	from LSP_MOV a, REGISTER_TR_NO_EVENTS b 
+	WHERE A.TR_TYPE = B.TR_TYPE AND 
+	A.EVENT_ID = B.EVENT_ID  AND 
+	A.MOV_DATE &gt;= TO_DATE(#strMovementFrom#,'DD/MM/YY HH24MI')
+	and A.MOV_DATE &lt;= TO_DATE(#strMovementTo#,'DD/MM/YY HH24MI')
+	and LSP_NO = #strLSPNo#
+	and nvl(ORG_LOC_CODE, '*') != nvl(DEST_LOC_CODE,'*')
+	  <dynamic prepend="ORDER BY ">
+		            <isNotEmpty property="sortOrder.sortField">
+		             $sortOrder.sortField$
+		           </isNotEmpty>
+		           
+		           <isEmpty property="sortOrder.sortField">
+		             a.MOV_DATE desc
+		           </isEmpty>
+		 </dynamic>
+
+
+
+</select>
+
+		
+<select id="uld_rept_046_Hdr"  parameterClass="cargo.cms.uld.report.bo.EnqLSPHdrReptBO"  resultClass="cargo.cms.uld.report.bo.EnqLSPHdrReptBO">
+		<![CDATA[
+												
+										select LSP_NO lspNo, 														   
+														   LOC_CODE locationCode, 
+														   CASE WHEN EMPTY_FLG='Y' THEN 'Yes'
+																	 WHEN EMPTY_FLG='N' THEN 'No'
+														   END as emptyFlag, 														  
+														   HGT_CLASS heightClass, 
+														   TO_CHAR(STRG_DATE,'DDMONYY HH24:MI') storageDate, 
+														   TO_CHAR(RTRV_DATE,'DDMONYY HH24:MI') retrieveDate 
+																				 
+																	from LSP_INVENTORY
+																		 where LSP_NO = #lspNo#
+																		 order by LSP_NO												
+			]]>
+	</select>
+	
+<select id="uld_rept_046_CurrentAWBDtls"  parameterClass="cargo.cms.uld.report.bo.EnqLSPHdrReptBO"  resultClass="cargo.cms.uld.report.bo.EnqLSPHdrReptBO">
+<!--
+			SELECT 
+			  SUBSTR(I.AWB_NO,1,3)||'-'||SUBSTR(I.AWB_NO,4) strAWBNo,			 
+			  I.LOC_CODE strLocation,
+			  I.SEQ_NO AS seqNo,
+			  I.LOCN_PCS strLocationPieces,
+			  trim(to_char(I.LOCN_WT,'9999990.9')) strLocationWeight,
+			  I.FLT_TYPE strFltType,
+			  I.FLT_KEY strFltNo,
+			  TO_CHAR(I.FLT_DATE,'DDMONYY') strFltDate,
+			  TO_CHAR(I.STRG_DATE,'DDMONYY HH24:MI') strStorageDate,
+			  I.CATALOG as strCatalogue
+			FROM   
+			  AWB_INVENTORY I LEFT JOIN AWB A ON A.AWB_NO = I.AWB_NO AND A.AWB_DATE = I.AWB_DATE 
+			WHERE 
+			  I.LSP_NO = #lspNo#         
+			ORDER BY I.STRG_DATE DESC
+
+-->
+		select row_number() over (order by I.AWB_NO) serialNo, I.AWB_NO strAWBNo,I.SEQ_NO AS seqNo, I.LOC_CODE strLocation, I.LOCN_PCS strLocationPieces, trim(to_char(I.LOCN_WT, '9999999.99')) strLocationWeight,
+		    I.FLT_TYPE strFltType, I.FLT_KEY strFltNo, TO_CHAR(I.FLT_DATE,'DDMONYY') strFltDate, 
+		    TO_CHAR(I.STRG_DATE,'DDMONYY HH24:MI') strStorageDate,LOCN_PCS strLocationPieces ,
+			trim(to_char(LOCN_WT, '9999999.99'))  strLocationWeight,
+		    NVL(I.CATALOG,(SELECT CATALOG FROM AWB WHERE AWB_NO = I.AWB_NO AND AWB_DATE = I.AWB_DATE AND ROWNUM = 1)) as strCatalogue
+		    from AWB_INVENTORY I
+		    LEFT JOIN AWB A ON A.AWB_NO = I.AWB_NO AND A.AWB_DATE = I.AWB_DATE
+		    where I.LSP_NO = #lspNo#       
+			
+
+
+</select>
+<select id="uld_rept_046_HistoryAWBDtls"  parameterClass="cargo.cms.uld.report.bo.EnqLSPHdrReptBO"  resultClass="cargo.cms.uld.report.bo.EnqLSPHdrReptBO">
+										
+				SELECT 
+				 SUBSTR(AWB_NO,1,3)||'-'||SUBSTR(AWB_NO,4) strAWBNo,				  
+				  LOC_CODE strLocation,
+				  LOC_PCS strLocationPieces,
+				  trim(to_char(LOC_WT,'9999990.9')) strLocationWeight,
+				   NVL(FLT_TYPE,' ') as strFltType,
+     				NVL(FLT_KEY,' ') as strFltNo,
+				  NVL(TO_CHAR(FLT_DATE,'DDMONYY'),' ') strFltDate,
+				NVL(TO_CHAR(STRG_DATE,'DDMONYY HH24:MI'),' ') strStorageDate,
+				 NVL(CATALOG,(SELECT CATALOG FROM AWB WHERE AWB_NO = AWB_MOV.AWB_NO AND AWB_DATE = AWB_MOV.AWB_DATE AND ROWNUM = 1)) as strCatalogue
+				FROM 
+				  AWB_MOV
+				WHERE  LSP_NO = #lspNo# 
+				  AND AWB_NO || AWB_DATE NOT IN (SELECT AWB_NO || AWB_DATE FROM AWB_INVENTORY WHERE LSP_NO = #lspNo#)
+				order by STRG_DATE DESC
+
+
+</select>
+
+<!--  Added by Surendra Gollapalli on 20th Sep 2010 to fetch the Agent Inv Dtl START -->
+<select id="uld_rept_046_AgentInventoryDtls"  parameterClass="cargo.cms.uld.report.bo.EnqLSPHdrReptBO"  resultClass="cargo.cms.uld.report.bo.EnqLSPHdrReptBO">
+										
+		select HAWB_NO hawbNumber , AWB_NO strAWBNum, AGENT_CODE agentAWBInvName, LOCN_PCS strAWBLocationPieces,trim(to_char(LOCN_WT, '9999999.99')) strAWBLocationWeight
+           from ASV_INVENTORY 
+          where LSP_NO =#lspNo# 
+
+
+</select>
+<!--  Added by Surendra Gollapalli on 20th Sep 2010 to fetch the Agent Inv Dtl END -->
+<!--  Modified by Rahul Data on 25th JAN 2011 to fetch the Agent Inv Dtl with Sort Order END -->
+<select id="uld_rept_047"  parameterClass="cargo.cms.uld.report.bo.LSPLocReptBO"  resultClass="cargo.cms.uld.report.bo.LSPLocReptBO">
+  select lsp.LSP_NO lspNo,
+  lsp.LOC_CODE locationCode,
+  lsp.EMPTY_FLG emptyFlag, 
+  lsp.HGT_CLASS heightClass, 
+  TO_CHAR(lsp.STRG_DATE,'DDMONYY HH24:MI') storageDate, 
+  TO_CHAR(lsp.RTRV_DATE,'DDMONYY HH24:MI') retrieveDate,
+  TO_CHAR(lsp.STRG_DATE,'DDMONYY') strg,
+  loc.wh_group groupId,
+  area.wh_area_desc warehousedescription,
+  area.wh_area warehouseDestination
+  from LSP_INVENTORY lsp,MAST_WH_LOC loc, MAST_WH_GROUP grp left outer join
+         MAST_WH_AREA area on grp.wh_area = area.wh_area
+	         WHERE loc.wh_group = grp.wh_group and lsp.LOC_CODE=loc.code  	
+			<isNotEmpty property="locationCode" prepend="AND" > LOC_CODE  = #locationCode# </isNotEmpty>
+			<isNotEmpty property="emptyFlag">   
+				<isNotEqual property="emptyFlag" compareValue="all" prepend="AND" >
+					EMPTY_FLG = #emptyFlag# 
+				</isNotEqual>
+				<isEqual property="emptyFlag" compareValue="all"  prepend="AND">
+					 ( EMPTY_FLG = 'Y' || EMPTY_FLG = 'N')
+				</isEqual>
+			</isNotEmpty>
+			  <isNotEmpty property="swarehouseDestination" prepend="AND">
+               area.wh_area like UPPER(#swarehouseDestination#) 
+           </isNotEmpty>
+           <isNotEmpty property="groupId" prepend="AND">
+               grp.wh_group like UPPER(#groupId#) 
+           </isNotEmpty>
+             <isNotEmpty property="inactiveDays" prepend="AND">
+               (SYSDATE - lsp.STRG_DATE)&gt;= #inactiveDays#
+           </isNotEmpty>
+             <dynamic prepend="ORDER BY ">
+		           <isNotEmpty property="sortOrder.sortField">
+		             $sortOrder.sortField$
+		           </isNotEmpty>
+		 </dynamic>
+	</select>
+<select id="uld_rept_046_Hdr_sqlLSPByLSPNoQuery" parameterClass="java.lang.String"  resultClass="cargo.cms.uld.report.bo.EnqLSPHdrReptBO">
+	select LSP_NO lspNo, TARGET target , LOCKED status, LOC_CODE locationCode, EMPTY_FLG emptyFlag, HGT_CLASS heightClass, TO_CHAR(STRG_DATE,'DDMONYY HH24:MI') storageDate, 
+	TO_CHAR(RTRV_DATE,'DDMONYY HH24:MI') retrieveDate,REF_NET_WT as refNetWt from LSP_INVENTORY
+	where LSP_NO =#PARAM# 
+</select>
+<select id="uld_rept_046_Hdr_sqlSRFByLSPNoQuery" parameterClass="java.lang.String"  resultClass="cargo.cms.uld.bo.LSPBO">
+	select I.SRF_NO srf , I.COLL_NAME collPerson,I.TRUCK_NO truckNo,
+	I.PRINT_IND prinyInd, 
+	 decode((SELECT IMP_SRF_POST_YN FROM MAST_CONSTRAINT_CODE WHERE CODE = D.CC_CODE),'N','Y','N') ccExist,
+	FUN_GET_TRUCK_DOCK(I.TRUCK_NO) truckDock
+	from AWB_INVENTORY A
+	join IMP_SRF I ON A.SRF_NO = I.SRF_NO
+	join IMP_SRF_FLT D ON I.SRF_NO = D.SRF_NO
+	WHERE I.SRF_EXPY_DATE &gt; SYSDATE
+	AND I.STATUS='ISSUED'
+	AND A.LSP_NO=#PARAM# and rownum=1
+</select>
+<select id="uld_rept_046_Hdr_sqlFltByLSPNoQuery" parameterClass="java.lang.String"  resultClass="cargo.cms.uld.bo.LSPBO">
+	select  T.CNTG_FLT_KEY fltKey, TO_CHAR(T.CNTG_FLT_DATE,'DDMONYY') fltDate FROM AWB_INVENTORY A
+  	JOIN DDT_SHP S	ON S.AWB_NO = A.AWB_NO AND S.AWB_DATE = A.AWB_DATE 
+	JOIN DDT_SHP_TRF_DTL T ON T.TR_NO=S.TR_NO AND T.SDOC_LINE_NO=S.DOC_LINE_NO
+	WHERE T.TRF_TYPE='QT' AND A.LSP_NO=#PARAM# and rownum=1
+</select>
+
+<select id="uld_rept_046_Hdr_sqlHAWBInventoryByLSPNoQuery" parameterClass="cargo.cms.uld.report.bo.EnqLSPHdrReptBO"  resultClass="cargo.cms.uld.report.bo.EnqLSPHdrReptBO">
+	select HAWB_NO itrHawbNumber,decode(STRG_PCS,NULL,' ',STRG_PCS) itrstrLocationPieces ,
+	decode(trim(to_char(STRG_WT, '9999999.99')),NULL,' ',trim(to_char(STRG_WT, '9999999.99')))  itrstrLocationWeight
+   	FROM  HAWB_INVENTORY
+    where  SEQ_NO =#seqNo#
+</select>
+	
+	<!--  Added by Surendra Gollapalli on 16th Sep 2010 for Enquire CSD Reports END for all Loc,Movement and Enquire  --><!--
+	
+	<select id="sqlgetInventoryCheckList_220" parameterClass="cargo.cms.uld.report.bo.InventoryCheckList_220BO"  resultClass="cargo.cms.uld.report.bo.InventoryCheckList_220BO" >
+		select *
+		from (SELECT  TR_NO as trNo , DISCR_YN as discripancy_YN, TO_CHAR(CR_DATE,'DDMONYY HH24:MI') as createdDate , 
+		WH_DEST as whDest, LOC_CODE as locCode, CR_USER_ID as createdUserId, h.AWB_NO as awbNo , ULD_KEY  as uldKey ,
+		LSP_NO as lspNo, ULD_KEY || LSP_NO as uld_lspKey ,  PCS as pieces, REMARKS as remarks, 
+		nvl((select carr_code
+			  from (select awb_no, carr_code
+					 from (select awb_no, carr_code,
+						  dense_rank() over (partition by awb_no order by cr_date desc) rank
+						  from awb)
+					 where rank = 1) a
+			  where rownum = 1 and awb_no = h.awb_no),
+			 (select owner_id from uld_inventory where uld_key = h.uld_key)) carr_code
+		FROM HHT_PHY_CHECKING h
+		<dynamic prepend="WHERE">
+		<isNotEmpty prepend="AND" property="checkListFromDate">
+		<isNotEmpty prepend="AND" property="checkListToDate"/>
+		TO_DATE(TO_CHAR(CR_DATE,'DDMONYY')) BETWEEN 
+		TO_DATE(#checkListFromDate# ,'DDMONYY') AND  TO_DATE(#checkListToDate# , 'DDMONYY')
+		</isNotEmpty>
+		<isNotEmpty prepend="AND" property="discripancy">
+		DISCR_YN LIKE #discripancy#
+		</isNotEmpty>
+		<isNotEmpty prepend="AND" property="whDest">
+		WH_DEST = #whDest#
+		</isNotEmpty>
+		</dynamic>) a
+		where nvl(carr_code, '**') = nvl(#loginCarrier#, nvl(carr_code, '**'))
+		ORDER BY createdDate DESC	 
+	</select>
+	
+	
+	
+	
+	
+	--><select id="sqlgetInventoryCheckList_220" parameterClass="cargo.cms.uld.report.bo.InventoryCheckList_220BO" resultClass="cargo.cms.uld.report.bo.InventoryCheckList_220BO">
+				select invdl.TR_NO trNo,
+				invdl.DOC_LINE_NO doc_line_no,
+				invdl.DISCR_YN discripancy_YN,
+				TO_CHAR(invdl.CR_DATE, 'DDMONYY HH24:MI') createdDate,
+				invdl.CR_USER_ID createdUserId,
+				invhd.LOC_CODE locCode,		
+				invhd.GRP_CODE grpCodeDisp,  
+				invdl.ULD_KEY uldKey,
+				invhd.CHK_OPT checking,
+				(select CODE_DESC from mast_code_dtl where Code=invdl.DISC_CODE) discrCode,
+				(select LOC_CODE from ULD_INVENTORY where LOC_CODE in 
+				(select CODE from mast_wh_loc where wh_group=invhd.GRP_CODE) 
+				and ULD_KEY=invdl.ULD_KEY) grpCode,
+				invdl.REMARKS  from PHY_INV_CHECKING_DTL invdl, PHY_INV_CHECKING_HD invhd
+				  where invdl.TR_NO=invhd.TR_NO  AND
+				   invdl.CR_DATE BETWEEN TO_DATE(#startDate#,'DDMONYY HH24:MI') AND TO_DATE(#endDate#,'DDMONYY HH24:MI')
+				  <isNotEmpty property="grpCode" prepend="AND" > 
+				  GRP_CODE  = #grpCode# </isNotEmpty>
+				   <isNotEmpty property="locCode" prepend="AND" > 
+				  LOC_CODE  = #locCode# </isNotEmpty>
+				  <isNotEmpty property="discripancy" prepend="AND" > 
+				  DISCR_YN  = #discripancy# </isNotEmpty>
+				  <dynamic prepend="ORDER BY ">
+			           <isNotEmpty property="sortOrder.sortField">
+			             $sortOrder.sortField$
+			           </isNotEmpty>
+			           <isEmpty property="sortOrder.sortField">
+			            createdDate
+			           </isEmpty>
+ 				</dynamic>
+  </select>
+	
+	<select id="uld_serviceErrorlogsearch1_191"  parameterClass="cargo.cms.uld.report.bo.ServiceErrorLogRept_191BO"  resultClass="cargo.cms.uld.report.bo.ServiceErrorLogRept_191BO">
+		
+		<![CDATA[
+			SELECT  to_char(TR_DATE, 'DDMONYY HH24:MI') as trDate, 
+				CR_USER_ID as lmUserId, 
+				ULD_KEY as uldKey, 
+				ULD_KEY as uldKey1,
+				TR_NO as trNo,
+				TR_NO as urfNo, 
+				TR_TYPE as trtype,
+			    ERR_REASON as reason, 
+				SVC_USER_ID as svcStaff, 
+				to_char(SVC_DATE, 'DDMONYY hh24:mi') as svcDate, 
+				FLT_TYPE as fltType,
+				DOC_LINE_NO as docLineNo,
+			    to_char(FLT_DATE,'DDMONYY') as fltDate, 
+				FLT_KEY as fltKey
+			FROM SERVICE_ERR_LOG
+			
+			WHERE TR_DATE >= to_date(#dateFrom#,'DDMONYY') and TR_DATE < (to_date(#dateTo#,'DDMONYY')+1)
+			
+			and NVL(FLT_TYPE, '%') like #ftype# 
+			
+			AND SVC_DATE is not null 
+			]]>
+			<dynamic prepend="ORDER BY ">
+			 	  <isEmpty property="sortOrder.sortField">
+                     TR_DATE DESC 
+                  </isEmpty>
+                  <isNotEmpty property="sortOrder.sortField">
+                      $sortOrder.sortField$
+                  </isNotEmpty>
+            </dynamic>
+		</select>
+	
+	<select id="uld_serviceErrorlogsearch2_191"  parameterClass="cargo.cms.uld.report.bo.ServiceErrorLogRept_191BO"  resultClass="cargo.cms.uld.report.bo.ServiceErrorLogRept_191BO">
+			<![CDATA[
+				SELECT  to_char(TR_DATE, 'DDMONYY hh24:mi') as trDate, 
+					CR_USER_ID as lmUserId, 
+					ULD_KEY as uldKey,
+					ULD_KEY as uldKey1, 
+					TR_NO as trNo, 
+					TR_NO as urfNo,
+					TR_TYPE as trtype,
+					ERR_REASON as reason, 
+					SVC_USER_ID as svcStaff, 
+					to_char(SVC_DATE, 'DDMONYY hh24:mi') as svcDate, 
+					FLT_TYPE as fltType,
+					DOC_LINE_NO as docLineNo,
+				    to_char(FLT_DATE,'DDMONYY') as fltDate, 
+					FLT_KEY as fltKey
+			  
+			FROM SERVICE_ERR_LOG
+			
+			WHERE TR_DATE >= to_date(#dateFrom#,'ddmonyy') and TR_DATE < (to_date(#dateTo#,'ddmonyy')+1)
+			
+			and NVL(FLT_TYPE, '%') like #ftype#
+			]]>
+			<dynamic prepend="ORDER BY ">
+			 	  <isEmpty property="sortOrder.sortField">
+                     TR_DATE DESC 
+                  </isEmpty>
+                  <isNotEmpty property="sortOrder.sortField">
+                      $sortOrder.sortField$
+                  </isNotEmpty>
+            </dynamic>		
+		</select>
+	
+	<select id="uld_serviceErrorlogsearch3_191"  parameterClass="cargo.cms.uld.report.bo.ServiceErrorLogRept_191BO"  resultClass="cargo.cms.uld.report.bo.ServiceErrorLogRept_191BO">
+			
+		<![CDATA[
+			SELECT  to_char(TR_DATE, 'ddMonyy hh24:mi') as trDate, 
+				CR_USER_ID as lmUserId, 
+				ULD_KEY as uldKey, 
+				ULD_KEY as uldKey1,
+				TR_NO as trNo, 
+				TR_NO as urfNo,
+				TR_TYPE as trtype,
+			    ERR_REASON as reason, 
+				SVC_USER_ID as svcStaff, 
+				to_char(SVC_DATE, 'ddMonyy hh24:mi') as svcDate, 
+				FLT_TYPE as fltType,
+				DOC_LINE_NO as docLineNo,
+			    to_char(FLT_DATE,'ddMonyy') as fltDate, 
+				FLT_KEY as fltKey
+			FROM SERVICE_ERR_LOG
+			
+			WHERE TR_DATE >= to_date(#dateFrom#,'ddmonyy') and TR_DATE < (to_date(#dateTo#,'ddmonyy')+1)
+			
+			and NVL(FLT_TYPE, '%') like #ftype# 
+			
+			AND SVC_DATE is null
+			]]>
+			<dynamic prepend="ORDER BY ">
+			 	  <isEmpty property="sortOrder.sortField">
+                     TR_DATE DESC 
+                  </isEmpty>
+                  <isNotEmpty property="sortOrder.sortField">
+                      $sortOrder.sortField$
+                  </isNotEmpty>
+            </dynamic>
+		</select>
+	
+	<select id="sqlserviceerrorlogsearch4_Print"  parameterClass="cargo.cms.uld.report.bo.ServiceErrorLogRept_191BO"  resultClass="cargo.cms.uld.report.bo.ServiceErrorLogRept_191BO">
+			<![CDATA[
+			SELECT  to_char(TR_DATE, 'ddMonyy hh24:mi') as trDate, 
+				CR_USER_ID as lmUserId, 
+				ULD_KEY as uldKey, 
+				ULD_KEY as uldKey1,
+				TR_NO as trNo, 
+				TR_NO as urfNo,
+				TR_TYPE as trtype,
+			    RMK1 as reason, 
+				SVC_USER_ID as svcStaff, 
+				to_char(SVC_DATE, 'ddMonyy hh24:mi') as svcDate, 
+				FLT_TYPE as fltType,
+				DOC_LINE_NO as docLineNo,
+			    to_char(FLT_DATE,'ddMonyy') as fltDate, 
+				FLT_KEY as fltKey
+			FROM SERVICE_ERR_LOG			
+			WHERE TR_DATE >= to_date(#dateFrom#,'ddmonyy') and TR_DATE < (to_date(#dateTo#,'ddmonyy')+1)			
+			and TR_TYPE = #ftype#
+			]]>
+			<dynamic prepend="ORDER BY ">
+			 	  <isEmpty property="sortOrder.sortField">
+                     TR_DATE DESC 
+                  </isEmpty>
+                  <isNotEmpty property="sortOrder.sortField">
+                      $sortOrder.sortField$
+                  </isNotEmpty>
+            </dynamic>
+		</select>
+		
+	<select id="sqlserviceerrorlogsearch5_Print"  parameterClass="cargo.cms.uld.report.bo.ServiceErrorLogRept_191BO"  resultClass="cargo.cms.uld.report.bo.ServiceErrorLogRept_191BO">
+			<![CDATA[
+			SELECT  to_char(TR_DATE, 'ddMonyy hh24:mi') as trDate, 
+				CR_USER_ID as lmUserId, 
+				ULD_KEY as uldKey, 
+				ULD_KEY as uldKey1,
+				TR_NO as trNo, 
+				TR_NO as urfNo,
+				TR_TYPE as trtype,
+			    (RMK1 || ' ' || RMK2) as reason, 
+				SVC_USER_ID as svcStaff, 
+				to_char(SVC_DATE, 'ddMonyy hh24:mi') as svcDate, 
+				FLT_TYPE as fltType,
+				DOC_LINE_NO as docLineNo,
+			    to_char(FLT_DATE,'ddMonyy') as fltDate, 
+				FLT_KEY as fltKey
+			FROM SERVICE_ERR_LOG			
+			WHERE TR_DATE >= to_date(#dateFrom#,'ddmonyy') and TR_DATE < (to_date(#dateTo#,'ddmonyy')+1)			
+			and TR_TYPE = 'MH'
+			]]>
+			<dynamic prepend="ORDER BY ">
+			 	  <isEmpty property="sortOrder.sortField">
+                     TR_DATE DESC 
+                  </isEmpty>
+                  <isNotEmpty property="sortOrder.sortField">
+                      $sortOrder.sortField$
+                  </isNotEmpty>
+            </dynamic>
+		</select>
+		
+	
+	<select id="exp_mrcl_isocode" parameterClass="java.lang.String" resultClass="java.lang.String">
+	<!--	SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE= #PARAM#  -->
+		SELECT ISO_FORM_NO FROM MAST_REP_PRT_DEFAULTS WHERE CODE = #PARAM# 
+	</select>
+	
+	<select id="uld_rept_042_ULDDtls"  parameterClass="cargo.cms.uld.report.bo.EnqULD_42ReptBO"  resultClass="cargo.cms.uld.report.bo.EnqULD_42ReptBO">
+	
+	<![CDATA[			
+
+				SELECT 		
+				(select to_char(ob_handover_date,'DDMONYY HH24:MI') FROM EXP_CHKOUT_DTL    WHERE flt_key = A.FLT_KEY   AND flt_date  = A.FLT_DATE   AND ULD_KEY   = A.ULD_KEY)as obTime,	
+						A.ULD_KEY strULDKey,
+						A.CONTR_CODE contrCode,
+						A.ULD_NO strULDNo , 
+						A.OWNED_INV STRAATINV,						
+						A.LOC_CODE strLocation,
+						DECODE(A.CFM_STATUS,'REMOVED','',A.OWNER_ID) strOwnerCode,
+						DECODE(A.CFM_STATUS,'REMOVED','',B.EIR_NO) strEIRNo,
+						A.GEN_RMK STRREMARKS,
+						A.AGENT_ID strAgentName, 
+						C.CODE_DESC AGENTNAME , 						
+						CFM_STATUS status,
+						EIC_FLG eicFlag,
+						CASE WHEN A.CFM_STATUS LIKE 'RCL%' THEN 'N' 
+							 WHEN A.CFM_STATUS LIKE 'UNCONFIRMED%' THEN '' 
+							 ELSE A.EMPTY_FLG END emptyFlag, 
+						A.BASE_PLT BASEPALLET, 
+						A.FLT_TYPE FLTTYPE  
+				FROM ULD_INVENTORY A 
+					LEFT JOIN (SELECT ULD_KEY, EIR_NO FROM ULD_REL_DTL 
+							  WHERE TR_NO = (SELECT MAX(TR_NO) FROM ULD_REL_DTL WHERE ULD_KEY = #s_strULDKey# AND UPPER(STATUS) = 'RELEASED')) B 
+						 ON A.ULD_KEY = B.ULD_KEY 
+					LEFT JOIN  CUST_COMPANY C ON A.AGENT_ID = C.CODE
+				WHERE A.ULD_KEY = #s_strULDKey# 
+					
+					
+			]]>
+	</select>
+	<select id="uld_rept_042_FltDtls"  parameterClass="cargo.cms.uld.report.bo.EnqULD_42ReptBO"  resultClass="cargo.cms.uld.report.bo.EnqULD_42ReptBO">
+
+	<!--
+	************* NOT USING Query NOW.... Taking data from Screen BOs ****************
+	************* NOT USING Query NOW.... Taking data from Screen BOs ****************
+	************* NOT USING Query NOW.... Taking data from Screen BOs ****************
+	************* NOT USING Query NOW.... Taking data from Screen BOs ****************
+
+	-->
+	</select>
+
+	<select id="uld_rept_042_MovDtls"  parameterClass="cargo.cms.uld.report.bo.EnqULD_42ReptBO"  resultClass="cargo.cms.uld.report.bo.EnqULD_42ReptBO">
+		
+			<![CDATA[			
+			SELECT
+			TO_CHAR( A.CR_DATE, 'DDMONYY HH24:MI:SS' ) AS strTRDate,
+			A.CR_USER_ID AS strUserId,
+			( select des_tag from his_mst_itm where
+			cod_his_seq_num=b.cod_his_seq_num) AS strEventCode,
+			DECODE(B.cod_act,'A','ADD','U','UPD','D','DEL') as strEvent,
+			B.DES_HIS_DTS as strEventDesc
+			FROM HIS_ULD_EVNT A,HIS_ULD_EVNT_DTL B
+			WHERE B.ULD_KEY= A.ULD_KEY
+			AND A.COD_TRA_SEQ_NUM = B.COD_TRA_SEQ_NUM
+			AND A.ULD_KEY = #s_strULDKey# 
+			AND A.MODULE = 'W'
+			AND A.COD_HIS_TYP = 'E'
+			group by
+			a.ULD_KEY,A.CR_DATE,A.CR_USER_ID,A.COD_FUNC,B.cod_act,B.DES_HIS_DTS,b.cod_his_seq_num
+			order by A.CR_DATE
+			]]>		
+			
+			
+			
+			
+	</select>
+	<select id="uld_rept_042_awbDtls"  parameterClass="cargo.cms.uld.report.bo.EnqULD_42ReptBO"  resultClass="cargo.cms.uld.report.bo.EnqULD_42ReptBO">
+	<![CDATA[			
+		
+		SELECT 
+			a.AWB_NO strAWBNo,
+			a.LOCN_PCS strPieces,
+			trim(to_char(a.LOCN_WT,'9999990.9'))  strWeight,
+			a.FLT_TYPE strFLTType,
+			a.FLT_KEY strFLTNo,
+			TO_CHAR(a.FLT_DATE,'DDMONYY') strFLTDate,
+			TO_CHAR(a.STRG_DATE,'DDMONYY HH24:MI') strStrgDate,
+			a.CATALOG catalog
+		FROM 
+		  AWB_INVENTORY a
+		WHERE 
+		  a.ULD_KEY = #s_strULDKey#
+		  order by a.AWB_NO		
+																		
+	]]>
+	</select>
+	
+	<select id="VIEW_ULD_FLT_043_IMPORT"  parameterClass="cargo.cms.uld.report.bo.ULDFlightReptBO"  resultClass="cargo.cms.uld.report.bo.ULDFlightReptBO">
+		
+		<![CDATA[
+				      select a.ULD_KEY strULDKey,  a.loc_code strLocation, 
+                   a.ULD_OWNER_ID strOwnerCode, a.RMK strRemarks, a.DAM_IND strDmgInd, a.CONTR strContourCode,
+            TO_CHAR(a.LM_DATE,'DDMONYY HH24:MI') strStorageDate, a.EMPTY_IND strEmptyFlag, a.EIC_IND strEICFlag,
+            'I' fltType , TO_CHAR(a.FLT_DATE,'DDMONYY') flightDate,
+             a.FLT_KEY flightKey, 
+             decode((select count(*) from uld_inventory where BASE_PLT = a.ULD_KEY), '0', 'N', 'Y') as topPltExist
+      from IMP_RAMP_CHK_DTL a
+      where a.CHKIN_YN = 'Y' 
+            and a.CARR_CODE = #carrCode#
+            and a.FLT_NO = #fltNo#
+            and a.FLT_DATE = TO_DATE(#scheduledDate#,'DDMONYY')
+            ]]>
+      <isNotEmpty prepend="AND" property="condInd" >
+            a.DAM_IND = #condInd#
+      </isNotEmpty>    
+      	<isEqual prepend="AND" property="eicFlag" compareValue="Y">
+			a.EIC_IND = 'Y'
+		</isEqual>  
+      order by  a.ULD_KEY
+
+	</select> 
+
+<select id="VIEW_ULD_FLT_043_EXPORT"  parameterClass="cargo.cms.uld.report.bo.ULDFlightReptBO"  resultClass="cargo.cms.uld.report.bo.ULDFlightReptBO">
+	<![CDATA[	
+      select a.ULD_KEY strULDKey, A.loc_code strLocation,a.OWNER_ID strOwnerCode,
+            a.GEN_RMK strRemarks,a.GEN_RMK strRemarks,a.AGENT_ID strAgentName,a.DAM_IND strDmgInd,a.CONTR_CODE strContourCode,
+            TO_CHAR(a.FLT_DATE,'DDMONYY') flightDate,
+            TO_CHAR(a.STRG_DATE,'DDMONYY HH24:MI') strStorageDate, 
+            CASE WHEN A.CFM_STATUS LIKE 'RCL%' THEN 'N' 
+                         WHEN A.CFM_STATUS LIKE 'UNCONFIRMED%' THEN '' 
+                         ELSE A.EMPTY_FLG END strEmptyFlag,
+            a.EIC_FLG strEICFlag,         
+             decode((select count(*) from uld_inventory where BASE_PLT = a.ULD_KEY), '0', 'N', 'Y') as topPltExist
+      from ULD_INVENTORY A
+      where 
+            a.FLT_KEY = concat(#carrCode#, #fltNo#)
+            and a.FLT_DATE = TO_DATE(#scheduledDate#,'DDMONYY')
+            and a.FLT_TYPE = #flightType#
+    and BASE_PLT is null
+            ]]>
+      <isNotEmpty prepend="AND" property="condInd" >
+            a.DAM_IND = #condInd#
+      </isNotEmpty>     
+      <isEqual prepend="AND" property="eicFlag" compareValue="Y">
+			a.EIC_FLG = 'Y'
+	  </isEqual>  
+      order by   a.ULD_KEY
+</select>
+	<select id="uld_rept_044"  parameterClass="cargo.cms.uld.report.bo.ULDMovtReptBO"  resultClass="cargo.cms.uld.report.bo.ULDMovtReptBO">
+	select TO_CHAR(TR_DATE,'DDMONYY HH24:MI') strTRDate, TO_CHAR(TR_DATE,'DDMONYY') flightDate, MOV_FROM strOriginWarehouse,MOV_TO strDestinationWarehouse,
+		LM_USER_ID strUserId, b.EVENT_DESC strEvent, a.TR_TYPE  strEventCode
+		 from ULD_MOV  a left join REGISTER_TR_NO_EVENTS b on a.EVENT_ID = b.EVENT_ID 
+		where  ULD_KEY = #uldKey#
+		and nvl(MOV_FROM, '*') != nvl(MOV_TO,'*')
+		and TR_DATE &gt;= TO_DATE(#dateFrom#,'DDMONYY')
+		and TR_DATE &lt; TO_DATE(#dateTo#,'DDMONYY')+1 
+			<isNotEmpty property="loginCarrier" prepend="AND" >
+				(a.OWNER_ID = #loginCarrier#
+				OR a.OWNER_ID IN (SELECT CARR_CODE FROM MAST_CARR_GRP WHERE GRP_CARR_CODE= #loginCarrier#))
+			</isNotEmpty>
+			<isEmpty property="sortOrder.sortField">
+	             ORDER BY TR_DATE DESC
+	        </isEmpty>			
+			<dynamic prepend="ORDER BY ">
+	           <isNotEmpty property="sortOrder.sortField">
+	             $sortOrder.sortField$
+	           </isNotEmpty>	           	           
+	        </dynamic>
+	</select>
+
+<select id="uld_rept_058"  parameterClass="cargo.cms.uld.report.bo.ULDLocAirlineReptBO"  resultClass="cargo.cms.uld.report.bo.ULDLocAirlineReptBO">
+	select TO_CHAR(A.Flt_date,'DDMONYY') flightDate,A.PPK_IND strPPKInd,A.FLT_KEY flightKey,A.ULD_KEY strULDKey, A.ULD_NO strULDNo,A.DAM_IND strDmgInd, A.CONTR_CODE strContourCode,B.CODE strLocation, type.ULD_GROUP uldGroup,A.flt_type strFltType, A.empty_flg emptyFlag,
+               decode(A.uld_flow, 'I', 'Imp') || decode(A.uld_flow, 'E', 'Exp') || decode(A.uld_flow, 'T', 'Trf')AS  strULDFlow,
+                     TO_CHAR(A.STRG_DATE,'DDMONYY HH24:MI') strStorageDate, mastSpec.code_desc strSpec,
+                    EMPTY_IND strEmptyFlag, 
+                     A.EIC_FLG strEICFlag,A.GEN_RMK strRemarks,   
+                     A.CFM_STATUS strStatus,A.ULD_CARR strCarrierId, A.OWNER_ID strOwnerCode   
+            from
+                  (SELECT 
+                        decode(CFM_STATUS,'RCLBULK','N','RCLMIXPREPACK','N','RCLPREPACK','N','UNCONFIRMED','',NVL((SELECT 'N' FROM AWB_INVENTORY WHERE ULD_KEY = A.ULD_KEY AND LOCN_PCS > 0 AND ROWNUM = 1), 'Y') ) EMPTY_IND, 
+                        A.*  FROM ULD_INVENTORY A) A left outer join ULD_TYPE_CARR_TARE_WT wt
+                        on A.uld_type = wt.uld_type and A.uld_carr = wt.uld_carr and a.uld_no BETWEEN wt.uld_no_from
+                        and wt.uld_no_to left outer join mast_code_dtl mastSpec on wt.specification = mastSpec.code
+                        and mastSpec.code_type = 'ULD_SPCES',                        
+                        MAST_WH_LOC B, MAST_WH_GROUP grp, ULD_GROUP_TYPE type
+            where A.LOC_CODE is not null AND A.LOC_CODE = B.CODE and B.wh_group = grp.wh_group AND A.ULD_TYPE = type.ULD_TYPE
+            and NVL(A.AGENT_INV, 'N') = 'N'   
+            and A.AGENT_ID is null 
+            <isNotEmpty property="strULDGroup">
+                  and type.ULD_GROUP = #strULDGroup#
+            </isNotEmpty>
+            <isNotEmpty property="strULDType">
+                  and A.ULD_TYPE = #strULDType#
+            </isNotEmpty>
+            <isNotEmpty property="strContourCode">
+                  and A.CONTR_CODE = #strContourCode#
+            </isNotEmpty>
+            <isNotEmpty property="strULDState">
+                  and FUN_GET_ULD_STATE(A.ULD_KEY) = #strULDState#
+            </isNotEmpty>           
+            <isNotEmpty property="strDmgInd">
+                  and A.DAM_IND = #strDmgInd#
+            </isNotEmpty>
+            <isNotEmpty property="strInActiveDays">
+                  and not exists (select uld_key from uld_mov where uld_key = A.uld_key and (sysdate - tr_date) &lt;= decode(#strInActiveDays#,null, 0) )
+            </isNotEmpty>           
+            <isEqual prepend="AND" property="strWtDiff" compareValue="Y">
+                  A.EMPTY_FLG = 'Y' AND A.TARE_WEIGHT != A.REF_WT
+            </isEqual>
+            <iterate prepend="AND" property="arlStatus"
+            open="(" close=")" conjunction="OR" >
+                  $arlStatus[]$
+            </iterate>              
+            <isNotEmpty property="strLocn">
+                  and A.LOC_CODE = #strLocn#
+            </isNotEmpty>
+            <isNotEmpty property="strGroup">
+                  and B.WH_GROUP = #strGroup#
+            </isNotEmpty>
+            <isNotEmpty property="strArea">
+                  and grp.WH_AREA = #strArea#
+            </isNotEmpty>
+            <isNotEmpty property="strCarrierId" prepend="AND" >
+                  A.ULD_CARR = #strCarrierId#
+            </isNotEmpty>
+            <isNotEmpty property="strOwner" prepend="AND" >
+                  A.OWNER_ID = #strOwner#
+            </isNotEmpty>
+            <isNotEmpty property="strSpec" prepend="AND" >
+                  mastSpec.code = #strSpec#
+            </isNotEmpty> 
+															
+														
+														
+</select>
+	<select id="sqlAWBCpctInv_REPT_42"  parameterClass="cargo.cms.uld.bo.AWBOnULDBO"  resultClass="cargo.cms.uld.bo.AWBOnULDBO">
+  select SEQ_NO strSeqNo, HAWB_NO strHAWBNo, 
+   STRG_PCS strHAWBPieces, trim(to_char(STRG_PCS, '9999999.99')) strHAWBWeight
+   from HAWB_inventory  where SEQ_NO =#strSeqNo# 
+</select>
+	
+	
+<select id="uld_rept_555" parameterClass="cargo.cms.uld.report.bo.MaintainURFRequest555_ReptBO" resultClass="cargo.cms.uld.report.bo.MaintainURFRequest555_ReptBO">
+  		SELECT DISTINCT a.EIR_NO urfNo,
+		a.CARR_CODE carrCode ,
+		a.FLT_NO ||
+		NVL2(a.FLT_NO, '/', '')|| TO_CHAR(a.FLT_DATE, 'DDMONYY') fltNoDate,
+		c.CODE_DESC agentName,
+		ORIG_EIR_NO parentUrfNo ,
+		TO_CHAR(a.req_est_time, 'DDMONYY HH24:MI')
+		reqEstTime,
+		TO_CHAR(a.CR_DATE, 'DDMONYY HH24:MI') createDate,
+		d.CODE_DESC purpose,
+		e.CODE_DESC status,
+		f.ULD_TYPE uldType,
+		f.ULD_REQ_QTY uldReqQty,
+		f.ULD_APR_QTY uldAprQty,
+		f.ULD_REL_QTY uldRelQty,
+		f.ULD_ENDR_QTY uldEndrQty,
+		f.ULD_ACK_QTY uldAckQty
+		FROM
+		ULD_ISS_HD a
+		LEFT JOIN
+		CUST_COMPANY c
+		ON a.AGENT_CUST_NO = c.CODE
+		LEFT JOIN MAST_CODE_DTL d
+		ON a.purpose = d.CODE
+		LEFT JOIN MAST_CODE_DTL e
+		ON a.status = e.CODE
+		LEFT JOIN ULD_ISS_DTL f
+      	ON a.eir_no = f.eir_no
+		WHERE d.CODE_TYPE = 'URF_PURPOSE' AND e.CODE_TYPE = 'URF_STATUS' AND f.uld_equip = 'U'
+		<isNotEmpty property="urfNo"> AND a.EIR_NO = #urfNo# </isNotEmpty>
+		<isNotEqual property="carrCode" compareValue="ALL"> AND	a.CARR_CODE LIKE UPPER(#carrCode#)</isNotEqual>
+		<isNotEmpty property="agentCode"> AND c.CODE = #agentCode# </isNotEmpty>
+		<isNotEmpty property="agentName"> AND UPPER(c.CODE_DESC) = UPPER(#agentName#) </isNotEmpty>
+		<isNotEmpty property="parentUrfNo"> AND ORIG_EIR_NO = #parentUrfNo#	</isNotEmpty>
+		<isNotEmpty property="fltNoCarr"> 
+			<isEmpty property="fltNoOnly"> AND UPPER(a.CARR_CODE) = UPPER(#fltNoCarr#)</isEmpty>
+			<isNotEmpty property="fltNoOnly"> AND UPPER(a.FLT_NO) =	 TRIM(UPPER(#fltNoCarr#) || UPPER(#fltNoOnly#))</isNotEmpty>
+		</isNotEmpty>
+		<isNotEmpty property="fltNoOnly"> 
+			<isEmpty property="fltNoCarr"> AND UPPER(a.FLT_NO) LIKE ('%' || UPPER(#fltNoOnly#))</isEmpty>
+		</isNotEmpty>
+		<isNotEmpty property="purpose"> AND a.PURPOSE = #purpose#</isNotEmpty>
+		<isNotEmpty property="fltDate"> AND	TO_DATE(TO_CHAR(a.FLT_DATE,'DDMONYY')) = TO_DATE(#fltDate#,	'DDMONYY')</isNotEmpty>
+		<isNotEmpty property="createFrom"> AND TO_DATE(TO_CHAR(a.CR_DATE,'DDMONYY')) &gt;= TO_DATE(#createFrom#,'DDMONYY')</isNotEmpty>
+		<isNotEmpty property="createTo"> AND TO_DATE(TO_CHAR(a.CR_DATE,'DDMONYY')) &lt;= TO_DATE(#createTo#,'DDMONYY')</isNotEmpty>
+		<isNotEqual property="status" compareValue="ALL"> AND a.STATUS = #status# </isNotEqual>
+		<isEqual property="status" compareValue="EXPIRED"> AND a.STATUS	IN('PENDING') AND a.EIR_EXPIRY_DATE &lt; SYSDATE</isEqual>
+		<isEqual property="status" compareValue="ACKNOWLEDGED"> AND ACK_BY IS NOT NULL</isEqual>
+		<isNotEqual property="status" compareValue="EXPIRED">AND a.EIR_EXPIRY_DATE &gt;= SYSDATE</isNotEqual>
+</select>
+	<select id="sqlfetchuldprofileParent_REPT600" parameterClass="cargo.cms.uld.report.bo.ULDProfileRept_600BO" resultClass="cargo.cms.uld.report.bo.ULDProfileRept_600BO">
+  select DISTINCT grp.CARR_CODE strCarrierCode, grp.MAX_WEIGHT strMaxWeight, grp.BASE_PAL_FLG strBasePalleteType, grp.ULD_TYPE strULDType,grp.ULD_TYPE strULDTypeRept, grp.ULD_TYPE oldStrULDType, TO_CHAR(grp.LM_DATE , 'DDMONYY HH24:MI:SS') lastModDate
+  from ULD_Group_Carr grp, ULD_TYPE_CARR_TARE_WT type where grp.carr_code = type.uld_carr and grp.ULD_TYPE = type.ULD_TYPE
+  
+	<isNotEmpty property="carrierCopyFrom" prepend="AND" >
+		grp.CARR_CODE = #carrierCopyFrom#
+	</isNotEmpty>
+	<isEmpty property="carrierCopyFrom" prepend="AND" >
+		grp.CARR_CODE = #carrierId#
+	</isEmpty>
+	<isNotEmpty property="strULDType" prepend="AND" >
+		grp.ULD_TYPE = #strULDType#
+	</isNotEmpty>	
+		<isNotEmpty property="uldFrom">
+			<isNotEmpty property="uldTo">
+				AND (((#uldFrom# BETWEEN TRUNC(type.ULD_NO_FROM) AND TRUNC(type.ULD_NO_TO ))
+		   			 or (#uldTo# BETWEEN TRUNC(type.ULD_NO_FROM) AND TRUNC(type.ULD_NO_TO )))
+		   			 or (#uldTo#&gt;=TRUNC(type.ULD_NO_FROM)
+		    		 And #uldFrom#&lt;=TRUNC(type.ULD_NO_TO )))
+			</isNotEmpty>
+		</isNotEmpty>	
+	
+	 order by grp.ULD_TYPE
+</select>
+
+<select id="sqlfetchuldprofileChild_REPT600" parameterClass="cargo.cms.uld.report.bo.ULDProfileRept_600BO" resultClass="cargo.cms.uld.report.bo.ULDProfileRept_600BO">
+ select type.ULD_CARR strCarrierCode, type.ULD_TYPE strULDType, type.ULD_NO_FROM strULDFrom,
+  type.ULD_NO_TO strULDTo, type.TARE_WEIGHT strTareWeight, type.SPECIFICATION specification  
+  from ULD_TYPE_CARR_TARE_WT type
+  <dynamic prepend="WHERE"> 
+	<isNotEmpty property="carrierCopyFrom" prepend="AND" >
+		type.ULD_CARR = #carrierCopyFrom#
+	</isNotEmpty>
+	<isEmpty property="carrierCopyFrom" prepend="AND" >
+		type.ULD_CARR = #carrierId#
+	</isEmpty>
+	<isNotEmpty property="strULDType" prepend="AND" >
+		type.ULD_TYPE = #strULDType#
+	</isNotEmpty>
+	<isNotEmpty property="uldFrom">
+			<isNotEmpty property="uldTo">
+				AND (((#uldFrom# BETWEEN TRUNC(type.ULD_NO_FROM) AND TRUNC(type.ULD_NO_TO ))
+		   			 or (#uldTo# BETWEEN TRUNC(type.ULD_NO_FROM) AND TRUNC(type.ULD_NO_TO )))
+		   			 or (#uldTo#&gt;=TRUNC(type.ULD_NO_FROM)
+		    		 And #uldFrom#&lt;=TRUNC(type.ULD_NO_TO )))
+			</isNotEmpty>
+		</isNotEmpty>
+	</dynamic>	
+	 order by type.ULD_TYPE,type.ULD_NO_FROM
+</select>
+	
+	<!--  REPT_601 START -->
+	
+<select id="sqlfetchuldprohibitbyaircraft_rept601" parameterClass="cargo.cms.uld.report.bo.ULDProhibitRept_601BO" resultClass="cargo.cms.uld.report.bo.ULDProhibitRept_601BO">
+	select ULD_TYPE strULDType ,CONTR_CODE strContourType, ACFT_TYPE strProhibitAircraftType 
+	from ULD_TYPE_PROH_ACFT where ACFT_TYPE = #strProhibitAircraftType#
+	<isNotEmpty property="strCarrierId">
+		 and CARR_CODE = #strCarrierId#  
+	</isNotEmpty>
+	<isEmpty property="strCarrierId">
+		 and CARR_CODE is NULL  
+	</isEmpty>
+</select>
+<select id="sqlfetchuldprohibitbycontour_rept601" parameterClass="cargo.cms.uld.report.bo.ULDProhibitRept_601BO" resultClass="cargo.cms.uld.report.bo.ULDProhibitRept_601BO">
+		select a.ULD_TYPE strULDType,a.CONTR_CODE strContourType, a.ACFT_TYPE strProhibitAircraftType , 
+		b.CODE_DESC strProhibitAircraftTypeDesc,a.CARR_CODE strCarrierId, b.CODE_DESC strProhibitAircraftTypeDesc,
+		TO_CHAR(a.LM_DATE , 'DDMONYY HH24:MI:SS')AS lastModDate
+		from ULD_TYPE_PROH_ACFT a, MAST_ACFT_TYPE b	where 
+		ULD_TYPE = #strULDType# 
+		and CONTR_CODE = #strContourType#
+		and b.CODE = a.ACFT_TYPE
+		order by a.ACFT_TYPE, a.CARR_CODE
+</select>
+	
+		<!--  REPT_601 END -->
+	<!-- REPT 059 STARTS -->
+	<select id="uld_rept_059"  parameterClass="cargo.cms.uld.report.bo.EnqAgentList_059ReptBO"  resultClass="cargo.cms.uld.report.bo.EnqAgentList_059ReptBO">
+
+		SELECT	
+			sub.CARR_CODE r_carrCode, 
+			 sub.EIR_NO eirNo,
+			 ROUND((SYSDATE-sub.REL_DATE),0) elapsedDays, 
+			 u.ULD_KEY uldKey, 
+			 e.CODE_DESC r_agentName,   
+			 TO_CHAR(sub.EIR_DATE, 'DDMONYY HH24:MI') eirDate 
+		FROM CUST_COMPANY e, ULD_INVENTORY u    
+			LEFT JOIN (SELECT rd.*, i.CARR_CODE, i.EIR_NO, i.EIR_DATE, i.EIR_TIME, r.REL_DATE ,i.AGENT_CUST_NO 
+			 FROM   (SELECT MAX(to_number(Tr_No)) Tr_No, ULD_KEY, ULD_TYPE  FROM ULD_REL_DTL a    GROUP BY ULD_KEY, ULD_TYPE) rd ,    ULD_REL_HD r, ULD_ISS_HD i   WHERE rd.TR_NO = r.TR_NO   AND r.EIR_NO = i.EIR_NO) sub   ON u.ULD_KEY = sub.ULD_KEY, ULD_GROUP_TYPE g   
+		WHERE	u.Agent_Inv = 'Y'   
+				AND e.CODE = u.AGENT_ID   
+				AND u.ULD_TYPE = g.ULD_TYPE       
+				<isNotEmpty property="uldType">
+						and g.ULD_TYPE = #uldType#
+				</isNotEmpty>
+				<isNotEmpty property="uldGroup">
+						and g.ULD_GROUP = #uldGroup#
+				</isNotEmpty>
+				<isNotEmpty property="carrCode">
+					and u.owner_id = #carrCode#
+				</isNotEmpty>
+				<isNotEmpty property="agentCode">
+					and e.CODE = #agentCode#
+				</isNotEmpty>
+				order by '1' 
+				<isNotEmpty property="sortOption1">
+					,$sortOption1$  
+				</isNotEmpty>
+				<isNotEmpty property="sortOption2">
+					,$sortOption2$ 
+				</isNotEmpty>
+				<isNotEmpty property="sortOption3">
+					,$sortOption3$ 
+				</isNotEmpty> ,
+				u.ULD_KEY																
+</select>
+	<!-- REPT 059 ENDS -->
+	
+	<!-- REPT 008 STARTS -->
+	<select id="uld_rept_008"  parameterClass="cargo.cms.uld.report.bo.EnqOutstnd_008ReptBO"  resultClass="cargo.cms.uld.report.bo.EnqOutstnd_008ReptBO">
+		
+<!-- 
+
+************* NOT USING Query NOW.... Taking data from Screen BOs ****************
+************* NOT USING Query NOW.... Taking data from Screen BOs ****************
+************* NOT USING Query NOW.... Taking data from Screen BOs ****************
+************* NOT USING Query NOW.... Taking data from Screen BOs ****************
+
+-->
+
+
+  <![CDATA[
+
+		SELECT 
+		  a.tr_no AS trNo,
+		  a.iss_no AS issno,
+		  a.eir_no AS eirNo,
+		  a.carr_code AS r_carrCode,
+		  b.uld_equip AS recType,
+		  b.uld_group AS uldGroup,
+		  b.uld_type AS uldType,
+		  TO_CHAR (a.eir_date,'DDMONYY HH24:MI') AS eirDate,
+		  b.doc_line_no AS doclineno,
+		  b.uld_req_qty AS iuldQty,
+		  b.equip_type AS accessoryType,
+		  b.equip_req_qty AS iaccQty,
+		  d.code_desc AS r_agentName,
+		  d.code AS agentname,
+		  a.eir_no AS eirno,
+		  a.cr_user_id AS cruserid,
+		  a.lm_user_id AS lmuserid,
+		  TO_CHAR (a.cr_date,'DDMONYY HH24:MI') AS crdate,
+		  TO_CHAR (a.lm_date,'DDMONYY HH24:MI') AS lmdate,
+		  a.iss_rmk AS reqrem,
+		  a.tr_status AS trstatus,
+		  b.doc_line_no AS doclineno,
+		  a.status AS status,
+		  a.extended_yn AS extendEirFlag,
+		  TO_CHAR (c.rel_date,'DDMONYY HH24:MI') AS reldate
+		FROM 
+		  uld_iss_hd a LEFT JOIN uld_rel_hd c ON a.tr_no = c.tr_no AND a.eir_no = c.eir_no,
+		  uld_iss_dtl b,
+		  cust_company d
+		WHERE 
+		  a.tr_no = b.tr_no     
+		  AND d.code = a.agent_cust_no     
+		  AND eir_expiry_date >= SYSDATE  
+		  AND  (upper(a.status) = 'PROCESSED' or upper(a.status) = 'PARTRELEASED')
+	]]>
+		<isNotEmpty property="carrCode" > AND a.CARR_CODE = #carrCode# </isNotEmpty>	
+		<isNotEmpty property="agentName"> AND d.CODE = #agentName#</isNotEmpty>
+		
+
+</select>
+	<!-- REPT 008 ENDS -->
+
+	
+<!-- HDR DTL  1 -->
+<select id="uld_rept_033_hdr"  parameterClass="cargo.cms.uld.report.bo.EIRHdrReptBO"  resultClass="cargo.cms.uld.report.bo.EIRHdrReptBO">
+  <![CDATA[
+	SELECT #seirNo#  as seirNo,  row_number() over (order by a.EIR_NO) serialNo, 
+		a.CARR_CODE AS carrCode ,
+		SUBSTR(a.EIR_NO ,1,6)||'-'||SUBSTR(a.EIR_NO ,7) AS eirNo,
+		TO_CHAR(a.EIR_DATE,'DDMONYY HH24:MI') as eirDate ,
+		d.CODE_DESC AS agentIdName,
+		d.CODE AS compNo,
+		c.LM_USER_ID AS crUserId,
+		to_char(a.CR_DATE, 'DDMONYY HH24:MI') AS crDate, 
+		a.ISS_RMK AS reqRem,
+		C.RMK AS relRem
+	FROM ULD_ISS_HD a   
+	LEFT JOIN (SELECT * 
+		 	  FROM (SELECT EIR_NO, LM_USER_ID, RMK
+				 	  FROM ULD_REL_HD WHERE EIR_NO = #seirNo#
+					  ORDER BY LM_DATE DESC) I
+			  WHERE ROWNUM = 1) c ON a.EIR_NO = c.EIR_NO    
+	LEFT JOIN CUST_COMPANY d ON d.CODE = a.AGENT_CUST_NO
+	WHERE a.EIR_NO = #seirNo#         
+   ]]>
+ </select>
+
+ 
+<!-- ACC Request DTL 2 -->
+<select id="uld_rept_033_req_acc"  parameterClass="cargo.cms.uld.report.bo.EIRHdrReptBO"  resultClass="cargo.cms.uld.report.bo.EIRHdrReptBO">
+  <![CDATA[
+SELECT EQUIP_TYPE as req_accessoryType,
+		EQUIP_REQ_QTY AS req_iaccQty
+FROM ULD_ISS_DTL 
+WHERE EIR_NO = #seirNo#  
+and EQUIP_TYPE IS NOT NULL
+   ]]>
+ </select>
+		
+<!-- ACC Release DTL 3 -->
+<select id="uld_rept_033_rel_acc"  parameterClass="cargo.cms.uld.report.bo.EIRHdrReptBO"  resultClass="cargo.cms.uld.report.bo.EIRHdrReptBO">
+  <![CDATA[
+	SELECT row_number() over (order by RD.EQUIP_TYPE) serialNo, 
+		RD.EQUIP_TYPE as rel_accessoryType, 
+		SUM(RD.EQUIP_QTY) AS rel_iaccQty 
+	FROM ULD_REL_HD R JOIN ULD_REL_DTL RD ON R.TR_NO = RD.TR_NO
+	WHERE RD.EQUIP_TYPE is not null and R.EIR_NO= #seirNo#  
+	GROUP BY RD.EQUIP_TYPE
+    order by RD.EQUIP_TYPE
+   ]]>
+</select>
+
+<!-- ULD REQUEST DTL 4 new-->
+<select id="uld_rept_033_req_uld"  parameterClass="cargo.cms.uld.report.bo.EIRDetailsReptBO"  resultClass="cargo.cms.uld.report.bo.EIRDetailsReptBO">
+  <![CDATA[
+
+SELECT NVL(ULD_TYPE, ULD_GROUP)  AS uldType ,
+		ULD_REQ_QTY AS uldQty
+FROM ULD_ISS_DTL 
+WHERE EIR_NO = #seirNo#  
+and ( ULD_TYPE is not NULL or ULD_group is not null)
+   ]]>
+ </select>
+		
+<!-- ULD RELEASE DTL 5 new-->
+<select id="uld_rept_033_rel_uld"  parameterClass="cargo.cms.uld.report.bo.EIRDetailsReptBO"  resultClass="cargo.cms.uld.report.bo.EIRDetailsReptBO">
+  <![CDATA[
+	SELECT row_number() over (order by a.EIR_NO) serialNo,
+		b.ULD_KEY as uldNo
+	FROM ULD_REL_HD a JOIN ULD_REL_DTL b ON a.TR_NO = b.TR_NO
+	WHERE b.ULD_KEY IS NOT NULL AND a.EIR_NO = #seirNo#       
+   ]]>
+ </select>
+	<!-- REPT_060 -->
+	<select id="uld_rept_060_ReqDtls"  parameterClass="cargo.cms.uld.report.bo.ReleaseEIR_060ReptBO"  resultClass="cargo.cms.uld.report.bo.ReleaseEIR_060ReptBO">
+		
+						SELECT				
+														row_number() over (order by a.EIR_NO) serialNo,
+														a.EIR_NO AS eirNo,a.CARR_CODE AS carrCode ,
+														TO_CHAR(a.EIR_DATE,'DDMONYY HH24:MI') as eirDate , a.EIR_TIME as eirTime , 
+														
+														b.ULD_GROUP AS uldGroup ,
+														b.ULD_TYPE AS uldType , 
+														b.ULD_REQ_QTY AS iuldQty ,  
+														
+														a.CR_USER_ID AS crUserId, 										
+														to_char(a.CR_DATE, 'DDMONYY HH24:MI') AS crDate, 
+														to_char(a.LM_DATE, 'DDMONYY HH24:MI') AS lmDate,
+														
+														to_char(c.REL_DATE, 'DD MON YY') AS relDate, c.REL_TIME AS relTime
+														FROM ULD_ISS_HD a LEFT JOIN  ULD_REL_HD c ON a.TR_NO = c.TR_NO AND a.EIR_NO = c.EIR_NO  
+														 LEFT JOIN  CUST_COMPANY d ON d.CODE = a.AGENT_CUST_NO	, ULD_ISS_DTL b 
+														where a.TR_NO = b.TR_NO AND a.ISS_NO = b.ISS_NO	AND	a.EIR_NO = #eirNo# 
+														
+			</select>
+			<select id="uld_rept_060_EquipDtls"  parameterClass="cargo.cms.uld.report.bo.ReleaseEIR_060ReptBO"  resultClass="cargo.cms.uld.report.bo.ReleaseEIR_060ReptBO">
+		
+						select 								row_number() over (order by EIR_NO) serialNo,
+																EIR_NO as eirNo,
+																ULD_KEY as uldNo,
+																EQUIP_TYPE as equipType,
+																EQUIP_QTY as equipQty
+																
+																from ULD_REL_DTL where 
+																					
+													EIR_NO = #eirNo#  
+													<!-- and EQUIP_QTY is not null -->
+		</select>
+			<select id="uld_rept_060_agentDetails"  parameterClass="cargo.cms.uld.report.bo.ReleaseEIR_060ReptBO"  resultClass="cargo.cms.uld.report.bo.ReleaseEIR_060ReptBO">
+		
+							SELECT				a.ISS_RMK AS reqRem, 
+															d.CODE_DESC AS agentIdName, 
+															d.CODE AS agentName			
+															FROM ULD_ISS_HD a LEFT JOIN  ULD_REL_HD c ON a.TR_NO = c.TR_NO AND a.EIR_NO = c.EIR_NO  
+														 LEFT JOIN  CUST_COMPANY d ON d.CODE = a.AGENT_CUST_NO	, ULD_ISS_DTL b 
+														where a.TR_NO = b.TR_NO AND a.ISS_NO = b.ISS_NO	AND	a.EIR_NO =#eirNo#
+														
+																		
+	</select>
+	<select id="uld_rept_060_Equip"  parameterClass="cargo.cms.uld.report.bo.ReleaseEIR_060ReptBO"  resultClass="cargo.cms.uld.report.bo.ReleaseEIR_060ReptBO">
+		
+							SELECT				
+															row_number() over (order by b.EIR_NO) serialNo,
+															b.EQUIP_TYPE as accessoryType, 
+															b.EQUIP_REQ_QTY AS iaccQty,
+															a.ISS_RMK AS reqRem, 
+															d.CODE_DESC AS agentIdName, 
+															d.CODE AS agentName	
+																
+															FROM ULD_ISS_HD a LEFT JOIN  ULD_REL_HD c ON a.TR_NO = c.TR_NO AND a.EIR_NO = c.EIR_NO  
+														 LEFT JOIN  CUST_COMPANY d ON d.CODE = a.AGENT_CUST_NO	, ULD_ISS_DTL b 
+														where a.TR_NO = b.TR_NO AND a.ISS_NO = b.ISS_NO	AND	a.EIR_NO =#eirNo#   and b.EQUIP_TYPE  IS NOT NULL							
+	</select>
+	<select id="uld_rept_060_IssueDtls"  parameterClass="cargo.cms.uld.report.bo.ReleaseEIR_060ReptBO"  resultClass="cargo.cms.uld.report.bo.ReleaseEIR_060ReptBO">
+		
+						select 								row_number() over (order by EIR_NO) serialNo,
+																ULD_KEY as uldNo																
+																from ULD_REL_DTL where 
+																					
+													EIR_NO = #eirNo#  and ULD_NO is not null
+		</select>
+	<!-- REPT_060 ENDS -->
+	
+	<!-- REPT_573 START -->
+	<select id="sqlGetSchCollURFs_573" parameterClass="cargo.cms.uld.report.bo.URFSchColl_573BO" resultClass="cargo.cms.uld.report.bo.URFSchColl_573BO">
+		SELECT a.SCH_COLL_NO schCollNo,
+		TRUCK1 truckNo1, TRUCK2 truckNo2, TRUCK3 truckNo3, EIR_NO eirNo
+		FROM
+		EIR_SCH_COLL a,
+		EIR_SCH_COLL_DTL b
+		WHERE a.SCH_COLL_NO = b.SCH_COLL_NO
+		AND AGENT_CUST_NO = #agentCode#
+		AND TO_DATE(TO_CHAR(TIME_SLOT_DATE, 'DDMONYY')) =
+		TO_DATE(#timeSlotDate#, 'DDMONYY')
+		AND TIME_SLOT_FROM = #timeSlotFrom#
+		AND TIME_SLOT_TO = #timeSlotTo#
+	</select>
+	
+	<select id="uld_rept_530" parameterClass="cargo.cms.uld.report.bo.PrintURF_530ReptBO" resultClass="cargo.cms.uld.report.bo.PrintURF_530ReptBO">
+			SELECT ROWNUM slNo, REL.EIR_NO urfNo, TO_CHAR(SYSDATE, 'DDMONYY') eirDate,  
+		TO_CHAR(SYSDATE, 'hh24:mi') eirTime,
+		ISS.CARR_CODE carrCode,
+		REL.CR_USER_ID staffId,
+		TO_CHAR(EIR_EXPIRY_DATE, 'DDMONYY HH24:MI') eirExpiryDate,
+		TO_CHAR(EST_TIME, 'DDMONYY HH24:MI') estTime,
+		REL.TRUCK_NO truckNo,
+		REL_DTL.TYPE TYPE,
+		AGT.CODE_DESC agentName,   
+		(SELECT SUM(ULD_REL_QTY) FROM ULD_ISS_DTL  WHERE EIR_NO = REL.EIR_NO	AND ULD_EQUIP = 'U') uldRelQty,
+		(SELECT SUM(ULD_APR_QTY)-SUM(ULD_REL_QTY) FROM ULD_ISS_DTL  WHERE EIR_NO = REL.EIR_NO	AND ULD_EQUIP = 'U') uldOSQty,
+		  REL.RMK RMK
+	FROM ULD_ISS_HD ISS
+    JOIN ULD_REL_HD REL
+    ON ISS.EIR_NO = REL.EIR_NO
+    JOIN (
+		SELECT b.TR_NO,b.EIR_NO, ULD_KEY TYPE
+		FROM ULD_REL_HD a, ULD_REL_DTL b
+		WHERE a.TR_NO = b.TR_NO AND a.EIR_NO = #sc_eirNo#
+		AND ULD_EQUIP = 'U'
+    UNION
+    SELECT TR_NO, EIR_NO, (EQUIP_TYPE || '-' || QTY) TYPE
+    FROM(
+		SELECT b.TR_NO,b.EIR_NO, EQUIP_TYPE, SUM(nvl(EQUIP_QTY,0)) QTY
+		FROM ULD_REL_HD a, ULD_REL_DTL b
+		WHERE a.TR_NO = b.TR_NO AND a.EIR_NO = #sc_eirNo#
+		AND ULD_EQUIP IN ('E', 'B') GROUP BY b.TR_NO, b.EIR_NO, EQUIP_TYPE 
+    )) REL_DTL
+    ON REL.EIR_NO = REL_DTL.EIR_NO AND REL.TR_NO = REL_DTL.TR_NO
+    LEFT OUTER JOIN CUST_COMPANY AGT
+    ON ISS.AGENT_CUST_NO = AGT.CODE
+	WHERE
+		REL.EIR_NO = #sc_eirNo# AND TO_CHAR(REL.REL_DATE, 'DDMONYY') = #sc_relDate# AND TRIM(TO_CHAR(REL.REL_TIME, '0000')) = TO_CHAR(TO_DATE(#sc_relTime#, 'HH24:MI'), 'HH24MI')
+  
+	</select>
+	
+	<select id="getReleaseTimeAndDate" parameterClass="java.lang.String" resultClass="cargo.cms.uld.report.bo.PrintURF_530ReptBO">
+		select 
+      			to_char(rel_date,'DDMONYY') as sc_relDate,
+      			SUBSTR(TRIM(TO_CHAR(rel_time,'0000')),1,2) || NVL2(rel_time, ':', '') || SUBSTR(TRIM(TO_CHAR(rel_time,'0000')),3,4) sc_relTime
+  			from ULD_REL_HD 
+  			where eir_no=#PARAM# and tr_no = (select max(tr_no) from ULD_REL_HD  where eir_no=#PARAM#)
+	</select>
+	
+</sqlMap> 

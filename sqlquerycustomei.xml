@@ -1,0 +1,1204 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://www.ibatis.com/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="CUSTOMSEI">
+	
+	<!-- ######################### ACCS STARTS###########################-->
+	
+	<select id="sqlPrilimData" parameterClass="java.lang.String" resultClass="cargo.cms.customs.ext.bo.PrilimDataPollBO">
+		select rowId  ,FLT_TYPE flightType,FLT_KEY flightKey, TO_CHAR(FLT_DATE,'DD/MM/YYYY HH24:MI:SS') flightDate,
+			RECV_REC_TYPE recordType,RECVG_DTL recvDtl,VER_NO versionNo,TO_CHAR(RECV_DATE,'DD/MM/YYYY HH24:MI:SS') recvDate,
+			MSG_TYPE messageType,TO_CHAR(CTRL_DATE,'DD/MM/YYYY HH24:MI:SS') controlDate,UQ_ID uniqueId, TRUCK_NO truckNo, 
+			TO_CHAR(SCH_DATE,'DD/MM/YYYY HH24:MI:SS') schDepDate,  SCH_TIME schTime
+		from CST_RECVG_DTL  
+			where RECV_STATUS = 'P' and RECV_REC_TYPE not in ('CCA','TCR','CRA','RMA','EXA','IVA','TRJ','BAC','INA','AMA','BAS','ITT','ITF','ITC','ITQ','ITN','ITL','ITD','ITA')
+			order by recv_date desc
+	</select>
+	<select id="sqlItmPrilimData" parameterClass="java.lang.String" resultClass="cargo.cms.customs.ext.bo.PrilimDataPollBO">
+		select rowId  ,FLT_TYPE flightType,FLT_KEY flightKey, TO_CHAR(FLT_DATE,'DD/MM/YYYY HH24:MI:SS') flightDate,
+			RECV_REC_TYPE recordType,RECVG_DTL recvDtl,VER_NO versionNo,TO_CHAR(RECV_DATE,'DD/MM/YYYY HH24:MI:SS') recvDate,
+			MSG_TYPE messageType,TO_CHAR(CTRL_DATE,'DD/MM/YYYY HH24:MI:SS') controlDate,UQ_ID uniqueId, TRUCK_NO truckNo, 
+			TO_CHAR(SCH_DATE,'DD/MM/YYYY HH24:MI:SS') schDepDate,  SCH_TIME schTime
+		from CST_RECVG_DTL  
+			where RECV_STATUS = 'P' and RECV_REC_TYPE in ('CCA','TCR','CRA','RMA','EXA','IVA','TRJ','BAC','INA','AMA','BAS')
+			order by recv_date desc
+	</select>
+	
+
+<select id="sqlIttPrilimData" parameterClass="java.lang.String" resultClass="cargo.cms.customs.ext.bo.PrilimDataPollBO">
+		select rowId  ,FLT_TYPE flightType,FLT_KEY flightKey, TO_CHAR(FLT_DATE,'DD/MM/YYYY HH24:MI:SS') flightDate,
+			RECV_REC_TYPE recordType,RECVG_DTL recvDtl,VER_NO versionNo,TO_CHAR(RECV_DATE,'DD/MM/YYYY HH24:MI:SS') recvDate,
+			MSG_TYPE messageType,TO_CHAR(CTRL_DATE,'DD/MM/YYYY HH24:MI:SS') controlDate,UQ_ID uniqueId, 
+			ITT_REQ_CODE ittReqCode, ITT_Auth_CODE ittAuthCode
+		from CST_RECVG_DTL  
+			where RECV_STATUS = 'P' and recv_rec_type  in ('ITT','ITF','ITC','ITQ','ITN','ITL','ITD','ITA')
+			order by recv_date desc
+	</select>
+
+	<select id="sqlScreenPrilimData" parameterClass="java.lang.String" resultClass="cargo.cms.customs.ext.bo.PrilimDataPollBO">
+		select rowId  ,FLT_TYPE flightType,FLT_KEY flightKey, TO_CHAR(FLT_DATE,'DD/MM/YYYY HH24:MI:SS') flightDate,
+			RECV_REC_TYPE recordType,RECVG_DTL recvDtl,VER_NO versionNo,TO_CHAR(RECV_DATE,'DD/MM/YYYY HH24:MI:SS') recvDate,
+			MSG_TYPE messageType,TO_CHAR(CTRL_DATE,'DD/MM/YYYY HH24:MI:SS') controlDate,UQ_ID uniqueId, 
+			ITT_REQ_CODE ittReqCode, ITT_Auth_CODE ittAuthCode
+		from CST_RECVG_DTL  
+			where RECV_STATUS = 'P' and recv_rec_type is not null and SCREEN_IND = 'Y' 
+			order by recv_date desc
+	</select>
+	
+	<select id="sqlSubmissionHeader" resultClass="cargo.cms.customs.ext.bo.SubmissionHeaderBO" parameterClass="java.lang.String">
+		select FLT_TYPE flightType, FLT_KEY flightNo, to_char(FLT_DATE,'DDMMYY') flightDate, 
+			VER_NO versionNo, REC_TYPE recordType 
+		from CST_SUBM
+		where
+			SEND_STATUS = #PARAM# and REC_TYPE not in ('CCA','TCR','CRA','RMA','EXA','IVA','TRJ','BAC','INA','AMA','BAS','ITT', 'ITF', 'ITC')
+		order by REC_TYPE, FLT_TYPE, FLT_KEY, FLT_DATE, VER_NO
+	</select>
+
+	<select id="sqlTruckSubmissionHeader" resultClass="cargo.cms.customs.ext.bo.SubmissionHeaderBO" parameterClass="java.lang.String">
+		select FLT_TYPE flightType, truck_No truckNo, to_char(sch_DATE,'DDMMYY') schDate, sch_time schTime,
+			VER_NO versionNo, REC_TYPE recordType 
+		from CST_SUBM
+		where
+			SEND_STATUS = #PARAM# and REC_TYPE  in ('CCA','TCR','CRA','RMA','EXA','IVA','TRJ','BAC','INA','AMA','BAS')
+		order by REC_TYPE, FLT_TYPE, FLT_KEY, FLT_DATE, VER_NO
+	</select>
+
+	<select id="sqlConsignmentDetail" resultClass="cargo.cms.customs.ext.bo.SubmissionDetailBO" 
+		parameterClass="cargo.cms.customs.ext.bo.SubmissionHeaderBO">
+		select RECV_REC_TYPE recordType,CNS_HDR header,CNS_FTR footer, CNS_DTL detail,SEQ_NO sequenceNo,CNS_HASH_TOT hashTotal,vessel_flt_info as vesselFlightInfo
+		from CST_CSGNM
+			where
+			FLT_TYPE = #flightType# and
+			FLT_KEY = #flightNo# and 
+			TO_char(FLT_DATE,'DDMMYY') =  #flightDate# and 
+			VER_NO = #versionNo# and 
+			RECV_REC_TYPE = #recordType# 
+		order by  SEQ_NO
+	</select>
+	
+	<select id="sqlConsignmentInterterminalTransferDetail" resultClass="cargo.cms.customs.ext.bo.SubmissionDetailBO" 
+		parameterClass="cargo.cms.customs.ext.bo.SubmissionHeaderBO">
+		select RECV_REC_TYPE recordType,CNS_HDR header,CNS_FTR footer, CNS_DTL detail,SEQ_NO sequenceNo,CNS_HASH_TOT hashTotal
+		from CST_CSGNM
+			where
+			((TO_char(CTRL_DATE,'DDMMYY') =  #controlDate# and 
+			VER_NO = #versionNo#) or itt_req_code = #ittReqCode#) and 
+			RECV_REC_TYPE = #recordType# 
+		order by  SEQ_NO
+	</select>
+	
+	<select id="sqlTruckDetail" resultClass="cargo.cms.customs.ext.bo.SubmissionDetailBO" 
+		parameterClass="cargo.cms.customs.ext.bo.SubmissionHeaderBO">
+		select RECV_REC_TYPE recordType,CNS_HDR header,CNS_FTR footer, CNS_DTL detail,SEQ_NO sequenceNo,CNS_HASH_TOT hashTotal
+		from CST_CSGNM
+			where
+			FLT_TYPE = #flightType# and
+			truck_no = #truckNo# and 
+			TO_char(sch_DATE,'DDMMYY') =  #schDate# and 
+			sch_time = #schTime# and 
+			VER_NO = #versionNo# and 
+			RECV_REC_TYPE = #recordType# 
+		order by  SEQ_NO
+	</select>
+	
+	<select id="sqlSubmissionInterterminalTransferHeader" resultClass="cargo.cms.customs.ext.bo.SubmissionHeaderBO" parameterClass="java.lang.String">
+		select  to_char(CTRL_DATE,'DDMMYY') controlDate, VER_NO versionNo, REC_TYPE recordType, to_char(ctrl_date,'DDMMYY') controlDate, itt_req_code ittReqCode
+		from CST_SUBM
+		where
+			SEND_STATUS = #PARAM#  AND rec_type   IN ('ITT', 'ITF', 'ITC')
+		order by REC_TYPE, FLT_TYPE, FLT_KEY, FLT_DATE, VER_NO
+	</select>
+	
+	
+	<select id="sqlReconConsignmentDetail" parameterClass="cargo.cms.customs.ext.bo.SubmissionHeaderBO" 
+		resultClass="cargo.cms.customs.ext.bo.SubmissionDetailBO">
+		select RECV_REC_TYPE recordType,CSGNM_HDR header,CSGNM_FTR footer,CSGNM_DTL detail,SEQ_NO sequenceNo,CSGNM_HASH_TOT hashTotal
+		from CST_RECON_CSGNM
+		where 
+			RECV_REC_TYPE = #recordType# and
+			TO_CHAR(CTRL_DATE,'DDMMYY HH24:MI') = #controlDate# and 
+			VER_NO = #versionNo# 
+		<isEqual property="recordType" compareValue="RDS" prepend="and" >
+			REQ_UID = #reqUID#
+		</isEqual>
+		order by SEQ_NO
+	</select>
+	<select id="sqlReconSubmissionHeader" parameterClass="java.lang.String" resultClass="cargo.cms.customs.ext.bo.SubmissionHeaderBO">
+		select MSG_TYPE recordType, VER_NO versionNo, TO_CHAR(CTRL_DATE,'DDMMYY HH24:MI') controlDate,REQ_UID reqUID 
+		from CST_RECON_SUBM_CTRL 
+		where
+			SEND_STATUS = #PARAM#
+		order by MSG_TYPE
+	</select>
+
+
+	<select id="sqlRejectedConsignmentAck" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO" 
+		resultClass="cargo.cms.customs.ext.bo.AcknowledgementBO">
+		SELECT FLT_TYPE flightType,FLT_KEY flightNo, TO_CHAR(FLT_DATE,'DD/MM/YYYY HH24:MI:SS') schldArrDate, 
+			VER_NO versionNo, UQ_ID uniqueId,ACK_REC_TYPE recordType, RTRV_STATUS status,TO_CHAR(CTRL_DATE,'DD/MM/YYYY') controlDate
+		FROM CST_ACK 
+		WHERE 
+			((RTRV_STATUS = #retrvStatus# AND ACK_STATUS = #status# AND ACK_REC_TYPE &lt;&gt; 'MAN') OR
+			(ACK_REC_TYPE ='CLR' AND  RTRV_STATUS = #retrvStatus#) OR
+			(ACK_REC_TYPE ='CLP' AND  RTRV_STATUS = #retrvStatus#) OR
+			(ACK_REC_TYPE ='ECC' AND  RTRV_STATUS = #retrvStatus#) OR
+			(ACK_REC_TYPE ='ICE' AND  RTRV_STATUS = #retrvStatus#) OR
+			(ACK_REC_TYPE ='BDC' AND  RTRV_STATUS = #retrvStatus#) OR
+			(ACK_REC_TYPE ='IDV' AND  RTRV_STATUS = #retrvStatus#) OR
+			(ACK_REC_TYPE ='CCR' AND  RTRV_STATUS = #retrvStatus#) OR
+			(ACK_REC_TYPE ='EXM' AND  RTRV_STATUS = #retrvStatus#) OR
+			(ACK_REC_TYPE ='BDS' AND  RTRV_STATUS = #retrvStatus#) OR
+			(ACK_REC_TYPE ='LBR' AND  RTRV_STATUS = #retrvStatus#) )
+			and ACK_REC_TYPE not in ('CCA','TCR','CRA','RMA','EXA','IVA','TRJ','BAC','INA','AMA','BAS','ITT','ITF','ITC','ITQ','ITN','ITL','ITD','ITA')
+	</select>
+	
+	<select id="sqlRejectedIttAck" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO" 
+		resultClass="cargo.cms.customs.ext.bo.AcknowledgementBO">		
+		SELECT TO_CHAR(CTRL_DATE,'DD/MM/YYYY') controlDate, 
+			VER_NO versionNo, UQ_ID uniqueId,ACK_REC_TYPE recordType, RTRV_STATUS status, ITT_REQ_CODE ittReqCode,
+			ITT_AUTH_CODE ittAuthCode
+		FROM CST_ACK 
+		WHERE ACK_REC_TYPE in ('ITT','ITF','ITC','ITQ','ITN','ITL','ITD','ITA') 
+			and ((RTRV_STATUS = #retrvStatus# AND ACK_STATUS = #status# AND ACK_REC_TYPE &lt;&gt; 'MAN') OR
+			(ACK_REC_TYPE ='ITT' AND  RTRV_STATUS = #retrvStatus#) OR
+			(ACK_REC_TYPE ='ITF' AND  RTRV_STATUS = #retrvStatus#) OR
+			(ACK_REC_TYPE ='ITC' AND  RTRV_STATUS = #retrvStatus#) OR
+			(ACK_REC_TYPE ='ITN' AND  RTRV_STATUS = #retrvStatus#) OR
+			(ACK_REC_TYPE ='ITQ' AND  RTRV_STATUS = #retrvStatus#) OR
+			(ACK_REC_TYPE ='ITL' AND  RTRV_STATUS = #retrvStatus#) OR
+			(ACK_REC_TYPE ='ITD' AND  RTRV_STATUS = #retrvStatus#) OR
+			(ACK_REC_TYPE ='ITA' AND  RTRV_STATUS = #retrvStatus#))
+	</select>
+	
+	<select id="sqlItmRejectedConsignmentAck" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO" 
+		resultClass="cargo.cms.customs.ext.bo.AcknowledgementBO">
+		SELECT FLT_TYPE flightType,truck_No truckNo, TO_CHAR(SCH_DATE,'YYYYMMDD') schDepDate, TO_CHAR(nvl(SCH_TIME,0),'0000') schTime,  
+			VER_NO versionNo, UQ_ID uniqueId,ACK_REC_TYPE recordType, RTRV_STATUS status
+		FROM CST_ACK 
+		WHERE ACK_REC_TYPE in ('CCA','TCR','CRA','RMA','EXA','IVA','TRJ','BAC','INA','AMA','BAS')
+			and ((RTRV_STATUS = #retrvStatus# AND ACK_STATUS = #status# AND ACK_REC_TYPE &lt;&gt; 'TRJ' ) OR
+			(ACK_REC_TYPE ='CCA' AND  RTRV_STATUS = #retrvStatus#) OR
+			(ACK_REC_TYPE ='TCR' AND  RTRV_STATUS = #retrvStatus#) OR
+			(ACK_REC_TYPE ='CRA' AND  RTRV_STATUS = #retrvStatus#) OR
+			(ACK_REC_TYPE ='RMA' AND  RTRV_STATUS = #retrvStatus#) OR
+			(ACK_REC_TYPE ='EXA' AND  RTRV_STATUS = #retrvStatus#) OR
+			(ACK_REC_TYPE ='IVA' AND  RTRV_STATUS = #retrvStatus#) OR
+			(ACK_REC_TYPE ='TRJ' AND  RTRV_STATUS = #retrvStatus#) OR
+			(ACK_REC_TYPE ='BAC' AND  RTRV_STATUS = #retrvStatus#) )
+	</select>
+	
+	<select id="sqlFetchReconAcksForDataPoll" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO" 
+		resultClass="cargo.cms.customs.ext.bo.AcknowledgementBO">
+		SELECT  TO_CHAR(CTRL_DATE,'DD/MM/YYYY HH24:MI:SS') controlDate, 
+			VER_NO versionNo, REQ_UID uniqueId,ACK_REC_TYPE recordType
+		FROM CST_RECON_ACK
+		WHERE 
+			(RTRV_STATUS = #retrvStatus# AND ACK_STATUS = #status#) OR
+			(RTRV_STATUS = #retrvStatus# AND ACK_REC_TYPE='LST')
+	</select>
+	<insert id="sqldeleteOldTruckConsignmentAck" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO" >
+		delete from CST_ACK
+		where Truck_No = #truckNo#
+			and SCH_time = #schTime#
+			and SCH_DATE = decode(#schDepDate#,null,'',TO_DATE(#schDepDate#,'DD/MM/YYYY HH24:MI:SS'))
+			and VER_NO = nvl(#versionNo#,VER_NO)
+			and ACK_REC_TYPE = #recordType#
+	</insert>
+	
+	<insert id="sqldeleteScreenOldTruckConsignmentAck" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO" >
+		delete from CST_ACK
+		where Truck_No = #truckNo#
+			and SCH_time = #schTime#
+			and SCH_DATE = decode(#schDepDate#,null,'',TO_DATE(#schDepDate#,'DD/MM/YYYY HH24:MI:SS'))
+			and VER_NO = nvl(#versionNo#,VER_NO)
+			and ACK_REC_TYPE = #recordType#
+			and SCREEN_IND = 'Y'
+	</insert>
+	
+	<insert id="sqldeleteOldConsignmentAck" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO" >
+		delete from CST_ACK
+		where FLT_TYPE = #flightType#
+			and FLT_KEY = #flightKey#
+			and FLT_DATE = TO_DATE(#schldArrDate#,'YYYYMMDD')
+			and VER_NO = #versionNo#
+			and ACK_REC_TYPE = #recordType#
+	</insert>
+	<insert id="sqlConsignmetnAcknowledgement" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO">
+		insert into CST_ACK
+		(TR_NO,ACK_REC_TYPE, UQ_ID, ACK_DATE, FLT_DATE, FLT_KEY, VER_NO, ACK_STATUS, 
+			FLT_TYPE, LM_USER_ID, LM_DATE, LM_VER,RTRV_STATUS,
+			TOT_CONST_AWB, TTL_CONST_HAWB, TTL_OK_AWB, TTL_OK_HAWB, ACK_TOTAL_REC,TRUCK_NO,SCH_DATE,SCH_TIME
+		)
+		values(
+			#trNo# ,
+			#recordType#,
+			#uniqueId#,
+			TO_DATE(#dateTime#,'YYYYMMDDHH24MISS'),
+			decode(#schldArrDate#,null,'',TO_DATE(#schldArrDate#,'YYYYMMDD')),					
+			#flightKey#,
+			#versionNo#,
+			#status#,
+			#flightType#,
+			'SYSTEM_ACCS',
+			sysdate,
+			0,
+			#retrvStatus#,
+			#totCnstdCNROnAWB#,
+			#totCnstdCNROnHWB#,
+			#totNonCnstdCNROnAWB#,
+			#totNonCnstdCNROnAWB#,
+			#totCNR#,
+			#truckNo#,
+			decode(#schDepDate#,null,'',TO_DATE(#schDepDate#,'YYYYMMDD')),			
+			#schTime#
+		)
+	</insert>
+
+
+	<delete id="sqldeleteScreenOldConsignmentAck" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO" >
+		delete from CST_ACK
+		where FLT_TYPE = #flightType#
+			and FLT_KEY = #flightKey#
+			and FLT_DATE = TO_DATE(#schldArrDate#,'YYYYMMDD')
+			and VER_NO = #versionNo#
+			and ACK_REC_TYPE = #recordType#
+			and SCREEN_IND = 'Y'
+	</delete>
+	
+	
+		<insert id="sqlConsignmetnScreenAcknowledgement" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO">
+		insert into CST_ACK
+		(TR_NO,ACK_REC_TYPE, UQ_ID, ACK_DATE, FLT_DATE, FLT_KEY, VER_NO, ACK_STATUS, 
+			FLT_TYPE, LM_USER_ID, LM_DATE, LM_VER,RTRV_STATUS,
+			TOT_CONST_AWB, TTL_CONST_HAWB, TTL_OK_AWB, TTL_OK_HAWB, ACK_TOTAL_REC,TRUCK_NO,SCH_DATE,SCH_TIME, SCREEN_IND
+		)
+		values(
+			#trNo# ,
+			#recordType#,
+			#uniqueId#,
+			TO_DATE(#dateTime#,'YYYYMMDDHH24MISS'),
+			decode(#schldArrDate#,null,'',TO_DATE(#schldArrDate#,'YYYYMMDD')),					
+			#flightKey#,
+			#versionNo#,
+			#status#,
+			#flightType#,
+			'SCR_SYS_ACCS',
+			sysdate,
+			0,
+			#retrvStatus#,
+			#totCnstdCNROnAWB#,
+			#totCnstdCNROnHWB#,
+			#totNonCnstdCNROnAWB#,
+			#totNonCnstdCNROnAWB#,
+			#totCNR#,
+			#truckNo#,
+			decode(#schDepDate#,null,'',TO_DATE(#schDepDate#,'YYYYMMDD')),			
+			#schTime#,
+			'Y'
+		)
+	</insert>
+	
+	<insert id="sqlIttAcknowledgement" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO">
+		insert into
+		CST_ACK
+		(TR_NO,ACK_REC_TYPE, UQ_ID, ACK_DATE, ACK_STATUS,LM_USER_ID,
+		LM_DATE, LM_VER, RTRV_STATUS, ITT_REQ_DATE, CTRL_DATE,
+		ITT_REQ_NO, VER_NO, ITT_REQ_CODE, ITT_AUTH_CODE,
+		ORIG_CARGO_HANDR,
+		DEST_CARGO_HANDR, CONTAIN_DC
+		)
+		values(
+		#trNo# ,
+		#recordType#,
+		#uniqueId#,
+		TO_DATE(#dateTime#,'YYYYMMDDHH24MISS'),
+		#status#,
+		'SYSTEM_ACCS',
+		sysdate,
+		0,
+		#retrvStatus#,
+		TO_DATE(#ittReqDate#,'YYYYMMDD'),
+		TO_DATE(#ittReqDate#,'YYYYMMDD'),
+		#ittReqNo#,
+		#ittReqNo#,
+		#ittReqCode#,
+		#ittAuthCode#,
+		#origCargoHandlerCode#,
+		#destCargoHandlerCode#,
+		#containDutiableCommdities#
+		)
+	</insert>
+	
+	<insert id="sqlScreenIttAcknowledgement" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO">
+		insert into
+		CST_ACK
+		(TR_NO,ACK_REC_TYPE, UQ_ID, ACK_DATE, ACK_STATUS,LM_USER_ID,
+		LM_DATE, LM_VER, RTRV_STATUS, ITT_REQ_DATE, CTRL_DATE,
+		ITT_REQ_NO, VER_NO, ITT_REQ_CODE, ITT_AUTH_CODE,
+		ORIG_CARGO_HANDR,
+		DEST_CARGO_HANDR, CONTAIN_DC, SCREEN_IND
+		)
+		values(
+		#trNo# ,
+		#recordType#,
+		#uniqueId#,
+		TO_DATE(#dateTime#,'YYYYMMDDHH24MISS'),
+		#status#,
+		'SCR_SYS_ACCS',
+		sysdate,
+		0,
+		#retrvStatus#,
+		TO_DATE(#ittReqDate#,'YYYYMMDD'),
+		TO_DATE(#ittReqDate#,'YYYYMMDD'),
+		#ittReqNo#,
+		#ittReqNo#,
+		#ittReqCode#,
+		#ittAuthCode#,
+		#origCargoHandlerCode#,
+		#destCargoHandlerCode#,
+		#containDutiableCommdities#, 'Y'
+		)
+	</insert>
+	
+	<select id="sqlNextAckSequenceNo" resultClass="java.lang.String">
+		select CST_ACK_SEQ.NEXTVAL from dual
+	</select>
+	
+	<select id="sqlGet_TrNo_ittReqCode" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO" resultClass="java.lang.String">
+		select TR_NO from CST_ITT_HD where ITT_REQ_NO = to_number(#ittReqNo#)  and  ITT_REQ_DATE = TO_DATE(#ittReqDate#,'YYYYMMDD') and  ITT_REQ_CODE is null
+	</select>
+	
+	<update id="sqlUpdate_CST_ITT_HD_ITT_Req_code" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO">
+		update CST_ITT_HD
+		set ITT_REQ_CODE = #ittReqCode#,
+		LM_DATE = sysdate,
+		LM_USER_ID = 'SYSTEM_ACCS'
+		where TR_NO = #trNo#
+		and ITT_REQ_NO = to_number(#ittReqNo#)
+		and ITT_REQ_DATE = TO_DATE(#ittReqDate#,'YYYYMMDD')
+		and ITT_REQ_CODE is null
+	</update>
+	
+	<update id="sqlUpdate_CST_ITT_DTL_ITT_Req_code" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO">
+		update CST_ITT_DTL
+		set ITT_REQ_CODE = #ittReqCode#,
+		LM_DATE = sysdate,
+		LM_USER_ID = 'SYSTEM_ACCS'
+		where TR_NO = #trNo#
+		and ITT_REQ_NO = to_number(#ittReqNo#)
+		and ITT_REQ_DATE = TO_DATE(#ittReqDate#,'YYYYMMDD')
+		and ITT_REQ_CODE is null
+	</update>
+	
+	<select id="sqlGetCount_ittReqCode" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO" resultClass="java.lang.Integer">
+		select count(1) from CST_ITT_HD where ITT_REQ_CODE = #ittReqCode# 
+	</select>
+	
+	<insert id="sql_ITQ_Insert_CST_ITT_HD" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO">
+		Insert into cst_itt_hd
+		(TR_NO,ITT_REQ_CODE,ORIG_CARGO_HANDLER,DEST_CARGO_HANDLER,DC_IND,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE,ACCS_IND)
+		values
+		(#trNo#,#ittReqCode#,#origCargoHandlerCode#,#destCargoHandlerCode#,#containDutiableCommdities#,'SYSTEM_ACCS',SYSDATE,'SYSTEM_ACCS',SYSDATE,'Y')
+	</insert>	
+	
+	<select id="sqlGet_TrNo_ittAuthCode" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO" resultClass="java.lang.String">
+		select tr_no from CST_ITT_HD where ITT_REQ_CODE = #ittReqCode# and ITT_AUTH_CODE is null
+	</select>	
+	
+	<update id="sqlUpdate_CST_ITT_HD_ITT_Auth_code" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO">
+		update CST_ITT_HD
+			set ITT_AUTH_CODE = #ittAuthCode#,
+			LM_DATE = sysdate,
+			LM_USER_ID = 'SYSTEM_ACCS'
+		where tr_no = #trNo#
+		      and  ITT_REQ_CODE = #ittReqCode#
+		      and  ITT_AUTH_CODE is null
+	</update>
+	
+	<update id="sqlUpdate_CST_ITT_DTL_ITT_Authode" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO">
+		update CST_ITT_DTL
+			set ITT_AUTH_CODE = #ittAuthCode#,
+			LM_DATE = sysdate,
+			LM_USER_ID = 'SYSTEM_ACCS'
+		where tr_no = #trNo#
+		      and  ITT_REQ_CODE = #ittReqCode#
+		      and  ITT_AUTH_CODE is null
+	</update>
+
+      <update id="sqlUpdate_cst_itt_hd_DenyIndicator" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO" >
+		update cst_itt_hd set ITT_CONFIRM_DENY_IND = 'N',
+		DENY_USER_ID = 'SYSTEM_ACCS',
+		DENY_DATE = SYSDATE,
+		CONFIRM_USER_ID = null,
+		CONFIRM_DATE = null,
+		LM_DATE = sysdate,
+		LM_USER_ID = 'SYSTEM_ACCS'
+		where itt_req_code = #ittReqCode# and  ITT_AUTH_CODE is null and tr_no = #trNo#
+	</update>	
+	
+		<insert id="sqlInsertRecvData" parameterClass="cargo.cms.customs.ext.bo.RecieveBO">
+		insert into CST_RECV 
+		(FLT_TYPE, CARR_CODE, FLT_KEY, FLT_DATE, REC_TYPE, AWB_NO, HAWB_NO, VER_NO, RECV_DATE, 
+			CTM_REF_NO, CONST_CODE, CONST_REM, EXAM_CODE, EXAM_REP_PCS, EXAM_REP_WT, EXAM_DET_PCS, 
+			EXAM_DET_WT, EXAM_REM, MSG_TYPE, ERROR_MSG, CONST_I, CTRL_DATE, REQ_UID, LM_USER_ID, 
+			LM_DATE, LM_VER,TRUCK_NO,SCH_DATE,SCH_TIME, ITT_REQ_CODE,AWB_DATE) 
+	values(
+		decode(#flightType#,null,' ',#flightType#),decode(#carrCode#,null,'',#carrCode#),
+		trim(decode(#flightKey#,null,' ',#flightKey#)),
+		decode(#flightDate#,null,'',TO_DATE(#flightDate#,'DD/MM/YYYY HH24:MI:SS')),#recordType#,
+		trim(replace(#awbNo#,'-','')),trim(decode(#hawbNo#,null,'',#hawbNo#)),#versionNo#,TO_DATE(#recvDate#,'DD/MM/YYYY HH24:MI:SS'),
+		#ctmRefNo#,#constraintCode#,#constraintRemarks#,#examCode#,#examRelPcs#,#examRelWt#,#examDetPcs#,
+		#examDetWt#,#examRem#,#msgType#,#errorMsg#,#constI#,TO_DATE(#controlDate#,'DD/MM/YYYY HH24:MI:SS'),
+		#reqUniqueId#,'SYSTEM_ACCS',	sysdate,1,#truckNo#,TO_DATE(#schDepDate#,'DD/MM/YYYY HH24:MI:SS'),#schTime#,#ittReqCode#,PKG_COMMON.GET_AWB_DATE(trim(replace(#awbNo#,'-','')),'')
+	)
+	</insert>
+	
+<insert id="sqlIttInsertRecvData" parameterClass="cargo.cms.customs.ext.bo.RecieveBO">
+	insert into CST_RECV 
+	(FLT_TYPE, CARR_CODE, FLT_KEY, FLT_DATE, REC_TYPE, AWB_NO, HAWB_NO, VER_NO, RECV_DATE, 
+		CTM_REF_NO, CONST_CODE, CONST_REM, EXAM_CODE, EXAM_REP_PCS, EXAM_REP_WT, EXAM_DET_PCS, 
+		EXAM_DET_WT, EXAM_REM, MSG_TYPE, ERROR_MSG, CONST_I, CTRL_DATE, REQ_UID, LM_USER_ID, 
+		LM_DATE, LM_VER, ITT_REQ_CODE,AWB_DATE) 
+	values(
+		decode(#flightType#,null,' ',#flightType#),
+		decode(#carrCode#,null,'',#carrCode#),
+		trim(decode(#flightKey#,null,' ',#flightKey#)),
+		decode(#flightDate#,null,'',TO_DATE(#flightDate#,'YYYY/MM/DD')),
+		#recordType#,
+		#awbNoWithoutHypen#,
+		trim(decode(#hawbNo#,null,'',#hawbNo#)),
+		#versionNo#,
+		TO_DATE(#recvDate#,'DD/MM/YYYY HH24:MI:SS'),
+		#ctmRefNo#,
+		#constraintCode#,
+		#constraintRemarks#,
+		#examCode#,
+		#examRelPcs#,
+		#examRelWt#,
+		#examDetPcs#,
+		#examDetWt#,
+		#examRem#,
+		#msgType#,
+		#errorMsg#,
+		#constI#,
+		TO_DATE(#controlDate#,'DD/MM/YYYY HH24:MI:SS'),
+		#reqUniqueId#,
+		'SYSTEM_ACCS',	
+		sysdate,
+		1, 
+		#ittReqCode#,PKG_COMMON.GET_AWB_DATE(#awbNoWithoutHypen#,'')
+	)
+	</insert>
+	
+	<select id="sqlGet_ITT_HD_TrNo_ittReqCode" parameterClass="cargo.cms.customs.ext.bo.RecieveBO" resultClass="java.lang.String">
+		select tr_no from CST_ITT_HD where ITT_REQ_CODE = #ittReqCode# and rownum = 1
+	</select>
+	
+	<select id="sqlGet_ITT_Dtl_Count_ittReqCode" parameterClass="cargo.cms.customs.ext.bo.RecieveBO" resultClass="java.lang.Integer">
+		select nvl(max(DOC_LINE_NO),0) from CST_ITT_DTL where tr_no = #trNo# and ITT_REQ_CODE = #ittReqCode# 
+	</select>
+	
+	<select id="sqlGet_ITT_Dtl_Count_RestOfData" parameterClass="cargo.cms.customs.ext.bo.RecieveBO" resultClass="java.lang.Integer">
+		select count(1) from CST_ITT_DTL where tr_no = #trNo# and ITT_REQ_CODE = #ittReqCode#
+		and AWB_NO = #awbNoWithoutHypen# and FLT_KEY = #flightKey# and FLT_DATE = TO_DATE(#flightDate#,'YYYY/MM/DD') and HAWB_NO = nvl (#hawbNo#,HAWB_NO )
+		and ITT_CTM_REF_NO = #ctmRefNo#
+	</select>
+	
+	<insert id="sql_ITQ_ITA_Insert_CST_ITT_HD" parameterClass="cargo.cms.customs.ext.bo.RecieveBO">
+	  Insert into cst_itt_hd
+	  (TR_NO,ITT_REQ_CODE,ITT_REQ_NO,ITT_REQ_DATE,ITT_AUTH_CODE,ORIG_CARGO_HANDLER,DEST_CARGO_HANDLER,DC_IND,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE,ACCS_IND)
+	  select #trNo#,ITT_REQ_CODE,ITT_REQ_NO,ITT_REQ_DATE,ITT_AUTH_CODE,ORIG_CARGO_HANDR,DEST_CARGO_HANDR,CONTAIN_DC,'SYSTEM_ACCS',SYSDATE,'SYSTEM_ACCS',SYSDATE,'Y'
+	  from cst_ack where (ITT_REQ_CODE = #ittReqCode# or ITT_AUTH_CODE = nvl(#ittAuthCode#,ITT_AUTH_CODE)) and rownum = 1
+	</insert>
+	
+	<select id="sqlGet_ITT_HD_TrNo_ittAuthCode" parameterClass="cargo.cms.customs.ext.bo.RecieveBO" resultClass="java.lang.String">
+		select tr_no from CST_ITT_HD where ITT_REQ_CODE = #ittReqCode# and ITT_Auth_CODE = #ittAuthCode# 
+	</select>
+	
+	<select id="sqlGet_ITT_Dtl_Count_ittAuthCode" parameterClass="cargo.cms.customs.ext.bo.RecieveBO" resultClass="java.lang.Integer">
+		select nvl(max(DOC_LINE_NO),0) from CST_ITT_DTL where tr_no = #trNo# and ITT_REQ_CODE = #ittReqCode# and ITT_Auth_CODE = #ittAuthCode# 
+	</select>
+	
+	<!-- and ITT_Auth_CODE = #ittAuthCode#  and ITT_REQ_NO is null and ITT_REQ_DATE is null and HAWB_NO = nvl (#hawbNo#,HAWB_NO )-->
+	<select id="sqlGet_ITT_Dtl_Count_ittAuthCode_RestOfData" parameterClass="cargo.cms.customs.ext.bo.RecieveBO" resultClass="java.lang.Integer">
+		select count(1) from CST_ITT_DTL where tr_no = #trNo# and ITT_REQ_CODE = #ittReqCode# 
+		and AWB_NO = #awbNoWithoutHypen# and FLT_KEY = #flightKey# and FLT_DATE = TO_DATE(#flightDate#,'YYYY/MM/DD') 
+		and ITT_CTM_REF_NO = #ctmRefNo#
+	</select>
+
+		
+	<insert id="sqlInsertNoticeAcknowledgements" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO">
+	insert into CST_NTCE_ACK
+	(TR_NO,ACK_DATE, ACK_STATUS, CARGO_HANDR, LM_DATE, LM_USER_ID, 
+		LM_VER, MSG_ID, MSG_TITLE, UQ_ID,RTRV_STATUS)
+	values(
+		CST_NTCE_ACK_SEQ.NEXTVAL,
+		TO_DATE(#dateTime# ,'YYYYMMDDHH24MISS'),
+		#status#,
+		#cargoHandlerCode#,
+		sysdate,
+		'SYSTEM_ACCS',
+		#versionNo#,
+		#message#,
+		#title#,
+		#uniqueId#,
+		'P'
+	)
+	</insert>
+	
+	<insert id="sqlInsertScreenNoticeAcknowledgements" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO">
+	insert into CST_NTCE_ACK
+	(TR_NO,ACK_DATE, ACK_STATUS, CARGO_HANDR, LM_DATE, LM_USER_ID, 
+		LM_VER, MSG_ID, MSG_TITLE, UQ_ID,RTRV_STATUS,SCREEN_IND)
+	values(
+		CST_NTCE_ACK_SEQ.NEXTVAL,
+		TO_DATE(#dateTime# ,'YYYYMMDDHH24MISS'),
+		#status#,
+		#cargoHandlerCode#,
+		sysdate,
+		'SCR_SYS_ACCS',
+		#versionNo#,
+		#message#,
+		#title#,
+		#uniqueId#,
+		'P','Y'
+	)
+	</insert>
+	
+	<insert id="sqlInsertReconAcknowledgements" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO">
+		insert into CST_RECON_ACK
+		(ACK_REC_TYPE, CTRL_DATE, VER_NO, LM_USER_ID, LM_DATE, 
+			ACK_DATE, ACK_STATUS,ACK_TOT_REC, REQ_UID,RTRV_STATUS,LM_VER)
+		values(
+			#recordType#,
+			TO_DATE(#controlDate#,'YYYYMMDD'),
+			#versionNo#,
+			'SYSTEM_ACCS',
+			sysdate,
+			TO_DATE(#ackDateTime# ,'YYYYMMDDHH24MISS'),
+			#status#,
+			#totRecs#,
+			#uniqueId#,
+			#retrvStatus#,
+			#versionNo#
+		)
+	</insert>
+	
+	<insert id="sqlInsertScreenReconAcknowledgements" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO">
+		insert into CST_RECON_ACK
+		(ACK_REC_TYPE, CTRL_DATE, VER_NO, LM_USER_ID, LM_DATE, 
+			ACK_DATE, ACK_STATUS,ACK_TOT_REC, REQ_UID,RTRV_STATUS,LM_VER,SCREEN_IND)
+		values(
+			#recordType#,
+			TO_DATE(#controlDate#,'YYYYMMDD'),
+			#versionNo#,
+			'SCR_SYS_ACCS',
+			sysdate,
+			TO_DATE(#ackDateTime# ,'YYYYMMDDHH24MISS'),
+			#status#,
+			#totRecs#,
+			#uniqueId#,
+			#retrvStatus#,
+			#versionNo#, 'Y'
+		)
+	</insert>
+	
+	<insert id="sqlInsertPrilimData" parameterClass="cargo.cms.customs.ext.bo.AcknowledgementBO">
+		insert into CST_RECVG_DTL 
+		 (LM_USER_ID, LM_DATE, LM_VER, UQ_ID, FLT_DATE, FLT_KEY, VER_NO, RECV_STATUS, 
+			RECV_DATE, RECV_REC_TYPE, RECVG_DTL,FLT_TYPE,CTRL_DATE, MSG_TYPE, MSG_ID,TRUCK_NO,SCH_DATE,SCH_TIME, ITT_REQ_CODE, ITT_AUTH_CODE)
+		 values (
+			'SYSTEM_ACCS',
+			sysdate,
+			#versionNo#,
+			#uniqueId#,
+			decode(#schldArrDate#,null,'',TO_DATE(#schldArrDate#,'DD/MM/YYYY HH24:MI:SS')),	
+			#flightNo#,
+			#versionNo#,
+			#status#,
+			sysdate,
+			#recordType#,
+			#outRec#,
+			#flightType#
+		    <isNotEmpty prepend="," property="controlDate" >
+				TO_Date( #controlDate# , 'DD/MM/YYYY HH24:MI:SS'),
+			</isNotEmpty>
+			<isEmpty prepend="," property="controlDate" >
+				null,
+			</isEmpty>
+			null,
+			null,
+			#truckNo#,
+			decode(#schDepDate#,null,'',TO_DATE(#schDepDate#,'YYYYMMDD')),			
+			#schTime#,
+			#ittReqCode#,
+			#ittAuthCode#
+		)
+	</insert>
+	
+	<insert id="sqlScreenInsertPrilimData" parameterClass="cargo.cms.customs.ext.bo.AcknowledgementBO">
+		insert into CST_RECVG_DTL 
+		 (LM_USER_ID, LM_DATE, LM_VER, UQ_ID, FLT_DATE, FLT_KEY, VER_NO, RECV_STATUS, 
+			RECV_DATE, RECV_REC_TYPE, RECVG_DTL,FLT_TYPE,CTRL_DATE, MSG_TYPE, MSG_ID,TRUCK_NO,SCH_DATE,SCH_TIME, ITT_REQ_CODE, ITT_AUTH_CODE, SCREEN_IND)
+		 values (
+			#createdUserId#,
+			sysdate,
+			#versionNo#,
+			#uniqueId#,
+			decode(#schldArrDate#,null,'',TO_DATE(#schldArrDate#,'DDMONYY')),	
+			#flightNo#,
+			#versionNo#,
+			#status#,
+			sysdate,
+			#recordType#,
+			#outRec#,
+			#flightType#
+		    <isNotEmpty prepend="," property="controlDate" >
+				TO_Date( #controlDate# , 'DD/MM/YYYY HH24:MI:SS'),
+			</isNotEmpty>
+			<isEmpty prepend="," property="controlDate" >
+				null,
+			</isEmpty>
+			null,
+			null,
+			#truckNo#,
+			decode(#schDepDate#,null,'',TO_DATE(#schDepDate#,'YYYYMMDD')),			
+			#schTime#,
+			#ittReqCode#,
+			#ittAuthCode#,
+			'Y'
+		)
+	</insert>
+	
+	<delete id="sqlScreenDeletePrilimData" parameterClass="cargo.cms.customs.ext.bo.AcknowledgementBO">
+		<![CDATA[ 
+			delete from cst_recvg_dtl where screen_ind is not null and lm_user_id <> 'SYSTEM_ACCS' and recv_status = 'P'
+			]]>	
+	</delete>
+	
+	<update id="sqlUpdateAcknowledgement" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO">
+		update CST_ACK 
+			set RTRV_STATUS = #retrvStatus#,
+			LM_DATE = sysdate,
+			LM_USER_ID = 'SYSTEM_ACCS'
+		where 
+			UQ_ID = #uniqueId# AND 
+			FLT_DATE = TO_Date(#schldArrDate#, 'DD/MM/YYYY HH24:MI:SS')
+	</update>
+	<update id="sqlUpdateBDCAcknowledgement" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO" >
+		update CST_ACK 
+			set RTRV_STATUS = #retrvStatus#,
+			LM_DATE = sysdate,
+			LM_USER_ID = 'SYSTEM_ACCS'
+		where 
+			UQ_ID = #uniqueId#
+	</update>
+	
+	<update id="sqlUpdateIttAcknowledgement" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO" >
+		update CST_ACK 
+			set RTRV_STATUS = #retrvStatus#,
+			LM_DATE = sysdate,
+			LM_USER_ID = 'SYSTEM_ACCS'
+		where 
+			UQ_ID = #uniqueId#
+	</update>
+	
+	<update id="sqlUpdateReconAcknowledgement" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO">
+		update CST_RECON_ACK   
+			set RTRV_STATUS = #retrvStatus#,
+			LM_DATE = sysdate,
+			LM_USER_ID = 'SYSTEM_ACCS'
+		where 
+			REQ_UID = #uniqueId#
+	</update>
+	<update id="sqlUpdateConsignmentSubmission" parameterClass="cargo.cms.customs.ext.bo.SubmissionHeaderBO">
+		update CST_SUBM
+		SET
+			SEND_STATUS = #sendStatus#,
+			LM_DATE = sysdate,
+			ERR_MSG = #errorMsg#,
+			SEND_DATE = sysdate,
+			CNS_HASH_TOT = UPPER(#hashCode#),
+			LM_USER_ID = 'SYSTEM_ACCS'
+		where
+			 FLT_TYPE = #flightType# and 
+			 FLT_KEY = #flightNo# and 
+			 TO_char(FLT_DATE,'DDMMYY') =  #flightDate# and
+			 VER_NO = #versionNo# and 
+			 REC_TYPE = #recordType# 
+	</update>
+	
+	<update id="sqlUpdateInterTerminalSubmission" parameterClass="cargo.cms.customs.ext.bo.SubmissionHeaderBO">
+		update CST_SUBM
+		SET
+			SEND_STATUS = #sendStatus#,
+			LM_DATE = sysdate,
+			ERR_MSG = #errorMsg#,
+			SEND_DATE = sysdate,
+			CNS_HASH_TOT = UPPER(#hashCode#),
+			LM_USER_ID = 'SYSTEM_ACCS'
+		where		  
+			 (( CTRL_DATE = to_date(#controlDate#,'DDMMYY HH24:MI') and 
+			 VER_NO = #versionNo#)
+			 OR ITT_REQ_CODE = #ittReqCode#) and 
+			 REC_TYPE = #recordType# 
+	</update>
+	
+	<update id="sqlUpdateTruckConsignmentSubmission" parameterClass="cargo.cms.customs.ext.bo.SubmissionHeaderBO">
+		update CST_SUBM
+		SET
+			SEND_STATUS = #sendStatus#,
+			LM_DATE = sysdate,
+			ERR_MSG = #errorMsg#,
+			SEND_DATE = sysdate,
+			CNS_HASH_TOT = UPPER(#hashCode#),
+			LM_USER_ID = 'SYSTEM_ACCS'
+		where
+			 FLT_TYPE = #flightType# and 
+			 truck_no = #truckNo# and 
+			 TO_char(Sch_DATE,'DDMMYY') =  #schDate# and
+			 sch_time = #schTime# and 
+			 VER_NO = #versionNo# and 
+			 REC_TYPE = #recordType# 
+	</update>
+	<update id="sqlUpdateReconConsignmentSubmission" parameterClass="cargo.cms.customs.ext.bo.SubmissionHeaderBO">
+		update CST_RECON_SUBM_CTRL
+		SET
+			SEND_STATUS = #sendStatus#,
+			LM_DATE = sysdate,
+			ERR_MSG = #errorMsg#,
+			SEND_DATE = sysdate,
+			LM_USER_ID = 'SYSTEM_ACCS'
+		where
+			 CTRL_DATE = to_date(#controlDate#,'DDMMYY HH24:MI') and 
+			 VER_NO = #versionNo# and 
+			 MSG_TYPE = #recordType# 
+	</update>
+	
+	<select id="sqlFetchNoFltSfxConsSubmission" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO" resultClass="java.lang.String">
+		select no_flt_sfx from
+		(select 
+			no_flt_sfx 
+		from 
+			cst_subm 
+		where 
+    		flt_key = #flightKey# and 
+			TO_char(FLT_DATE,'YYYYMMDD') = #schldArrDate# 
+			AND REC_TYPE = 'INT' order by subm_date desc)
+		where rownum=1
+	</select>
+	
+	<update id="sqlUpdateConsignmentSubmissionSG2" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO">
+		update CST_SUBM
+		SET
+			SEND_STATUS = #status#,
+			LM_DATE = sysdate,
+			LM_USER_ID = 'SYSTEM_ACCS'
+		where
+			 FLT_KEY = #flightKey# and 
+			 TO_char(FLT_DATE,'YYYYMMDD') =  #schldArrDate# and
+			 VER_NO = #versionNo# and 
+			 REC_TYPE = #recordType# 
+	</update>
+	
+	<update id="sqlUpdateScreenConsignmentSubmissionSG2" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO">
+		update CST_SUBM
+		SET
+			SEND_STATUS = #status#,
+			LM_DATE = sysdate,
+			LM_USER_ID = 'SCR_SYS_ACCS'
+		where
+			 FLT_KEY = #flightKey# and 
+			 TO_char(FLT_DATE,'YYYYMMDD') =  #schldArrDate# and
+			 VER_NO = #versionNo# and 
+			 REC_TYPE = #recordType# 
+	</update>
+	
+	<update id="sqlUpdateIttSubmissionSG2" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO">
+		update CST_SUBM
+		SET
+			SEND_STATUS = #status#,
+			LM_DATE = sysdate,
+			LM_USER_ID = 'SYSTEM_ACCS'
+		where ((TO_char(CTRL_DATE,'YYYYMMDD') = #ittReqDate# 
+			 and VER_NO = to_number(#ittReqNo#))
+			 OR ITT_REQ_CODE = #ittReqCode#) and 
+			 REC_TYPE = #recordType#
+	</update>
+	
+	<update id="sqlUpdateIttSubmission_ITT_REQ_AUTH_CODE" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO">
+		update CST_SUBM
+		SET
+			ITT_REQ_CODE = nvl(#ittReqCode#,ITT_REQ_CODE),
+			ITT_AUTH_CODE = nvl(#ittAuthCode#,ITT_AUTH_CODE),
+			LM_DATE = sysdate,
+			LM_USER_ID = 'SYSTEM_ACCS'
+		where
+			((TO_char(CTRL_DATE,'YYYYMMDD') = #ittReqDate# 
+			and VER_NO = to_number(#ittReqNo#))
+			OR ITT_REQ_CODE = #ittReqCode#)
+			and REC_TYPE in ('ITT','ITF')
+	</update>
+	
+	<update id="sqlItmUpdateConsignmentSubmissionSG2" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO">
+		update CST_SUBM
+		SET
+			SEND_STATUS = #status#,
+			LM_DATE = sysdate,
+			LM_USER_ID = 'SYSTEM_ACCS'
+		where
+			 TRUCK_NO = #truckNo# and 
+			 TO_char(SCH_DATE,'YYYYMMDD') =  #schDepDate# and
+			 SCH_TIME =  #schTime# and
+			 VER_NO = #versionNo# and 
+			 REC_TYPE = #recordType# 
+	</update>
+	
+	<!--  
+		removed this from the Update query ID = sqlUpdateConsignmentSubmissionSG2
+		FLT_TYPE = #flightType# and    
+	-->
+	<update id="sqlUpdateReconConsignmentSubmissionSG2" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO">
+		update CST_RECON_SUBM_CTRL
+		SET
+			SEND_STATUS = #status#,
+			LM_DATE = sysdate,
+			LM_USER_ID = 'SYSTEM_ACCS'
+		where
+			 TO_char(CTRL_DATE,'YYYYMMDD') =  #controlDate# and
+			 VER_NO = #versionNo# and 
+			 MSG_TYPE = #recordType# 
+	</update>
+	
+	<update id="sqlUpdateScreenReconConsignmentSubmissionSG2" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO">
+		update CST_RECON_SUBM_CTRL
+		SET
+			SEND_STATUS = #status#,
+			LM_DATE = sysdate,
+			LM_USER_ID = 'SCR_SYS_ACCS'
+		where
+			 TO_char(CTRL_DATE,'YYYYMMDD') =  #controlDate# and
+			 VER_NO = #versionNo# and 
+			 MSG_TYPE = #recordType# 
+	</update>
+	
+	<update id="sqlUpdatePrilimData" parameterClass="cargo.cms.customs.ext.bo.PrilimDataPollBO">
+		update CST_RECVG_DTL 
+			set RECV_STATUS = #recvStatus#,
+			LM_DATE = sysdate,
+			LM_USER_ID = 'SYSTEM_ACCS'
+		where 
+			UQ_ID = #uniqueId# and 
+			nvl(FLT_DATE,TO_DATE('31/08/2000 00:00:00','DD/MM/YYYY HH24:MI:SS')) = TO_DATE(nvl(#flightDate#,'31/08/2000 00:00:00'),'DD/MM/YYYY HH24:MI:SS') and
+			nvl(FLT_KEY,'***') = nvl(#flightKey#,'***') and 
+			VER_NO = #versionNo# and 
+		rowid = #rowId#
+	</update>
+	<update id="sqlUpdatePrilimDataForBDC" parameterClass="cargo.cms.customs.ext.bo.PrilimDataPollBO" >
+		update CST_RECVG_DTL 
+			set RECV_STATUS = #recvStatus#,
+			LM_DATE = sysdate,
+			LM_USER_ID = 'SYSTEM_ACCS'
+		where 
+			UQ_ID = #uniqueId# and 
+		rowid = #rowId#
+	</update>
+	<update id="sqlUpdatePrilimDataForITT" parameterClass="cargo.cms.customs.ext.bo.PrilimDataPollBO" >
+		update CST_RECVG_DTL 
+			set RECV_STATUS = #recvStatus#,
+			LM_DATE = sysdate,
+			LM_USER_ID = 'SYSTEM_ACCS'
+		where 
+			UQ_ID = #uniqueId# and 
+		rowid = #rowId#
+	</update>
+	<!-- The flight type is removed FLT_TYPE = #flightType# and-->
+	<select id="sqlNoticeSubmission" parameterClass="java.lang.String" resultClass="cargo.cms.customs.ext.bo.SubmissionHeaderBO">
+		select 'NTE' recordType, '1' versionNo, TO_CHAR(CTRL_DATE,'DDMMYY HH24:MI') controlDate,REQ_UID reqUID 
+		from CST_NTCE_SUBM 
+		where
+			SEND_STATUS = #PARAM#
+		order by MSG_TYPE
+	</select>
+	<select id="sqlFetchFlightType" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO" resultClass="java.lang.String">
+	select DECODE(FLT_TYPE,'A','I','D','E',null) from FLT_OPR
+		where flt_KEY = #flightKey#
+		and sch_date = TO_DATE(#schldArrDate#,'YYYYMMDD')
+	</select>
+	<update id="sqlUpdateStage4ErrorMsg" parameterClass="cargo.cms.customs.ext.bo.RecieveBO" >
+		update CST_SUBM 
+			set 
+				ERR_MSG = #errorMsg#,
+				LM_USER_ID = 'SYSTEM_ACCS', 
+				LM_DATE = sysdate
+		where
+			FLT_DATE = decode(#flightDate#,null,'',TO_DATE(#flightDate#,'DD/MM/YYYY HH24:MI:SS')) and
+			FLT_KEY = #flightKey# and
+			VER_NO = #versionNo# and
+			REC_TYPE = #msgType#
+	</update>
+	
+	<!-- <update id="sqlUpdateStage4IttErrorMsg" parameterClass="cargo.cms.customs.ext.bo.RecieveBO" >
+		update CST_SUBM 
+			set 
+				ERR_MSG = #errorMsg#,
+				LM_USER_ID = 'SYSTEM_ACCS', 
+				LM_DATE = sysdate
+		where
+			((TO_char(CTRL_DATE,'YYYYMMDD') = #ittReqDate# 
+			and VER_NO = to_number(#ittReqNo#))
+			OR ITT_REQ_CODE = #ittReqCode#)
+			and REC_TYPE = #msgType#
+	</update> -->
+	
+	<update id="sqlUpdateStage4IttErrorMsg" parameterClass="cargo.cms.customs.ext.bo.RecieveBO" >
+		update CST_SUBM 
+			set 
+				ERR_MSG = #errorMsg#,
+				LM_USER_ID = 'SYSTEM_ACCS', 
+				LM_DATE = sysdate
+		where
+			((TO_char(CTRL_DATE,'DD/MM/YYYY') = TO_char(TO_DATE(#ittReqDate# ,'DD/MM/YYYY HH24:MI:SS'),'DD/MM/YYYY')  
+			and VER_NO = to_number(#ittReqNo#))
+			OR ITT_REQ_CODE = #ittReqCode#)
+			and REC_TYPE = #msgType#
+	</update>
+	
+	<update id="sqlUpdateStage4ItmErrorMsg" parameterClass="cargo.cms.customs.ext.bo.RecieveBO" >
+		update CST_SUBM 
+			set 
+				ERR_MSG = #errorMsg#,
+				LM_USER_ID = 'SYSTEM_ACCS', 
+				LM_DATE = sysdate
+		where
+			SCH_DATE = decode(#schDepDate#,null,'',TO_DATE(#schDepDate#,'DD/MM/YYYY HH24:MI:SS')) and
+			TRUCK_NO = #truckNo# and
+			SCH_TIME = #schTime# and
+			VER_NO = nvl(#versionNo#,VER_NO) and
+			REC_TYPE = #msgType#
+	</update>
+	
+	<select id="sqlCountEXMImportFlight" parameterClass="java.util.HashMap" resultClass="java.lang.Integer" >
+		SELECT COUNT(1) FROM IMP_CAR_SHP SHP
+			JOIN FLT_OPR OPR ON shp.flt_key = opr.flt_key AND shp.flt_date = opr.sch_date and opr.flt_type = 'A'
+			WHERE	NVL(OPR.STFS_FLT_KEY,OPR.FLT_KEY) = #FLIGHT_KEY# AND
+			NVL(OPR.STFS_FLT_DATE,OPR.SCH_DATE) = TO_DATE(#FLIGHT_DATE#,'DD/MM/YYYY HH24:MI:SS') AND
+			SHP.AWB_NO = #AWB_NO#
+	</select>
+	
+	<select id="sqlCountEXMExportFlight" parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+		select count(1) from (
+			SELECT 1 FROM EXP_PMANIFEST_AWB SHP
+			JOIN FLT_OPR OPR ON shp.flt_key = opr.flt_key AND shp.flt_date = opr.sch_date and opr.flt_type = 'D'
+			WHERE	NVL(OPR.STFS_FLT_KEY,OPR.FLT_KEY) = #FLIGHT_KEY# AND
+			NVL(OPR.STFS_FLT_DATE,OPR.SCH_DATE) = TO_DATE(#FLIGHT_DATE#,'DD/MM/YYYY HH24:MI:SS') AND
+			SHP.AWB_NO = #AWB_NO#
+			UNION
+			SELECT 1 FROM EXP_PMAN_TARMAC_AWB SHP
+			JOIN FLT_OPR OPR ON shp.flt_key = opr.flt_key AND shp.flt_date = opr.sch_date and opr.flt_type = 'D'
+			WHERE	NVL(OPR.STFS_FLT_KEY,OPR.FLT_KEY) = #FLIGHT_KEY# AND
+			NVL(OPR.STFS_FLT_DATE,OPR.SCH_DATE) = TO_DATE(#FLIGHT_DATE#,'DD/MM/YYYY HH24:MI:SS') AND
+			SHP.AWB_NO = #AWB_NO#
+		)
+	</select>
+	
+	<select id="getSubmMaxVer" parameterClass="map" resultClass="java.lang.String" >
+	SELECT MAX(VER_NO) FROM CST_SUBM WHERE
+			REC_TYPE =   decode(REC_TYPE,'BAS','BAS',decode(REC_TYPE,'AMA','AMA','INA')) 
+			and SCH_DATE =   TO_DATE(#schDate#,'dd/mm/yyyy hh24:mi:ss')
+			AND sch_time = trim(replace(#schTime#,':',''))
+			AND TRUCK_NO = #truckNo#
+			AND   FLT_TYPE = 'T' and send_status in ('P','A')
+	</select>
+	
+	<select id="getSubmMaxVerStage4" parameterClass="map" resultClass="java.lang.String" >
+	SELECT MAX(VER_NO) FROM CST_SUBM WHERE
+			REC_TYPE =   #recType#
+			and SCH_DATE =   TO_DATE(#schDate#,'dd/mm/yyyy hh24:mi:ss')
+			AND sch_time = trim(replace(#schTime#,':',''))
+			AND TRUCK_NO = #truckNo#
+			AND   FLT_TYPE = 'T' and send_status in ('P','A')
+	</select>
+	<!-- ######################### ACCS ENDS ###########################-->
+	<select id="sqlACCSFetchRecentSucessfulMessageSentTimestamp" parameterClass="java.lang.String" resultClass="java.lang.String" >
+		SELECT TO_CHAR(MAX(SEND_DATE),'DD/MM/YYYY HH24:MI:SS') recentSentMsgTimeStamp FROM CST_SUBM
+		WHERE SEND_STATUS IN ('A','R','W')				
+	</select>
+	<select id="sqlACCSFetchOldestPendingMsgTimeStamp" parameterClass="java.lang.String" resultClass="java.lang.String" >
+		SELECT TO_CHAR(MIN(SEND_DATE),'DD/MM/YYYY HH24:MI:SS') oldestPendingMsgTimestamp FROM CST_SUBM
+		WHERE SEND_STATUS ='P'
+	</select>
+	
+	<select id="sqlNoticeSubmissionHeader" resultClass="cargo.cms.customs.ext.bo.NoticesBO" parameterClass="java.lang.String">
+		SELECT SUBM_HDR header,SUBM_FTR footer,MSG_ID messageId,
+			SEND_STATUS sendStatus from CST_NTCE_SUBM 
+		where SEND_STATUS = #PARAM#
+	</select>
+	<select id="sqlFetchNTEDetails" parameterClass="java.lang.String"  resultClass="java.lang.String" >
+		SELECT RECVG_DTL FROM CST_NTCE_TXT WHERE MSG_ID = #PARAM# ORDER BY RECVG_SEQ_N0
+	</select>
+	<select id="sqlFetchNTEPendingAck" parameterClass="cargo.cms.customs.ext.bo.AcknowledgementBO"  resultClass="cargo.cms.customs.ext.bo.AcknowledgementBO" >
+		SELECT UQ_ID uniqueId FROM CST_NTCE_ACK where RTRV_STATUS = #retrvStatus#
+	</select>
+	<update id="sqlUpdateNTESubmission" parameterClass="cargo.cms.customs.ext.bo.NoticesBO" >
+		UPDATE CST_NTCE_SUBM 
+		SET 
+			SEND_STATUS = #sendStatus#,
+			ERR_MSG = #errorMsg#
+		WHERE MSG_ID = #messageId#
+	</update>
+	<insert id="sqlInsertNtePrilimData" parameterClass="cargo.cms.customs.ext.bo.AcknowledgementBO">
+		INSERT INTO CST_NTCE_RECVG
+			(TR_NO,UQ_ID,RTRV_STATUS,RECV_DATE,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE,RECVG_DTL)
+		VALUES(
+		   CST_NTCE_RECVG_SEQ.NEXTVAL,
+		   #uniqueId#,
+		   #status#,
+		   SYSDATE,
+		   'SYSTEM_ACCS',
+		   SYSDATE,
+		   'SYSTEM_ACCS',
+		   SYSDATE,
+		   #outRec#
+		)
+	</insert>
+	<update id="sqlUpdateNTEAcknowledgement" parameterClass="cargo.cms.customs.ext.bo.AckPollResponceBO" >
+		update CST_NTCE_ACK
+			set RTRV_STATUS = #retrvStatus#,
+			LM_DATE = sysdate,
+			LM_USER_ID = 'SYSTEM_ACCS'
+		where 
+			UQ_ID = #uniqueId#
+	</update>
+	<select id="sqlNTEPrilimData" parameterClass="java.lang.String" resultClass="cargo.cms.customs.ext.bo.PrilimDataPollBO">
+		select rowId  ,TR_NO messageId, UQ_ID uniqueId, RTRV_STATUS recvStatus,RECVG_DTL recvDtl, 'NTE' recordType
+		from CST_NTCE_RECVG
+			where RTRV_STATUS = 'P'
+	</select>
+	<insert id="sqlInsertNTERecv" parameterClass="cargo.cms.customs.ext.bo.RecieveBO" >
+		INSERT INTO CST_NTCE_RECV
+		(TR_NO,RECORD_NO,TEXT,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE)
+		VALUES(
+		   CST_NTCE_RECV_SEQ.NEXTVAL,
+		   #recordNo#,
+		   #text#,
+		   'SYSTEM_ACCS',
+		   SYSDATE,
+		   'SYSTEM_ACCS',
+		   SYSDATE
+		)
+	</insert>
+	
+	<select id="CheckConstraintForCustoms"  parameterClass="cargo.cms.customs.ext.bo.ConstraintCodesFsuCccBO" resultClass="java.lang.Integer">
+		select count(1)
+		    from MAST_CONSTRAINT_CODE t1, V_CST_CC_CODE_AWB t2
+		    where t1.code = t2.cc_code and t1.constraint = 'N' and NVL(t2.HAWB_NO, '000000000000000000') =  '000000000000000000'
+		    and t1.code = #constCode# and t2.flt_key = #flightKey# and  t2.flt_date = to_date(#flightDate#, 'ddMONyy') and  t2.AWB_NO = #awbNo# 
+	</select> 
+	
+	<select id="CCInfoForInsert_CST_RECV_Imp"  parameterClass="cargo.cms.customs.ext.bo.ConstraintCodesFsuCccBO" resultClass="cargo.cms.customs.ext.bo.ConstraintCodesFsuCccBO">
+		SELECT 	T1.AWB_NO AS awbNo, to_char(T1.AWB_DATE,'DDMONYY') AS awbDate, 
+				T1.FLT_KEY AS flightKey, TO_CHAR(T1.FLT_DATE, 'DDMONYY') AS flightDate, 'I' AS flightType,
+				NVL(T1.MANIFEST_PCS, 0) AS pcs, NVL(T1.MANIFEST_WT, 0)  AS wt
+		FROM IMP_CAR_SHP T1 
+		JOIN IMP_CAR_AWB A ON T1.AWB_NO = A.AWB_NO AND T1.AWB_DATE = A.AWB_DATE
+		WHERE A.CATALOG NOT IN ('IO','TM') 
+				and T1.FLT_KEY = #flightKey# AND T1.FLT_DATE = TO_DATE(#flightDate#, 'DDMONYY')
+				AND T1.AWB_NO = #awbNo# and rownum = 1
+	</select> 
+  
+  <select id="CCInfoForInsert_CST_RECV_Exp"  parameterClass="cargo.cms.customs.ext.bo.ConstraintCodesFsuCccBO" resultClass="cargo.cms.customs.ext.bo.ConstraintCodesFsuCccBO">
+		select t1.awb_no AS awbNo, 'E' AS flightType,	t1.flt_key as flightKey, to_char(t1.FLT_DATE, 'ddMONyy') as flightDate,	 
+			NVL(t1.pman_pcs, 0) AS pcs,NVL(t1.pman_wt, 0) wt,to_char(t1.AWB_DATE,'DDMONYY') AS awbDate
+		from   exp_pmanifest_awb t1
+		where t1.flt_key = #flightKey# and  t1.flt_date = to_date(#flightDate#, 'ddMONyy') and  t1.AWB_NO = #awbNo# and rownum = 1
+   	</select>   
+    <select id="Get_AWB_TYPE"  parameterClass="java.lang.String" resultClass="java.lang.String">
+		SELECT 	awb_type awbType
+		FROM AWB   
+		WHERE AWB_NO = #awbNo# 
+	    and awb_date = (SELECT 	max(AWB_DATE) FROM AWB WHERE AWB_NO = #awbNo# and awb_closed_yn = 'N')
+	    and rownum = 1
+	</select>
+  
+  <insert id="insertAuditTrailEvents_SYSTEM_ACCS" parameterClass="cargo.cms.customs.ext.bo.ConstraintCodesFsuCccBO">
+		<![CDATA[
+			INSERT INTO AWB_EVENTS 
+			  (AWB_NO, AWB_DATE, EVENT_ID, EVENT_DESC, FLT_KEY, FLT_DATE,
+			  FLT_TYPE, TR_NO, ULD_KEY, PCS, WT, CR_USER_ID, CR_DATE, LM_USER_ID, LM_DATE ) 
+			VALUES  
+			  (#awbNo#,  TO_DATE(#flightDate#,'DDMONYY') , '', (SELECT EVENT_DESC FROM MAST_AWB_EVENTS WHERE EVENT_ID = ''), #flightKey#,  TO_DATE(#flightDate#,'DDMONYY'), 
+			  'I', AWB_event_SEQ.nextval
+			, NULL,0,0, #crUserId#,  sysdate, #crUserId#,  sysdate)
+		]]>
+	</insert>
+	
+	<select id="getDateIn_DDMONYY" parameterClass="java.lang.String" resultClass="java.lang.String">
+		select to_char(to_date(#fltDate#,'DD/MM/YYYY HH24:MI:SS'),'DDMONYY') from dual
+	</select>
+	<select id="getAwbDateACCS" parameterClass="java.lang.String"
+		resultClass="java.lang.String">
+		<![CDATA[
+			select * from (SELECT TO_CHAR(AWB_DATE, 'DDMONYY') AS awbDate
+			FROM AWB
+			WHERE AWB_NO = #awbNo# AND AWB_CLOSED_YN = 'N' order by cr_date desc) where rownum=1
+		]]>
+	</select>
+	<select id="sqlFetchNoFltSfxCCIns" parameterClass="cargo.cms.customs.ext.bo.RecieveBO"
+		resultClass="java.lang.String">
+		<![CDATA[
+			SELECT no_flt_sfx
+			FROM (
+				SELECT no_flt_sfx
+				FROM CST_SUBM
+				WHERE FLT_KEY = #flightKey# AND TO_CHAR(FLT_DATE, 'DD/MM/YYYY HH24:MI:SS') = #flightDate#
+				AND REC_TYPE = 'INT'
+				ORDER BY SUBM_DATE DESC
+			  )
+			WHERE ROWNUM = 1
+		]]>
+	</select>
+		<select id="sqlGetACCSFltType" parameterClass="java.util.Map"
+		resultClass="java.lang.String">
+		<![CDATA[
+			SELECT DECODE(FLT_TYPE, 'A', 'I', 'D', 'E', NULL) 
+			FROM FLT_OPR 
+			WHERE NVL(STFS_FLT_KEY,FLT_KEY) = #FLT_KEY# AND NVL(STFS_FLT_DATE,SCH_DATE) = TO_DATE(#FLT_DATE#, 'YYYYMMDD')
+		]]>
+	</select>
+
+        <insert id="insertACCSSubmissionLog" parameterClass="java.util.Map">
+		INSERT INTO LOG_ACCS_SUBMISSION(REC_TYPE,MESSAGE,MESSAGE_BYTES,HASH_BYTES,RESPONSE,CR_DATE) VALUES(#REC_TYPE#,#MESSAGE#,#MESSAGE_BYTES#,#HASH_BYTES#,#RESPONSE#,SYSDATE)		
+	</insert>
+
+	
+	<insert id="sql_ITA_Insert_CST_ITT_DTL" parameterClass="cargo.cms.customs.ext.bo.RecieveBO">
+		Insert into cst_itt_dtl
+		(TR_NO,DOC_LINE_NO,ITT_REQ_CODE,ITT_Auth_CODE,AWB_NO,AWB_DATE,CARR_CODE,FLT_NO,FLT_KEY,FLT_DATE,HAWB_NO,
+		ITT_CTM_REF_NO,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE,TR_TYPE,ITT_TYPE)
+		values
+		(#trNo#,#docLineNo#,#ittReqCode#,#ittAuthCode#,#awbNoWithoutHypen#,SYSDATE,
+		decode(#carrCode#,null,' ',#carrCode#),
+		substr(#flightKey#,length(#carrCode#)+1), 
+		decode(#flightKey#,null,' ',#flightKey#),
+		decode(#flightDate#,null,'',TO_DATE(#flightDate#,'YYYY/MM/DD')),
+		trim(decode(#hawbNo#,null,'',#hawbNo#)),
+		#ctmRefNo#,'SYSTEM_ACCS',SYSDATE,'SYSTEM_ACCS',SYSDATE,'CEITT','ITA')
+	</insert>
+	
+	<insert id="sql_ITQ_Insert_CST_ITT_DTL" parameterClass="cargo.cms.customs.ext.bo.RecieveBO">
+		Insert into cst_itt_dtl
+		(TR_NO,DOC_LINE_NO,ITT_REQ_CODE,AWB_NO,AWB_DATE,CARR_CODE,FLT_NO,FLT_KEY,FLT_DATE,HAWB_NO,
+		ITT_CTM_REF_NO,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE,TR_TYPE,ITT_TYPE)
+		values
+		(#trNo#,#docLineNo#,#ittReqCode#,#awbNoWithoutHypen#,SYSDATE,
+		decode(#carrCode#,null,' ',#carrCode#),
+		substr(#flightKey#,length(#carrCode#)+1), 
+		decode(#flightKey#,null,' ',#flightKey#),
+		decode(#flightDate#,null,'',TO_DATE(#flightDate#,'YYYY/MM/DD')),
+		trim(decode(#hawbNo#,null,'',#hawbNo#)),
+		#ctmRefNo#,'SYSTEM_ACCS',SYSDATE,'SYSTEM_ACCS',SYSDATE,'CEITT','ITQ')
+	</insert>
+	
+	
+</sqlMap>

@@ -1,0 +1,607 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+
+ 
+
+	<!-- Added by Surendra Gollapalli on 02-Jun-2012 -->
+<sqlMap namespace="TransReportModule">
+
+
+	<select id="sqlTrnGetPartShipmentList_680" parameterClass="cargo.cms.trn.report.bo.PartShipmtRept_680BO"
+	resultClass="cargo.cms.trn.report.bo.PartShipmtRept_680BO">
+		
+	<![CDATA[
+			SELECT
+			TFS.AWB_NO awbNo, TO_CHAR(TFS.AWB_DATE,'DDMONYY') awbDate, DECODE(TFS.DEST,'HKG','I',DECODE(TFS.ORG,'HKG','E','T'))
+			awbType, SUM(TFS.PCS) pcs, SUM(TFS.WT) wt
+			FROM
+			TRN_FFM_MSG TFM
+			JOIN
+			TRN_FFM_SHP TFS
+			ON
+			TFM.TR_NO = TFS.TR_NO
+			LEFT JOIN AWB ABT
+		    ON
+		    TFS.AWB_NO = ABT.AWB_NO
+		    AND TFS.AWB_DATE = ABT.AWB_DATE
+			WHERE
+        	NVL(ABT.AWB_CLOSED_YN,'N') = 'N'
+		    AND ABT.MANIFEST_PCS < ABT.PCS      
+		    AND TFM.FFM_STATUS = 'P'
+        	AND TFS.AWB_NO IN (        
+		        SELECT AWB_NO FROM TRN_FFM_SHP SHP1 JOIN TRN_FFM_MSG MSG1 ON SHP1.TR_NO = MSG1.TR_NO
+			    WHERE 
+		        MSG1.FFM_STATUS = 'P'
+		        AND SHP1.ORG <> 'HKG'
+		        AND	MSG1.FLT_DATE BETWEEN TO_DATE(#fltFromDate#,'DDMONYY') AND TO_DATE(#fltToDate#,'DDMONYY')
+				]]>
+					<isEqual property="handledAt" compareValue="C" prepend="AND">
+							SHP1.CTO = 'CPCT'
+					</isEqual>
+					<isEqual property="handledAt" compareValue="H" prepend="AND">
+							SHP1.CTO = 'HACTL'
+					</isEqual>		
+					<isNotEmpty prepend="AND" property="awbNo">
+						SHP1.AWB_NO = #awbNo#
+					</isNotEmpty>
+					<isNotEmpty prepend="AND" property="awbType">
+						DECODE(SHP1.DEST,'HKG','I',DECODE(SHP1.ORG,'HKG','E','T')) = #awbType#
+					</isNotEmpty>  
+			<![CDATA[
+		        HAVING COUNT(SHP1.AWB_NO) > 1 GROUP BY SHP1.AWB_NO, SHP1.AWB_DATE  
+	     	)
+	     	AND TFS.AWB_NO NOT IN (
+	     		SELECT AWB_NO FROM TRN_FFM_MSG MSG2 JOIN TRN_FFM_SHP SHP2 ON MSG2.TR_NO = SHP2.TR_NO
+			    WHERE 
+		        MSG2.FFM_STATUS = 'P'
+		        AND SHP2.ORG <> 'HKG'
+		        AND	MSG2.FLT_DATE BETWEEN TO_DATE(#fltFromDate#,'DDMONYY') AND TO_DATE(#fltToDate#,'DDMONYY')
+			]]>	
+					<isEqual property="handledAt" compareValue="C" prepend="AND">
+							SHP2.CTO = 'CPCT'
+					</isEqual>
+					<isEqual property="handledAt" compareValue="H" prepend="AND">
+							SHP2.CTO = 'HACTL'
+					</isEqual>		
+					<isNotEmpty prepend="AND" property="awbNo">
+						SHP2.AWB_NO = #awbNo#
+					</isNotEmpty>
+					<isNotEmpty prepend="AND" property="awbType">
+						DECODE(SHP2.DEST,'HKG','I',DECODE(SHP2.ORG,'HKG','E','T')) = #awbType#
+					</isNotEmpty>  
+		<![CDATA[
+		        HAVING COUNT(SHP2.AWB_NO) > 1 GROUP BY MSG2.TR_NO, SHP2.AWB_NO, SHP2.AWB_DATE
+	     	) GROUP BY TFS.AWB_NO, TO_CHAR(TFS.AWB_DATE,'DDMONYY'), DECODE(TFS.DEST,'HKG','I',DECODE(TFS.ORG,'HKG','E','T')), DECODE(TFS.DEST,'HKG','I',NULL,'')
+  		]]>	
+			UNION
+			
+		<![CDATA[
+			SELECT
+			TBS.AWB_NO awbNo, TO_CHAR(TBS.AWB_DATE,'DDMONYY') awbDate, DECODE(TBS.DEST,'HKG','I',DECODE(TBS.ORG,'HKG','E','T'))
+			awbType, TBS.PCS pcs, TBS.NET_WT wt
+			FROM
+			TRN_FBL TBM
+			JOIN
+			TRN_FBL_SHP TBS
+			ON
+			TBM.TR_NO = TBS.TR_NO
+			LEFT JOIN AWB ABT
+		    ON
+		    TBS.AWB_NO = ABT.AWB_NO
+		    AND TBS.AWB_DATE = ABT.AWB_DATE
+			WHERE
+		    NVL(ABT.AWB_CLOSED_YN,'N') = 'N'
+		    AND (DECODE(TBS.DEST,'HKG','I',DECODE(TBS.ORG,'HKG','E','T')) = 'T' OR TBS.PCS <= TBS.TOTAL_PCS)
+        AND TBM.FBL_STATUS = 'P'
+	    		AND TBS.AWB_NO IN (
+        
+        SELECT AWB_NO FROM TRN_FBL_SHP SHP1 JOIN TRN_FBL MSG1 ON SHP1.TR_NO = MSG1.TR_NO 
+		    WHERE 
+        MSG1.FBL_STATUS = 'P'
+		        AND SHP1.DEST <> 'HKG'
+        AND	MSG1.FLT_DATE BETWEEN TO_DATE(#fltFromDate#,'DDMONYY') AND TO_DATE(#fltToDate#,'DDMONYY')
+		]]>			
+			<isEqual property="handledAt" compareValue="C" prepend="AND">
+					SHP1.EXPORT_CTO = 'CPCT'
+			</isEqual>
+			<isEqual property="handledAt" compareValue="H" prepend="AND">
+					SHP1.EXPORT_CTO = 'HACTL'
+			</isEqual>			
+			<isNotEmpty prepend="AND" property="awbNo">
+				SHP1.AWB_NO = #awbNo#
+			</isNotEmpty>
+			<isNotEmpty prepend="AND" property="awbType">
+				DECODE(SHP1.DEST,'HKG','I',DECODE(SHP1.ORG,'HKG','E','T')) = #awbType#
+			</isNotEmpty>
+  			<![CDATA[
+		        HAVING COUNT(SHP1.AWB_NO) > 1 GROUP BY SHP1.AWB_NO, SHP1.AWB_DATE  
+	     	)
+	     	AND TBS.AWB_NO NOT IN (
+	     		SELECT AWB_NO FROM TRN_FBL MSG2 JOIN TRN_FBL_SHP SHP2 ON MSG2.TR_NO = SHP2.TR_NO
+			    WHERE 
+		        MSG2.FBL_STATUS = 'P'
+		        AND SHP2.DEST <> 'HKG'
+		        AND	MSG2.FLT_DATE BETWEEN TO_DATE(#fltFromDate#,'DDMONYY') AND TO_DATE(#fltToDate#,'DDMONYY')
+			]]>	
+					<isEqual property="handledAt" compareValue="C" prepend="AND">
+							SHP2.EXPORT_CTO = 'CPCT'
+					</isEqual>
+					<isEqual property="handledAt" compareValue="H" prepend="AND">
+							SHP2.EXPORT_CTO = 'HACTL'
+					</isEqual>		
+					<isNotEmpty prepend="AND" property="awbNo">
+						SHP2.AWB_NO = #awbNo#
+					</isNotEmpty>
+					<isNotEmpty prepend="AND" property="awbType">
+						DECODE(SHP2.DEST,'HKG','I',DECODE(SHP2.ORG,'HKG','E','T')) = #awbType#
+					</isNotEmpty>  
+		<![CDATA[
+		        HAVING COUNT(SHP2.AWB_NO) > 1 GROUP BY MSG2.TR_NO, SHP2.AWB_NO, SHP2.AWB_DATE
+	     	)  
+	     	
+ 		]]>			
+	</select> 
+	
+	
+	<select id="sqlTrnGetPartShipmentFltList_680" parameterClass="cargo.cms.trn.report.bo.PartShipmtRept_680BO"
+	resultClass="cargo.cms.trn.report.bo.PartShipmtRept_680BO">
+		SELECT
+		TFM.FLT_KEY strFltKey, TFM.FLT_NO strFltNo, TFM.CARR_CODE carrCode, TO_CHAR(TFM.FLT_DATE,'DDMONYY') strFltDate, DECODE(FOT.FLT_TYPE,'A','I','D','E') strFltType,		
+		TO_DATE(TO_CHAR(FOT.SCH_DATE,'DDMONYY')|| LPAD(FOT.SCH_TIME,4,'0'),'DDMONYYHH24MI') fltSchDateTime,   
+		DECODE(FOT.FLT_TYPE,'A',DECODE(DECODE(TFS.DEST,'HKG','I',DECODE(TFS.ORG,'HKG','E','T')),'T',DECODE(VDD.AWB_NO,TFS.AWB_NO,'Y','N'),NULL),NULL)
+		ddtShpmExist, TFM.CTO strCto, ICS.MANIFEST_PCS strPcs, ICS.MANIFEST_WT strWt
+		FROM
+		TRN_FFM_MSG TFM
+		JOIN
+		TRN_FFM_SHP TFS
+		ON
+		TFM.TR_NO = TFS.TR_NO
+		AND TFM.FFM_STATUS = 'P'
+		JOIN FLT_OPR FOT
+		ON
+		TFM.FLT_KEY = FOT.FLT_KEY
+		AND TFM.FLT_DATE = FOT.SCH_DATE
+		AND FOT.FLT_TYPE = 'A'
+		LEFT JOIN
+		V_DDT_DTL VDD
+		ON
+		TFM.FLT_KEY||'A' = VDD.FLT_KEY
+		AND TFM.FLT_DATE = VDD.FLT_DATE
+		AND TFS.AWB_NO = VDD.AWB_NO
+		AND TFS.AWB_DATE = VDD.AWB_DATE
+		AND VDD.SHP_TRF_TYPE IN ('TT','IF','QT')
+		LEFT JOIN IMP_CAR_SHP ICS
+    	ON
+    	TFM.FLT_KEY||'A' = ICS.FLT_KEY
+		AND TFM.FLT_DATE = ICS.FLT_DATE
+		AND TFS.AWB_NO = ICS.AWB_NO
+		AND TFS.AWB_DATE = ICS.AWB_DATE
+		WHERE
+		TFS.AWB_NO = #awbNo#
+		AND TO_CHAR(TFS.AWB_DATE,'DDMONYY') = #awbDate#
+		AND DECODE(TFS.DEST,'HKG','I',DECODE(TFS.ORG,'HKG','E','T')) = #awbType#
+		
+		UNION
+	
+		SELECT
+		TBM.FLT_KEY strFltKey, TBM.FLT_NO strFltNo, TBM.CARR_CODE carrCode, TO_CHAR(TBM.FLT_DATE,'DDMONYY') strFltDate, DECODE(FOT.FLT_TYPE,'A','I','D','E') strFltType,
+		TO_DATE(TO_CHAR(FOT.SCH_DATE,'DDMONYY')|| LPAD(FOT.SCH_TIME,4,'0'),'DDMONYYHH24MI') fltSchDateTime, 
+		DECODE(FOT.FLT_TYPE,'A',DECODE(DECODE(TBS.DEST,'HKG','I',DECODE(TBS.ORG,'HKG','E','T')),'T',DECODE(VDD.AWB_NO,TBS.AWB_NO,'Y','N'),NULL),NULL)
+		ddtShpmExist, TBM.CTO strCto, SUM(EPA.PMAN_PCS+EPT.BULK_PCS+EPT.PPK_PCS) strPcs, SUM(EPA.PMAN_WT+EPT.BULK_WT+EPT.PPK_WT) strWt
+		FROM
+		TRN_FBL TBM
+		JOIN
+		TRN_FBL_SHP TBS
+		ON
+		TBM.TR_NO = TBS.TR_NO
+		AND TBM.FBL_STATUS = 'P'
+		JOIN FLT_OPR FOT
+		ON
+		TBM.FLT_KEY = FOT.FLT_KEY
+		AND TBM.FLT_DATE = FOT.SCH_DATE
+		AND FOT.FLT_TYPE = 'D'
+		LEFT JOIN
+		V_DDT_DTL VDD
+		ON
+		TBM.FLT_KEY||'A' = VDD.FLT_KEY
+		AND TBM.FLT_DATE = VDD.FLT_DATE
+		AND TBS.AWB_NO = VDD.AWB_NO
+		AND TBS.AWB_DATE = VDD.AWB_DATE
+		AND VDD.SHP_TRF_TYPE IN ('TT','IF','QT')
+		LEFT JOIN EXP_PMANIFEST_AWB EPA
+    	ON
+    	TBM.FLT_KEY||'A' = EPA.FLT_KEY
+		AND TBM.FLT_DATE = EPA.FLT_DATE
+		AND TBS.AWB_NO = EPA.AWB_NO
+		AND TBS.AWB_DATE = EPA.AWB_DATE 
+    	LEFT JOIN EXP_PMAN_TARMAC_AWB EPT
+    	ON
+    	TBM.FLT_KEY||'A' = EPT.FLT_KEY
+		AND TBM.FLT_DATE = EPT.FLT_DATE
+		AND TBS.AWB_NO = EPT.AWB_NO
+		AND TBS.AWB_DATE = EPT.AWB_DATE 
+		WHERE
+		TBS.AWB_NO = #awbNo#
+		AND TO_CHAR(TBS.AWB_DATE,'DDMONYY') = #awbDate#
+		AND DECODE(TBS.DEST,'HKG','I',DECODE(TBS.ORG,'HKG','E','T')) = #awbType#
+		
+		GROUP BY 
+		
+		TBM.FLT_KEY, TBM.FLT_NO, TBM.CARR_CODE, TO_CHAR(TBM.FLT_DATE,'DDMONYY'), 
+		DECODE(FOT.FLT_TYPE,'A','I','D','E'), 
+		TO_DATE(TO_CHAR(FOT.SCH_DATE,'DDMONYY')|| LPAD(FOT.SCH_TIME,4,'0'),'DDMONYYHH24MI'), 
+		DECODE(FOT.FLT_TYPE,'A',DECODE(DECODE(TBS.DEST,'HKG','I',
+		DECODE(TBS.ORG,'HKG','E','T')),'T',
+		DECODE(VDD.AWB_NO,TBS.AWB_NO,'Y','N'),NULL),NULL), 
+		TBM.CTO, (EPA.PMAN_WT)
+	</select>
+	
+	<select id="sqlTrnGetPartShipmentCnctgFltList_680" parameterClass="cargo.cms.trn.report.bo.PartShipmtRept_680BO"
+	resultClass="cargo.cms.trn.report.bo.PartShipmtRept_680BO">
+		SELECT SHP_CNTG_FLT_KEY cntFltKey, TO_CHAR(SHP_CNTG_FLT_DATE,'DDMONYY') cntFltDate, SHP_TRF_PC cntPcs, SHP_TRF_WT cntWt  
+		FROM V_DDT_DTL
+		WHERE 
+		AWB_NO = #strAwbNo#
+		AND TO_CHAR(AWB_DATE,'DDMONYY') = #strAwbDate#
+		AND FLT_KEY = #strFltKey#||'A'
+		AND TO_CHAR(FLT_DATE,'DDMONYY') = #strFltDate#
+	</select>
+	
+		<select id="sqlTrnGetPartShipmentCtInd_680" parameterClass="cargo.cms.trn.report.bo.PartShipmtRept_680BO"
+	resultClass="java.lang.Integer">
+		SELECT SUM(X) FROM (
+		  	SELECT COUNT(1) X FROM IMP_TRM_HD WHERE AWB_NO=#awbNo# AND TO_CHAR(AWB_DATE,'DDMONYY') = #awbDate#
+         	UNION
+          	SELECT COUNT(1) X FROM EXP_RCL_HD WHERE AWB_NO=#awbNo# AND TO_CHAR(AWB_DATE,'DDMONYY') = #awbDate# AND TRANSITION_YN='Y'
+          	UNION
+        	SELECT COUNT(1) X FROM EXP_RCL_HD, EXP_RCL_BRKDN WHERE EXP_RCL_BRKDN.RCL_NO=EXP_RCL_HD.RCL_NO AND EXP_RCL_BRKDN.AWB_NO=#awbNo# AND TO_CHAR(EXP_RCL_BRKDN.AWB_DATE,'DDMONYY') = #awbDate# AND EXP_RCL_HD.TRANSITION_YN='Y'
+    	)
+    </select>
+	
+	
+	
+
+
+	<select id="fetchInboundFlight_684" parameterClass="cargo.cms.trn.report.bo.FlightScheduleListRept_684BO" resultClass="cargo.cms.trn.report.bo.FlightScheduleListRept_684BO">
+		 select distinct opr.flt_key flightKey, to_char( opr.sch_date,'DDMONYY') flightDate,
+		  opr.sch_date, PKG_COMMON.GET_FLT_STA(opr1.FLT_KEY, to_char(opr1.sch_date,'DDMONYY'), 'A', 'DD') as sta, 
+	      PKG_COMMON.GET_FLT_ETA(opr1.FLT_KEY,to_char(opr1.sch_date,'DDMONYY'),'A','DD')  as eta, 
+	      PKG_COMMON.GET_FLT_ATA(OPR1.FLT_KEY,TO_CHAR(OPR1.SCH_DATE,'DDMONYY'),'A','DD')  AS ATA, 
+	      (SELECT COUNT(1) FROM MESSAGE_LOG WHERE FLT_KEY=OPR.FLT_KEY||#trnFltSfx# AND FLT_DATE=OPR.SCH_DATE AND MSG_STATUS='A' AND MSG_TYPE='FFM') AS CPCTLOGID,            
+				(SELECT COUNT(1) FROM edi_msg_log_out WHERE FLT_KEY=OPR.FLT_KEY||#trnFltSfx# AND FLT_DATE=OPR.SCH_DATE AND MSG_TYPE='FFM')as hactlLogId, 
+	      (select decode(count(1),0,'N','Y') from trn_setup_flt setUpFlt where setUpFlt.flt_key=opr.flt_key and to_char(setUpFlt.flt_date,'DDMONYY')=
+	        to_char(opr.sch_date,'DDMONYY') and setUpFlt.flt_type='I') superTrnsetup, 
+	      NVL(PKG_TRN_CTO.FUN_TRN_FLT_MNTR_IMP_CTO(OPR.FLT_KEY,TO_CHAR(OPR.SCH_DATE,'DDMONYY'),TO_CHAR(SUBSTR(OPR.FLT_KEY,0,2))),'') HANDLEDBY, 
+	      DECODE (FFM.AUTO_IND, NULL, 'N', (SELECT DECODE(COUNT(AUTO_IND), 0, 'N', 'Y') FROM TRN_FFM_MSG WHERE FLT_KEY=OPR.FLT_KEY AND TO_CHAR(FLT_DATE,'DDMONYY')=TO_CHAR(OPR.SCH_DATE,'DDMONYY') AND FFM_STATUS='P' AND AUTO_IND='N')) ASTERICKYN,
+	      decode(ffm.ddt_cto_disc,'Y','Y','N') ddtCtodisc,decode(ffm.tr_no,null,'N','Y') ffmReceived,
+	      ffm1.version_no ffmVersionno, decode(ffm2.confirm_yn, null, 'N', 'N', 'N', 'Y') lastVerconf, ffm2.version_no lastConfVersionFfm,
+	      ffm3.ver_no_conf latestVersionNoAfterConfirm,
+	      DECODE((SELECT COUNT(1) FROM TRN_FLT_OPR_LEG WHERE TR_NO=opr.tr_no), (SELECT COUNT(1) FROM TRN_FFM_MSG WHERE flt_key=opr.flt_key and flt_date=opr.sch_date AND 
+	       	CONFIRM_YN='Y' AND FFM_STATUS='P'), 'Y', 'N') confirmInd, 
+	      (SELECT STRAGG(STRINGDELIM(BRD_POINT,'/')) from trn_flt_opr_leg where tr_no=opr.tr_no )  port,
+	      decode(ddt1.ddtRecCnt, 0, 'N', null, 'N', 'Y') ddtReceived, decode(ddt2.ddtSplit, 0, 'N', null, 'N', 'Y') ddtSplit,
+	      decode(decode(opr_events.ddt_finalise_date,null,'N','Y'),null,'N','N','N','Y') ddtProcessed,
+	      decode((select decode(event.uws_rcvd,null,'N','Y') from trn_flt_opr_events event where event.tr_no=opr.tr_no ),null,'N','N','N','Y') uwsRec,
+	      decode(cstsubm.cstsubcnt, 0, 'N', null, 'N', 'Y') intSubm
+	      from trn_flt_opr opr 
+	      INNER JOIN flt_opr opr1 ON opr.flt_key||#trnFltSfx#=opr1.flt_key and opr.sch_date=opr1.sch_date and opr1.flt_type='A' AND  opr.flt_type='A' 
+	      INNER JOIN flt_opr_events opr_events on opr_events.tr_no = Opr1.tr_no
+	      LEFT OUTER JOIN trn_ffm_msg ffm ON opr.flt_key=ffm.flt_key and opr.sch_date=ffm.flt_date and ffm.ffm_status='P' 
+	        and opr.carr_code=substr(ffm.flt_key,0,2)
+	      LEFT OUTER JOIN (select MAX(version_no) as version_no, flt_key, flt_date from trn_ffm_msg GROUP BY flt_key, flt_date) ffm1 
+	        on opr.flt_key = ffm1.flt_key AND opr.sch_date = ffm1.flt_date
+	      LEFT OUTER JOIN (select MAX(version_no) as version_no, flt_key, flt_Date, confirm_yn from trn_ffm_msg where confirm_yn='Y'
+	        GROUP BY flt_key, flt_Date, confirm_yn) ffm2 on opr.flt_key = ffm2.flt_key AND opr.sch_date = ffm2.flt_date
+	      LEFT OUTER JOIN (select MAX(VER_NO_AFTER_CONF) as ver_no_conf, flt_key, flt_Date from trn_ffm_msg where confirm_yn='Y'
+	        group by flt_key, flt_Date) ffm3 on opr.flt_key = ffm3.flt_key AND opr.sch_date = ffm3.flt_date
+	      LEFT OUTER JOIN (select count(1) ddtRecCnt, flt_key, flt_date from ddt_msg where ddt_status='P' group by flt_key, flt_date) ddt1 on opr1.flt_key = ddt1.flt_key 
+	        AND opr1.sch_date = ddt1.flt_date
+	      LEFT OUTER JOIN (select count(1) ddtSplit, flt_key, flt_date from ddt_msg where ddt_status='P' and ddt_split_ind='Y' group by flt_key, flt_date) ddt2 
+	        on opr1.flt_key = ddt2.flt_key AND opr1.sch_date = ddt2.flt_date
+	      LEFT OUTER JOIN (select count(1) cstsubcnt, FLT_KEY, FLT_DATE from CST_SUBM WHERE REC_TYPE='INT' AND SEND_STATUS NOT IN ('E','R') group by FLT_KEY, FLT_DATE) cstsubm 
+	        on opr1.flt_key = cstsubm.flt_key AND opr1.sch_date = cstsubm.flt_date
+	      where 
+	      (TO_DATE(TO_CHAR(opr.SCH_DATE,'DDMONYY') || substr(LPAD(opr.SCH_TIME,4,0),0,2) ||substr(LPAD(opr.SCH_TIME,4,0),3,2),'DDMONYYHH24MI') &gt;= TO_DATE(#fromDate#,'DDMONYYHH24MI') 
+	      AND  TO_DATE(TO_CHAR(opr.SCH_DATE,'DDMONYY') || substr(LPAD(opr.SCH_TIME,4,0),0,2) ||substr(LPAD(opr.SCH_TIME,4,0),3,2),'DDMONYYHH24MI') &lt;= TO_DATE(#toDate#,'DDMONYYHH24MI')) 
+	      and opr.flt_type='A'
+            <isNotEmpty prepend="and" property="carrierCode">
+                  opr.carr_code=#carrierCode#
+         </isNotEmpty>
+         <isNotEmpty prepend="and" property="flightNumber">
+                  opr.flt_key=#flightNumber#
+         </isNotEmpty>
+         
+          <isEqual prepend="and" property="superTrnsetup" compareValue="Y">
+                  (select count(1) from trn_setup_flt setUpFlt  where setUpFlt.flt_key=opr.flt_key and setUpFlt.flt_date=opr.sch_date and setUpFlt.flt_type='I')>0
+         </isEqual>
+          <isEqual prepend="and" property="superTrnsetup" compareValue="N">
+                  (select count(1) from trn_setup_flt setUpFlt  where setUpFlt.flt_key=opr.flt_key and setUpFlt.flt_date=opr.sch_date and setUpFlt.flt_type='I')=0
+         </isEqual>
+         <isEqual prepend="and" property="ddtReceived" compareValue="Y">
+                  (select count(1) from ddt_msg ddt  where ddt.flt_key=opr1.flt_key and ddt.flt_date=opr1.sch_date and ddt.ddt_status='P')>0
+         </isEqual>
+         <isEqual prepend="and" property="ddtReceived" compareValue="N">
+                  (select count(1) from ddt_msg ddt  where ddt.flt_key=opr1.flt_key and ddt.flt_date=opr1.sch_date and ddt.ddt_status='P')=0
+         </isEqual>
+         <isEqual prepend="and" property="ddtProcessed" compareValue="Y">
+         		   (SELECT DECODE(event.ddt_finalise_date,NULL,'N','Y') FROM flt_opr_events event WHERE event.tr_no=opr1.tr_no)='Y'
+					AND (SELECT DECODE(event.ddt_finalise_user_id,NULL,'N','Y') FROM flt_opr_events event WHERE event.tr_no=opr1.tr_no)='Y'  
+         </isEqual>
+         <isEqual prepend="and" property="ddtProcessed" compareValue="N">
+                  (SELECT DECODE(event.ddt_finalise_date,NULL,'N','Y') FROM flt_opr_events event WHERE event.tr_no=opr1.tr_no)='N'
+				   AND (SELECT DECODE(event.ddt_finalise_user_id,NULL,'N','Y') FROM flt_opr_events event WHERE event.tr_no=opr1.tr_no)='N'  
+         </isEqual>
+         <isEqual prepend="and" property="intSubm" compareValue="Y">
+                  (select count(1) from CST_SUBM SUBM WHERE SUBM.FLT_KEY = OPR1.FLT_KEY AND SUBM.FLT_DATE = OPR1.sch_DATE AND SUBM.REC_TYPE = 'INT' AND SUBM.SEND_STATUS NOT IN ('E','R')) >0 
+         </isEqual>
+          <isEqual prepend="and" property="intSubm" compareValue="N">
+                  (select count(1) from CST_SUBM SUBM WHERE SUBM.FLT_KEY = OPR1.FLT_KEY AND SUBM.FLT_DATE = OPR1.sch_DATE AND SUBM.REC_TYPE = 'INT' AND SUBM.SEND_STATUS NOT IN ('E','R')) =0 
+         </isEqual>
+          <isNotEmpty prepend="and" property="handledBy">
+            	NVL(PKG_TRN_CTO.FUN_TRN_FLT_MNTR_IMP_CTO(opr.flt_key,to_char(opr.sch_date,'DDMONYY'),to_char(SUBSTR(opr.flt_key,0,2))),'')=#handledBy#
+         </isNotEmpty>
+         UNION           
+            select distinct opr.flt_key flightKey, to_char( opr.flt_date,'DDMONYY') flightDate, 
+            opr.flt_date,
+            PKG_COMMON.GET_FLT_STA(opr.FLT_KEY, to_char(opr.flt_date, 'DDMONYY'), 'A', 'DD') as sta, 
+            PKG_COMMON.GET_FLT_ETA(opr.FLT_KEY,to_char(opr.flt_date,'DDMONYY'),'A','DD')  as eta, 
+            PKG_COMMON.GET_FLT_ATA(opr.FLT_KEY,to_char(opr.flt_date,'DDMONYY'),'A','DD')  as ata, 
+            (SELECT COUNT(1) FROM MESSAGE_LOG WHERE FLT_KEY=OPR.FLT_KEY||#trnFltSfx# AND FLT_DATE=OPR.flt_date AND MSG_STATUS='A'            
+			AND MSG_TYPE='FFM') AS CPCTLOGID,            
+			(SELECT COUNT(1) FROM edi_msg_log_out WHERE FLT_KEY=OPR.FLT_KEY||#trnFltSfx# AND FLT_DATE=OPR.flt_date            
+			AND MSG_TYPE='FFM')as hactlLogId, 
+            (select decode(count(1),0,'N','Y') from trn_setup_flt setUpFlt  where setUpFlt.flt_key=opr.flt_key and to_char(setUpFlt.flt_date,'DDMONYY')=to_char(opr.flt_date,'DDMONYY') and setUpFlt.flt_type=opr.flt_type) superTrnsetup, 
+            NVL(PKG_TRN_CTO.FUN_TRN_FLT_MNTR_IMP_CTO(opr.flt_key,to_char( opr.flt_date,'DDMONYY'),to_char(SUBSTR(opr.flt_key,0,2))),'') handledBy, 
+            decode(NVL(ffm.auto_ind,'Y'),'Y','N','Y') asterickYn,
+            decode(ffm.ddt_cto_disc,'Y','Y','N') ddtCtodisc,
+           decode(ffm.tr_no,null,'N','Y') ffmReceived,
+            (select max(version_no) from trn_ffm_msg where flt_key=opr.flt_key and to_char(flt_date,'DDMONYY')=to_char(opr1.sch_date,'DDMONYY') )  as ffmVersionno,      
+            NVL(ffm.confirm_yn,'N') as lastVerconf,   
+            (select max(version_no) from trn_ffm_msg where flt_key=opr.flt_key and to_char(flt_date,'DDMONYY')=to_char(opr.flt_date,'DDMONYY') and confirm_yn='Y')  lastConfVersionFfm,
+            (select max(VER_NO_AFTER_CONF) from trn_ffm_msg where flt_key=opr.flt_key and to_char(flt_date,'DDMONYY')=to_char(opr.flt_date,'DDMONYY') and confirm_yn='Y')  latestVersionNoAfterConfirm,
+            (select decode(count(1),0,'N','Y') from trn_ffm_msg where flt_key=opr.flt_key and flt_date=opr.flt_date  and confirm_yn='Y') confirmInd,
+            (SELECT STRAGG(STRINGDELIM(BRD_POINT,'/')) from trn_flt_opr_leg where tr_no=opr.tr_no )  port,
+            (select decode(count(1),0,'N','Y') from ddt_msg ddt  where ddt.flt_key=opr1.flt_key and to_char(ddt.flt_date,'DDMONYY')=to_char(opr.flt_date,'DDMONYY') and ddt.ddt_status='P') ddtReceived,
+            (select decode(count(1),0,'N','Y') from ddt_msg ddt  where ddt.flt_key=opr1.flt_key and to_char(ddt.flt_date,'DDMONYY')=to_char(opr1.sch_date,'DDMONYY') and ddt.ddt_status='P' and ddt_split_ind='Y') ddtSplit,
+            'N' ddtProcessed,
+            'N' uwsRec,
+            (select  decode(count(1),0,'N','Y') from CST_SUBM SUBM WHERE SUBM.FLT_KEY = OPR1.FLT_KEY AND SUBM.FLT_DATE = OPR.flt_DATE AND SUBM.REC_TYPE = 'INT' AND SUBM.SEND_STATUS NOT IN ('E','R')) intSubm    
+            from trn_setup_flt opr LEFT OUTER JOIN trn_ffm_msg ffm ON opr.flt_key=ffm.flt_key and opr.flt_date=ffm.flt_date and ffm.ffm_status='P' 
+            and substr(opr.flt_key,0,2)=substr(ffm.flt_key,0,2) 
+            LEFT OUTER JOIN flt_opr opr1 ON opr.flt_key||#trnFltSfx#=opr1.flt_key and opr.flt_date=opr1.sch_date and opr1.flt_type='A'  
+            where  (opr.flt_date &gt;= TO_DATE(#fromDate#,'DDMONYYHH24MI') AND  opr.flt_date &lt;= TO_DATE(#toDate#,'DDMONYYHH24MI')) and opr.flt_type='I'
+            and not exists(select null from trn_flt_opr where flt_key=opr.flt_key and sch_date=opr.flt_date)
+            <isNotEmpty prepend="and" property="carrierCode">
+                  substr(opr.flt_key,0,2)=#carrierCode#
+         </isNotEmpty>
+         <isNotEmpty prepend="and" property="flightNumber">
+                  opr.flt_key=#flightNumber#
+         </isNotEmpty>
+         
+          <isEqual prepend="and" property="superTrnsetup" compareValue="Y">
+                  (select count(1) from trn_setup_flt setUpFlt  where setUpFlt.flt_key=opr.flt_key and setUpFlt.flt_date=opr.flt_date and setUpFlt.flt_type=opr.flt_type)>0
+         </isEqual>
+         <isEqual prepend="and" property="superTrnsetup" compareValue="N">
+                  (select count(1) from trn_setup_flt setUpFlt  where setUpFlt.flt_key=opr.flt_key and setUpFlt.flt_date=opr.flt_date and setUpFlt.flt_type=opr.flt_type)=0
+         </isEqual>
+         <isEqual prepend="and" property="ddtReceived" compareValue="Y">
+                  (select count(1) from ddt_msg ddt  where ddt.flt_key=opr.flt_key and ddt.flt_date=opr.flt_date and ddt.ddt_status='P')>0
+         </isEqual>
+         <isEqual prepend="and" property="ddtReceived" compareValue="N">
+                  (select count(1) from ddt_msg ddt  where ddt.flt_key=opr.flt_key and ddt.flt_date=opr.flt_date and ddt.ddt_status='P')=0
+         </isEqual>
+         <isEqual prepend="and" property="ddtProcessed" compareValue="Y">
+                  1=1
+         </isEqual>
+         <isEqual prepend="and" property="ddtProcessed" compareValue="N">
+                  1=1
+         </isEqual>
+         <isEqual prepend="and" property="intSubm" compareValue="Y">
+                  (select count(1) from CST_SUBM SUBM WHERE SUBM.FLT_KEY = OPR1.FLT_KEY AND SUBM.FLT_DATE = OPR.flt_DATE AND SUBM.REC_TYPE = 'INT' AND SUBM.SEND_STATUS NOT IN ('E','R')) >0 
+         </isEqual>
+         <isEqual prepend="and" property="intSubm" compareValue="N">
+                  (select count(1) from CST_SUBM SUBM WHERE SUBM.FLT_KEY = OPR1.FLT_KEY AND SUBM.FLT_DATE = OPR.flt_DATE AND SUBM.REC_TYPE = 'INT' AND SUBM.SEND_STATUS NOT IN ('E','R')) =0 
+         </isEqual>
+          <isNotEmpty prepend="and" property="handledBy">
+            	NVL(PKG_TRN_CTO.FUN_TRN_FLT_MNTR_IMP_CTO(opr.flt_key,to_char( opr.flt_date,'DDMONYY'),to_char(SUBSTR(opr.flt_key,0,2))),'')=#handledBy#
+         </isNotEmpty>
+         <dynamic prepend="ORDER BY ">
+                 <isNotEmpty property="sortOrder.sortField">
+                   $sortOrder.sortField$, 3 desc, sta asc
+                 </isNotEmpty>
+                 <isEmpty property="sortOrder.sortField">
+					3 desc, sta asc
+				 </isEmpty>
+              </dynamic>
+	</select>
+	<select id="fetchOutboundFlight_684" parameterClass="cargo.cms.trn.report.bo.FlightScheduleListRept_684BO" resultClass="cargo.cms.trn.report.bo.FlightScheduleListRept_684BO">
+		 SELECT
+		  DISTINCT opr.flt_key flightKey, TO_CHAR( opr.sch_date,'DDMONYY') flightDate,
+		  opr.sch_date, rtrim(SUBSTR(TRIM(TO_CHAR(OPR.SCH_TIME,'0000')),0,2) || ':' || SUBSTR(TRIM(TO_CHAR(OPR.SCH_TIME,'0000')),3,4), ':') AS std,
+		  PKG_COMMON.GET_FLT_ETA(opr1.FLT_KEY,TO_CHAR(opr1.sch_date,'DDMONYY'),'D','DD') AS etd,
+		  PKG_COMMON.GET_FLT_ATA(opr1.FLT_KEY,TO_CHAR(opr1.sch_date,'DDMONYY'),'D','DD') AS atd,
+		  (SELECT COUNT(1) FROM MESSAGE_LOG WHERE FLT_KEY=OPR.FLT_KEY||'P' AND FLT_DATE=OPR.SCH_DATE AND MSG_STATUS='A' AND MSG_TYPE='FBL') AS CPCTLOGID,            
+			(SELECT COUNT(1) FROM edi_msg_log_out WHERE FLT_KEY=OPR.FLT_KEY||'P' AND FLT_DATE=OPR.SCH_DATE AND MSG_TYPE='FBL')as hactlLogId, 
+		  (SELECT DECODE(COUNT(1),0,'N','Y') FROM trn_setup_flt setUpFlt WHERE setUpFlt.flt_key=opr.flt_key AND TO_CHAR(setUpFlt.flt_date,'DDMONYY')=
+		  TO_CHAR(opr.sch_date,'DDMONYY') AND setUpFlt.flt_type='E') superTrnsetup,
+      NVL(PKG_TRN_CTO.FUN_TRN_FLT_MNTR_EXP_CTO(opr.flt_key,TO_CHAR(opr.sch_date,'DDMONYY'),opr.carr_code),'') handledBy,
+		  DECODE(fbl.tr_no,NULL,'N','Y') fblReceived, DECODE(NVL(fbl.auto_ind,'Y'),'Y','N','Y') asterickYn, 
+		  fbl1.version_no fblVersionNo, nvl(fbl2.confirm_yn, 'N') lastVerconf, fbl2.version_no lastConfVersion, 
+		  DECODE(fbl3.totalconfirmed,0,'N',NULL,'N','Y') confirmInd, DECODE (trnelpmsg.eloadplnrec, 0, 'N', null, 'N', 'Y') eloadPlanRec,
+		  (SELECT finalize_ind FROM (SELECT * FROM (SELECT t.*, dense_rank() over (partition BY flt_key, flt_date order by to_number(tr_no) DESC) rank 
+		    FROM trn_elp_msg t ) WHERE rank=1) msg WHERE msg.flt_key=opr.flt_key AND TO_CHAR(msg.flt_date,'DDMONYY')=TO_CHAR(opr.sch_date,'DDMONYY')) eloadPlanFinal,  
+		  DECODE(opr_events.dls_final_date,NULL,'N','N', 'N', 'Y') dlsFinalise, decode(opr_events.ctm_out_date,NULL,'N','N', 'N', 'Y') customOut,
+		  case when ((opr_events.final_manf_date) is not null And (hactlffmreceived)>0) then 'Y' else 'N' end as flightManifest,
+		  DECODE(ffmout.hactlffmreceived,0,'N',null,'N','Y') hactalFfmrec, DECODE(expoffld.expOffldCnt,0,'N',null,'N','Y') preOffloadInd,
+		  DECODE((SELECT DECODE(Event.Uws_Rcvd,NULL,'N','N', 'N', 'Y') FROM trn_Flt_Opr_Events Event WHERE Event.Tr_No=Opr.Tr_No),NULL,'N','N','N','Y') Uwsrec,
+		  (SELECT Stragg(Stringdelim(Off_Point,'/')) FROM trn_Flt_Opr_Leg WHERE Tr_No=Opr.Tr_No) AS Port FROM trn_flt_opr opr
+		  INNER JOIN Flt_Opr Opr1 oN Opr.Flt_Key||'P' = Opr1.Flt_Key aND Opr.Sch_Date =Opr1.Sch_Date AND Opr1.Flt_Type='D' AND  Opr.Flt_Type='D' 
+		  INNER JOIN flt_opr_events opr_events on opr_events.tr_no = Opr1.tr_no
+		  LEFT OUTER JOIN trn_fbl fbl ON opr.flt_key    =fbl.flt_key AND opr.sch_date=fbl.flt_date AND fbl.fbl_status='P'
+		  LEFT OUTER JOIN (select MAX(version_no) as version_no, flt_key, flt_date from trn_fbl GROUP BY flt_key, flt_date) fbl1 
+		    on opr.flt_key = fbl1.flt_key AND opr.sch_date = fbl1.flt_date
+		  LEFT OUTER JOIN (select MAX(version_no) as version_no, flt_key, flt_Date, confirm_yn from trn_fbl where confirm_yn='Y'
+		    GROUP BY flt_key, flt_Date, confirm_yn) fbl2 on opr.flt_key = fbl2.flt_key AND opr.sch_date = fbl2.flt_date
+		  LEFT OUTER JOIN (select count(1) as totalconfirmed, flt_key, flt_date  from trn_fbl where  confirm_yn   ='Y' and fbl_status = 'P' GROUP BY flt_key, flt_date) fbl3
+		    on opr.flt_key = fbl3.flt_key AND opr.sch_date = fbl3.flt_date
+		  LEFT OUTER JOIN (select count(1) as hactlffmreceived, flt_key, flt_date from trn_ffm_out_msg where ffm_status = 'P' group by flt_key, flt_date) ffmout on
+		    ffmout.flt_key =opr.flt_key and ffmout.flt_date=opr.sch_date 
+		  LEFT OUTER JOIN (SELECT COUNT(1) eloadplnrec, flt_key, flt_date FROM trn_elp_msg where load_plan_ind='Y' GROUP BY flt_key, flt_date) trnelpmsg on 
+		    trnelpmsg.flt_key =opr.flt_key and trnelpmsg.flt_date=opr.sch_date 
+		  LEFT OUTER JOIN (SELECT COUNT(1) expOffldCnt, flt_key, flt_date FROM exp_offload_uld group by flt_key, flt_date) expoffld on expoffld.flt_key=Opr1.flt_key 
+		    and expoffld.flt_date=Opr1.sch_date 
+		  WHERE (TO_DATE(TO_CHAR(opr.SCH_DATE,'DDMONYY')|| SUBSTR(LPAD(opr.SCH_TIME,4,0),0,2)||SUBSTR(LPAD(opr.SCH_TIME,4,0),3,2),'DDMONYYHH24MI') &gt;= TO_DATE(#fromDate#,'DDMONYYHH24MI')
+		  AND TO_DATE(TO_CHAR(opr.SCH_DATE,'DDMONYY')|| SUBSTR(LPAD(opr.SCH_TIME,4,0),0,2)||SUBSTR(LPAD(opr.SCH_TIME,4,0),3,2),'DDMONYYHH24MI') &lt;= TO_DATE(#toDate#,'DDMONYYHH24MI'))  
+		<isNotEmpty prepend="and" property="carrierCode">
+            	opr.carr_code=#carrierCode#
+         </isNotEmpty>
+         <isNotEmpty prepend="and" property="flightNumber">
+            	opr.flt_key=#flightNumber#
+         </isNotEmpty>
+         <isEqual prepend="AND" property="dlsFinalise" compareValue="Y">          
+            	(SELECT DECODE(event.dls_final_date,NULL,'N','Y') FROM flt_opr_events event WHERE event.tr_no=opr1.tr_no)='Y'
+         </isEqual>
+         <isEqual prepend="AND" property="dlsFinalise" compareValue="N">          
+            	(SELECT DECODE(event.dls_final_date,NULL,'N','Y') FROM flt_opr_events event WHERE event.tr_no=opr1.tr_no)='N'
+         </isEqual>
+          <isEqual prepend="and" property="preOffloadInd" compareValue="Y">
+            	(select count(1) from exp_offload_uld where flt_key=opr1.flt_key and flt_date=opr1.sch_date )>0
+         </isEqual>
+         <isEqual prepend="and" property="preOffloadInd" compareValue="N">
+            	(select count(1) from exp_offload_uld where flt_key=opr1.flt_key and flt_date=opr1.sch_date )=0
+         </isEqual>
+         <isEqual prepend="and" property="superTrnsetup" compareValue="Y">
+            	(select count(1) from trn_setup_flt setUpFlt  where setUpFlt.flt_key=opr.flt_key and setUpFlt.flt_date=opr.sch_date and setUpFlt.flt_type='E')>0
+         </isEqual>
+         <isEqual prepend="and" property="superTrnsetup" compareValue="N">
+            	(select count(1) from trn_setup_flt setUpFlt  where setUpFlt.flt_key=opr.flt_key and setUpFlt.flt_date=opr.sch_date and setUpFlt.flt_type='E')=0
+         </isEqual>
+         <isNotEmpty prepend="and" property="handledBy" >
+            	NVL(PKG_TRN_CTO.FUN_TRN_FLT_MNTR_EXP_CTO(opr.flt_key,to_char(opr.sch_date,'DDMONYY'),to_char(SUBSTR(opr.flt_key,0,2))),'')=#handledBy#
+         </isNotEmpty>
+         <isEqual prepend="and" property="uwsRec" compareValue="Y">
+            	(select decode(event.uws_rcvd,null,'N','N', 'N', 'Y') from trn_flt_opr_events event where event.tr_no=opr.tr_no )='Y'
+         </isEqual>
+          <isEqual prepend="and" property="uwsRec" compareValue="N">
+            	(select decode(event.uws_rcvd,null,'N','N', 'N', 'Y') from trn_flt_opr_events event where event.tr_no=opr.tr_no )='N'
+         </isEqual>
+         UNION
+         select distinct opr.flt_key flightKey, to_char( opr.flt_date,'DDMONYY') flightDate, 
+         opr.flt_date,
+         PKG_COMMON.GET_FLT_STA(opr.FLT_KEY, to_char(opr.flt_date, 'DDMONYY'), 'D', 'DD') as std, 
+		 PKG_COMMON.GET_FLT_ETA(opr.FLT_KEY,to_char(opr.flt_date,'DDMONYY'),'D','DD')  as etd, 
+		PKG_COMMON.GET_FLT_ATA(opr.FLT_KEY,to_char(opr.flt_date,'DDMONYY'),'D','DD')  as atd, 
+		(SELECT COUNT(1) FROM MESSAGE_LOG WHERE FLT_KEY=OPR.FLT_KEY||#trnFltSfx# AND FLT_DATE=OPR.flt_date AND MSG_STATUS='A'            
+			AND MSG_TYPE='FBL') AS CPCTLOGID,            
+			(SELECT COUNT(1) FROM edi_msg_log_out WHERE FLT_KEY=OPR.FLT_KEY||#trnFltSfx# AND FLT_DATE=OPR.flt_date            
+			AND MSG_TYPE='FBL')as hactlLogId, 
+		(select decode(count(1),0,'N','Y') from trn_setup_flt setUpFlt  where setUpFlt.flt_key=opr.flt_key and  to_char(setUpFlt.flt_date,'DDMONYY')=to_char(opr.flt_date,'DDMONYY') and setUpFlt.flt_type=opr.flt_type) superTrnsetup, 
+		NVL(PKG_TRN_CTO.FUN_TRN_FLT_MNTR_EXP_CTO(opr.flt_key,to_char( opr.flt_date,'DDMONYY'),to_char(SUBSTR(opr.flt_key,0,2))),'') handledBy, 
+ 		decode(fbl.tr_no,null,'N','Y') fblReceived,
+ 		decode(NVL(fbl.auto_ind,'Y'),'Y','N','Y') asterickYn,
+		(select max(version_no) from trn_fbl where flt_key=opr.flt_key and to_char(flt_date,'DDMONYY')=to_char(opr.flt_date,'DDMONYY'))  as fblVersionNo,
+		NVL(fbl.confirm_yn,'N') as lastVerconf,		
+		(select max(version_no) from trn_fbl where flt_key=opr.flt_key and to_char(flt_date,'DDMONYY')=to_char(opr.flt_date,'DDMONYY') and confirm_yn='Y')  lastConfVersion,
+		(select decode(count(1),0,'N','Y') from trn_fbl where flt_key=opr.flt_key and flt_date=opr.flt_date  and confirm_yn='Y') confirmInd,
+		(select decode(count(1),0,'N','Y') from trn_elp_msg where flt_key=opr.flt_key and to_char(flt_date,'DDMONYY')=to_char(opr.flt_date,'DDMONYY') and load_plan_ind='Y') eloadPlanRec,
+		<!-- BugFix:: 10318 -->
+		  (select finalize_ind from (select * from
+			(select t.*, dense_rank() over (partition by flt_key, flt_date order by to_number(tr_no) desc) rank from trn_elp_msg t ) where rank = 1) 
+ 			msg  where msg.flt_key=opr.flt_key and to_char(msg.flt_date,'DDMONYY')=to_char(opr.flt_date,'DDMONYY') 
+      		)
+      		eloadPlanFinal,
+ 		'N' dlsFinalise,
+		'N' customOut,
+   		 'N' as flightManifest,
+		(select decode(count(1),0,'N','Y') from trn_ffm_out_msg where flt_key=opr.flt_key and to_char(flt_date,'DDMONYY')=to_char(opr.flt_date,'DDMONYY') and ffm_status='P')hactalFfmrec,
+		(select decode(count(1),0,'N','Y') from exp_offload_uld where flt_key=opr1.flt_key and flt_date=opr1.sch_date ) preOffloadInd,
+		'N' uwsRec,
+		(SELECT STRAGG(STRINGDELIM(OFF_POINT,'/')) from trn_flt_opr_leg where tr_no=opr.tr_no ) as port    
+		from trn_setup_flt opr  LEFT OUTER JOIN trn_fbl fbl ON opr.flt_key=fbl.flt_key and opr.flt_date=fbl.flt_date and fbl.fbl_status='P'  and substr(opr.flt_key,0,2)=substr(fbl.flt_key,0,2)
+		 LEFT OUTER JOIN flt_opr opr1 ON opr.flt_key||#trnFltSfx#=opr1.flt_key and opr.flt_date=opr1.sch_date and opr1.flt_type='A' 
+ 		 where  (opr.flt_date &gt;= TO_DATE(#fromDate#,'DDMONYYHH24MI') AND  opr.flt_date &lt;= TO_DATE(#toDate#,'DDMONYYHH24MI')) and opr.flt_type='E'
+ 		 and not exists(select null from trn_flt_opr where flt_key=opr.flt_key and sch_date=opr.flt_date) 
+ 		 <isNotEmpty prepend="and" property="carrierCode">
+            	substr(opr.flt_key,0,2)=#carrierCode#
+         </isNotEmpty>
+         <isNotEmpty prepend="and" property="flightNumber">
+            	opr.flt_key=#flightNumber#
+         </isNotEmpty>
+         <isEqual prepend="AND" property="dlsFinalise" compareValue="Y">          
+            	1=1
+         </isEqual>
+         <isEqual prepend="AND" property="dlsFinalise" compareValue="N">          
+            	1=1
+         </isEqual>
+          <isEqual prepend="and" property="preOffloadInd" compareValue="Y">
+            	1=1
+         </isEqual>
+         <isEqual prepend="and" property="preOffloadInd" compareValue="N">
+            	1=1
+         </isEqual>
+         <isEqual prepend="and" property="superTrnsetup" compareValue="Y">
+            	(select count(1) from trn_setup_flt setUpFlt  where setUpFlt.flt_key=opr.flt_key and setUpFlt.flt_date=opr.flt_date and setUpFlt.flt_type=opr.flt_type)>0
+         </isEqual>
+         <isEqual prepend="and" property="superTrnsetup" compareValue="N">
+            	(select count(1) from trn_setup_flt setUpFlt  where setUpFlt.flt_key=opr.flt_key and setUpFlt.flt_date=opr.flt_date and setUpFlt.flt_type=opr.flt_type)=0
+         </isEqual>
+         <isNotEmpty prepend="and" property="handledBy">
+            	NVL(PKG_TRN_CTO.FUN_TRN_FLT_MNTR_EXP_CTO(opr.flt_key,to_char( opr.flt_date,'DDMONYY'),to_char(SUBSTR(opr.flt_key,0,2))),'')=#handledBy#
+         </isNotEmpty>
+          <isEqual prepend="and" property="uwsRec" compareValue="Y">
+            	1=1
+         </isEqual>
+          <isEqual prepend="and" property="uwsRec" compareValue="N">
+            	1=1
+         </isEqual>
+         <dynamic prepend="ORDER BY ">
+	           <isNotEmpty property="sortOrder.sortField">
+	             $sortOrder.sortField$,3 desc,std asc
+	           </isNotEmpty>
+	           <isEmpty property="sortOrder.sortField">
+					3 desc, std asc
+			   </isEmpty>
+	        </dynamic>
+	</select>
+<select id="ddtFfmDisc_684" parameterClass="cargo.cms.trn.report.bo.FlightScheduleListRept_684BO" resultClass="java.lang.String" >
+		select decode(count(1),0,'N','Y') ddtFfmdisc  from
+(select  msg.flt_key,msg.flt_date,uld.uld_key,shp.awb_no, trf.cntg_flt_key from ddt_msg msg,ddt_uld uld ,ddt_shp shp ,
+ddt_shp_trf_dtl trf
+where uld.tr_no= msg.tr_no and uld.doc_line_no=shp.udoc_line_no
+and shp.tr_no=msg.tr_no and trf.sdoc_line_no= shp.doc_line_no  and
+ trf.tr_no=msg.tr_no) ddt 
+ FULL OUTER JOIN
+ (select msg.flt_key,msg.flt_date,uld.uld_key,shp.awb_no,shp.dest from trn_ffm_msg msg,trn_ffm_uld uld ,trn_ffm_shp shp 
+where uld.tr_no= msg.tr_no and uld.doc_line_no=shp.udoc_line_no
+and shp.tr_no=msg.tr_no and msg.ffm_status='P') ffm
+ ON 
+ddt.flt_key=ffm.flt_key||'A' and  to_char(ddt.flt_date,'DDMONYY')=to_char(ffm.flt_date,'DDMONYY')
+ and  NVL(ddt.awb_No,ffm.awb_No)=ffm.awb_no
+ where
+NVL(ddt.flt_key,#flightKey#||'A')=#flightKey#||'A' and NVL(ddt.flt_date,to_date(#flightDate#,'DDMONYY'))=to_date(#flightDate#,'DDMONYY')
+ and ddt.ULD_KEY =  NVL(ffm.uld_key,ddt.uld_key)  and (ffm.dest ='HKG' or ffm.awb_no is null or ddt.cntg_flt_key is null) 
+
+</select>
+
+<select id="ddtFfmDisc1_684" parameterClass="cargo.cms.trn.report.bo.FlightScheduleListRept_684BO" resultClass="java.lang.String" >
+ select decode(count(1),0,'N','Y') ddtFfmdisc from
+ ( 
+ select  shp.awb_no from ddt_msg msg,ddt_uld uld ,ddt_shp shp ,
+ddt_shp_trf_dtl trf
+where uld.tr_no= msg.tr_no and uld.doc_line_no=shp.udoc_line_no
+and shp.tr_no=msg.tr_no and trf.doc_line_no= shp.doc_line_no  and
+ trf.tr_no=msg.tr_no and
+ flt_key=#flightKey#||'A' and flt_date=to_date(#flightDate#,'DDMONYY')
+ and shp.awb_no in(
+ select shp.awb_no
+ from trn_ffm_msg msg,trn_ffm_uld uld ,trn_ffm_shp shp 
+where uld.tr_no= msg.tr_no and uld.doc_line_no=shp.udoc_line_no
+and shp.tr_no=msg.tr_no and msg.ffm_status='P' and msg.flt_key=#flightKey#
+and msg.flt_date=to_date(#flightDate#,'DDMONYY') 
+and  shp.dest='HKG')
+) 
+	</select>
+	
+
+</sqlMap> 

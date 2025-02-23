@@ -1,0 +1,402 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<!-- The SQL in these maps files has purposely been typed with more verbosity than is actually required.
+ For example, many of the selects could have just used SELECT * FROM... instead of listing all of the columns.
+ This is to demonstrate that even complex SQL can be handled and coded and formatted the way SQL was meant
+ to be (i.e. not a bunch of concatenated strings in a Java class). -->
+<sqlMap namespace="EventEIFramework">
+	<!--
+	#######################################################################
+						EventEIFramework QUERIES 
+	#######################################################################
+	-->
+
+	<insert id="storeOBMessage" parameterClass="cargo.cms.afw.ei.core.OutboundMessage">
+		INSERT INTO $bufferTableName$ (
+			MSG_BFR_ID, SRC_EVENT, MSG_PAYLOAD, SERVICE_CONFIG_NAME, DEST_SERVICE_GROUP, 
+			DEST_SERVICE_NAME, MSG_CREATE_DT, STATUS, POST_PROCESSOR_EVENT, STATUS_DT, REMARKS) 
+		VALUES  (
+			EI_MSG_BFR_SEQ.NEXTVAL, #eventType#,
+			#payload,handler=cargo.cms.afw.ei.dao.ObjectToBlobTypeHandler#,
+			#serviceConfigName#, #destServiceGroup#, #destServiceName#,
+			SYSDATE, #statusStr#, #postProcessorEvent#, SYSDATE, #remarks#
+		)
+	</insert>
+	
+	<resultMap class="cargo.cms.afw.ei.core.OutboundMessage" id="fetchOBMessages-result">
+		<result property="msgBufferId" column="msgBufferId"/>
+		<result property="eventType" column="eventType"/>
+		<result property="payload" column="payload" typeHandler="cargo.cms.afw.ei.dao.ObjectToBlobTypeHandler"/>
+		<result property="serviceConfigName" column="serviceConfigName"/>
+		<result property="destServiceGroup" column="destServiceGroup"/>
+		<result property="destServiceName" column="destServiceName"/>
+		<result property="postProcessorEvent" column="postProcessorEvent"/>
+		<result property="statusStr" column="statusStr"/>
+		<result property="statusDt" column="statusDt"/>
+		<result property="messageId" column="messageId"/>
+		<result property="createDate" column="createDate"/>
+		<result property="remarks" column="remarks"/>
+	</resultMap>
+	
+	<select id="fetchOBMessages" parameterClass="java.util.Map" resultMap="fetchOBMessages-result">
+		SELECT * FROM (
+			SELECT MSG_BFR_ID msgBufferId, SRC_EVENT eventType, MSG_PAYLOAD payload, 
+			SERVICE_CONFIG_NAME serviceConfigName, DEST_SERVICE_GROUP destServiceGroup, 
+			DEST_SERVICE_NAME destServiceName, POST_PROCESSOR_EVENT postProcessorEvent, 
+			bfr.STATUS statusStr, TO_CHAR(STATUS_DT,'DD-MON-YYYY HH24:MI:SS') statusDt, 
+			MSG_ID messageId, TO_CHAR(MSG_CREATE_DT,'DD-MON-YYYY HH24:MI:SS') createDate, 
+			REMARKS remarks
+			FROM $bufferTableName$ bfr
+			JOIN EI_SERVICE_STATUS stat ON bfr.DEST_SERVICE_GROUP = stat.SERVICE_GROUP
+			AND   bfr.DEST_SERVICE_NAME = stat.SERVICE_NAME
+			WHERE 
+			      (bfr.STATUS = 'NEW' and NEXT_SEND_DT is null)
+			OR    (bfr.STATUS = 'NEW' and NEXT_SEND_DT<![CDATA[ < ]]>SYSDATE)
+			OR    (bfr.STATUS = 'RETRY' AND NEXT_SEND_DT<![CDATA[ < ]]>SYSDATE)
+			AND   (stat.STATUS='ACTIVE' OR 
+					(stat.STATUS='SUSPECT' AND 
+				   	 SYSDATE <![CDATA[ > ]]> stat.RETRIED_DT+(bfr.NEXT_SEND_DT-bfr.STATUS_DT)/(60*24))
+				  )
+		  ORDER BY MSG_CREATE_DT		
+		) WHERE rownum <![CDATA[ <= ]]> #fetchSize#				
+		<dynamic prepend="AND">
+			<isNotEmpty property="fetchCriteria">
+				$fetchCriteria$
+			</isNotEmpty>
+		</dynamic> 		
+	</select>	
+	
+	<select id="selectForUpdateOBMsgAsProcessing" parameterClass="cargo.cms.afw.ei.core.OutboundMessage" resultClass="cargo.cms.afw.ei.core.OutboundMessage">
+		SELECT	MSG_BFR_ID msgBufferId 
+		FROM	$bufferTableName$
+		WHERE	MSG_BFR_ID=#msgBufferId# 
+		FOR UPDATE SKIP LOCKED
+	</select>
+
+	<update id="updateOBMsgAsProcessing" parameterClass="cargo.cms.afw.ei.core.OutboundMessage">
+		UPDATE $bufferTableName$ SET 
+			STATUS='IN_PROCESS',
+			STATUS_DT=SYSDATE, 
+			SENDER_PROCESS_ID=#jobId#  
+		WHERE 
+			MSG_BFR_ID=#msgBufferId#
+		AND	(	STATUS = 'NEW' OR 
+				(STATUS = 'RETRY' AND SYSDATE<![CDATA[ > ]]>NEXT_SEND_DT)
+			)	
+	</update>
+	
+	<update id="updateOBMsg" parameterClass="cargo.cms.afw.ei.core.OutboundMessage">
+		UPDATE $bufferTableName$ SET 
+			STATUS=#statusStr#,
+			STATUS_DT=TO_DATE(#statusDt#, 'DD-MON-YYYY HH24:MI:SS'),
+			SENDER_PROCESS_ID=#jobId#
+			<isNotEmpty property="messageId">
+				,MSG_ID=#messageId#
+			</isNotEmpty>
+			<isNotEmpty property="nextSendDt">
+				,NEXT_SEND_DT=TO_DATE(#nextSendDt#, 'DD-MON-YYYY HH24:MI:SS')
+			</isNotEmpty>
+			<isNotEmpty property="responsePayloadBytes">
+				,RESPONSE_PAYLOAD=#responsePayloadBytes#
+			</isNotEmpty>
+		WHERE
+			MSG_BFR_ID=#msgBufferId#  
+	</update>
+
+	<delete id="deleteOBMessage" parameterClass="cargo.cms.afw.ei.core.OutboundMessage">
+		DELETE FROM $bufferTableName$ WHERE MSG_BFR_ID=#msgBufferId#
+	</delete>
+	
+	<insert id="archiveOBMessage" parameterClass="cargo.cms.afw.ei.core.OutboundMessage">
+		INSERT INTO $archiveTableName$ (
+			MSG_ARCH_ID, SRC_EVENT, MSG_PAYLOAD, SERVICE_CONFIG_NAME, DEST_SERVICE_GROUP, 
+			DEST_SERVICE_NAME, POST_PROCESSOR_EVENT, STATUS, STATUS_DT, MSG_ID, 
+			SENDER_PROCESS_ID, MSG_CREATE_DT, RESPONSE_PAYLOAD, ARCH_DT, REMARKS) 
+		VALUES 
+		(#msgBufferId#, #eventType#, #payload,handler=cargo.cms.afw.ei.dao.ObjectToBlobTypeHandler#, #serviceConfigName#,#destServiceGroup#, 
+		 #destServiceName#, #postProcessorEvent#, #statusStr#, 
+		 TO_DATE(#statusDt#, 'DD-MON-YYYY HH24:MI:SS'), #messageId#, #jobId#, 
+		 TO_DATE(#createDate#, 'DD-MON-YYYY HH24:MI:SS'),#responsePayloadBytes#, SYSDATE, #remarks#)
+	</insert>
+	
+	<select id="getServiceStatus" parameterClass="java.util.Map" resultClass="cargo.cms.afw.ei.service.manager.EIServiceStatusBO">
+		SELECT SERVICE_STATUS_ID serviceStatusId, SERVICE_NAME serviceName, SERVICE_GROUP serviceGroup, STATUS status, 
+			   RETRIED_ATTEMPTS retriedAttempts, TO_CHAR(RETRIED_DT,'DD-MON-YYYY HH24:MI:SS') retriedDateTime,  
+			   TO_CHAR(CREATED_DT,'DD-MON-YYYY HH24:MI:SS') createdDt, CREATED_BY createdUserId,
+			   TO_CHAR(LAST_MODIFIED_DT,'DD-MON-YYYY HH24:MI:SS') lastModifiedDt, LAST_MODIFIED_BY modifiedUserId			   
+		FROM EI_SERVICE_STATUS
+		WHERE 
+			SERVICE_NAME=#serviceName# 
+		AND SERVICE_GROUP=#serviceGroup#
+	</select>
+	
+	<insert id="insertServiceStatus" parameterClass="cargo.cms.afw.ei.service.manager.EIServiceStatusBO">
+		INSERT INTO EI_SERVICE_STATUS (
+			SERVICE_STATUS_ID , SERVICE_NAME , SERVICE_GROUP , STATUS , 
+			CREATED_DT , CREATED_BY) 
+		VALUES  
+			(EI_SVC_STAT_SEQ.NEXTVAL,#serviceName#,#serviceGroup#,#status#,
+			SYSDATE,#createdUserId#) 
+	</insert>
+	
+	<update id="updateServiceStatus" parameterClass="cargo.cms.afw.ei.service.manager.EIServiceStatusBO">
+		UPDATE EI_SERVICE_STATUS SET 
+			STATUS=#status#,
+			RETRIED_ATTEMPTS=#retriedAttempts#,
+			RETRIED_DT=TO_DATE(#retriedDateTime#, 'DD-MON-YYYY HH24:MI:SS'),
+			LAST_MODIFIED_DT=SYSDATE,
+			LAST_MODIFIED_BY=#modifiedUserId#,
+			STATUS_RMK=#statusRemark# || SUBSTR(STATUS_RMK, 0, 4000 - LENGTH(#statusRemark#))
+		WHERE 
+			SERVICE_STATUS_ID=#serviceStatusId#
+	</update>
+	
+	<select id="getServiceCredentials" parameterClass="java.util.Map" resultClass="cargo.cms.afw.ei.service.manager.ServiceCredentialsBO">
+		SELECT SEC_SERVICE_ID serviceId, SYSTEM_NAME systemName,
+				 SECURITY_ENABLED_YN securityEnabled, SERVICE_USERNAME username, 	
+			   PKG_SECURITY.FUN_GET_EPASSWD(SERVICE_PASSWORD, 'D') password, 
+			   TO_CHAR(EFF_FROM_DT,'DD-MON-YYYY HH24:MI:SS') effFromDtStr,
+			   TO_CHAR(EFF_TO_DT,'DD-MON-YYYY HH24:MI:SS') effToDtStr
+		FROM SEC_SERVICES
+		WHERE	SERVICE_NAME=#serviceName#
+		AND		SYSTEM_NAME=#systemName#
+		AND		SYSDATE BETWEEN EFF_FROM_DT AND NVL(EFF_TO_DT,SYSDATE+365)
+		ORDER BY EFF_TO_DT DESC, EFF_FROM_DT ASC
+	</select>
+	
+	<select id="getServiceCredentialList" resultClass="cargo.cms.afw.ei.service.manager.ServiceCredentialsBO">
+		SELECT SEC_SERVICE_ID serviceId, SERVICE_NAME serviceName, SYSTEM_NAME systemName,
+			   SECURITY_ENABLED_YN securityEnabled, SERVICE_USERNAME username, 
+			   PKG_SECURITY.FUN_GET_EPASSWD(SERVICE_PASSWORD, 'D') password, 
+			   TO_CHAR(EFF_FROM_DT,'DD-MON-YYYY HH24:MI:SS') effFromDtStr,
+			   TO_CHAR(EFF_TO_DT,'DD-MON-YYYY HH24:MI:SS') effToDtStr,
+			   CREATED_BY createdUserId, LAST_MODIFIED_BY modifiedUserId,
+			   TO_CHAR(CREATED_DT,'DD-MON-YYYY HH24:MI:SS') createdDt,
+			   TO_CHAR(LAST_MODIFIED_DT,'DD-MON-YYYY HH24:MI:SS') modifiedDt
+		FROM SEC_SERVICES
+		WHERE	SYSDATE BETWEEN EFF_FROM_DT AND NVL(EFF_TO_DT,SYSDATE+365)
+		ORDER BY systemName asc, serviceName asc, effFromDtStr asc, serviceId desc
+	</select>
+
+	<select id="getAllCredentialsForAllServices" resultClass="cargo.cms.afw.ei.service.manager.ServiceCredentialsBO">
+		SELECT SEC_SERVICE_ID serviceId, SERVICE_NAME serviceName, SYSTEM_NAME systemName, 
+			   SECURITY_ENABLED_YN securityEnabled, SERVICE_USERNAME username, 
+			   PKG_SECURITY.FUN_GET_EPASSWD(SERVICE_PASSWORD, 'D') password, 
+			   TO_CHAR(EFF_FROM_DT,'DD-MON-YYYY HH24:MI:SS') effFromDtStr,
+			   TO_CHAR(EFF_TO_DT,'DD-MON-YYYY HH24:MI:SS') effToDtStr,
+			   CREATED_BY createdUserId, LAST_MODIFIED_BY modifiedUserId,
+			   TO_CHAR(CREATED_DT,'DD-MON-YYYY HH24:MI:SS') createdDt,
+			   TO_CHAR(LAST_MODIFIED_DT,'DD-MON-YYYY HH24:MI:SS') modifiedDt
+		FROM SEC_SERVICES
+		ORDER BY systemName asc, serviceName asc, serviceId desc
+	</select>
+	
+	<insert id="insertServiceCredentials" parameterClass="cargo.cms.afw.ei.service.manager.ServiceCredentialsBO">
+		INSERT INTO SEC_SERVICES (SEC_SERVICE_ID, SERVICE_NAME, SYSTEM_NAME, SECURITY_ENABLED_YN, 
+		SERVICE_USERNAME,SERVICE_PASSWORD, EFF_FROM_DT, EFF_TO_DT, CREATED_BY, CREATED_DT)
+		VALUES
+		(SEC_SRV_SEQ.NEXTVAL,#serviceName#, #systemName#, #securityEnabled#,
+		#username#,PKG_SECURITY.FUN_GET_EPASSWD(#password#, 'E'),
+		TO_DATE(#effFromDtStr#, 'DD-MON-YYYY HH24:MI:SS'), 
+		TO_DATE(#effToDtStr#, 'DD-MON-YYYY HH24:MI:SS'),
+		#createdUserId#, SYSDATE)
+	</insert>
+
+	<update id="updateServiceCredentials" parameterClass="cargo.cms.afw.ei.service.manager.ServiceCredentialsBO">
+		UPDATE SEC_SERVICES SET 
+			SERVICE_USERNAME=#username#,
+			SERVICE_PASSWORD=PKG_SECURITY.FUN_GET_EPASSWD(#password#, 'E'),
+			EFF_FROM_DT=TO_DATE(#effFromDtStr#, 'DD-MON-YYYY HH24:MI:SS'),
+			EFF_TO_DT=TO_DATE(#effToDtStr#, 'DD-MON-YYYY HH24:MI:SS'),
+			LAST_MODIFIED_DT=SYSDATE,
+			LAST_MODIFIED_BY=#modifiedUserId#
+		WHERE 
+			SEC_SERVICE_ID=#serviceId#
+	</update>
+	
+	<update id="enableDisableServiceSecurity" parameterClass="cargo.cms.afw.ei.service.manager.ServiceCredentialsBO">
+		UPDATE SEC_SERVICES SET
+			SECURITY_ENABLED_YN=#securityEnabled#, 
+			LAST_MODIFIED_DT=SYSDATE,
+			LAST_MODIFIED_BY=#modifiedUserId#
+		WHERE 
+			SEC_SERVICE_ID=#serviceId#
+	</update>
+	
+	
+	<select id="getLogId" resultClass="java.lang.String">
+		SELECT LOG_WS_REQ_SEQ.NEXTVAL from dual
+	</select>
+	
+	<select id="getInboundSoapMsgReqRespLogEnabled" parameterClass="java.lang.String"  resultClass="java.lang.String">
+		SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE = #ruleCode#	
+	</select>
+	
+	<insert id="logInsertWebserviceRequest" parameterClass="java.util.Map">
+		INSERT INTO LOG_WEBSERVICE_REQ (LOG_ID,SENDER,REQUEST_URL,SERVICE_NAME,REQUEST_MSG,RCVD_DT) 
+		VALUES (#LOG_ID#,#SENDER#,#REQUEST_URL#,#SERVICE_NAME#,#REQUEST_MSG#,SYSDATE)
+	</insert>
+
+	<update id="logUpdateWebserviceResponse" parameterClass="java.util.Map">
+		UPDATE LOG_WEBSERVICE_REQ SET
+			RESPONSE_MSG=#RESPONSE_MSG#,
+			SENT_DT=SYSDATE
+		WHERE
+			LOG_ID=#LOG_ID#
+	</update>
+
+	<insert id="logInsertWebserviceResponse" parameterClass="java.util.Map">
+		INSERT INTO LOG_WEBSERVICE_REQ (LOG_ID,SENDER,REQUEST_URL,SERVICE_NAME,REQUEST_MSG,RCVD_DT,RESPONSE_MSG,SENT_DT) 
+		VALUES (#LOG_ID#,#SENDER#,#REQUEST_URL#,#SERVICE_NAME#,#REQUEST_MSG#,SYSDATE,#RESPONSE_MSG#,SYSDATE)
+	</insert>
+	
+	<insert id="logSMSMessage" parameterClass="cargo.cms.services.sms.SMSBO">
+		INSERT INTO SMS_LOG (LOG_ID,STATUS,STATUS_DT,MESSAGE_TEXT,RECIPIENT_MOB_NO,USERID,SENDING_FUNCTION,REMARKS)
+		VALUES
+		(SMS_LOG_SEQ.NEXTVAL,#status#,SYSDATE,#content#,#recipientsToLog#,#userID#,#function#,#remarks#) 
+	</insert>
+	
+	<!-- SQLs bufferSMSMessage & fetchSMSMessages is for future impl. -->
+	<!-- 
+	<insert id="bufferSMSMessage" parameterClass="cargo.cms.services.sms.SMSBO">
+		INSERT INTO SMS_LOG (LOG_ID,STATUS,STATUS_DT,MESSAGE_TEXT,RECIPIENT_MOB_NO,USERID,SENDING_FUNCTION,REMARKS)
+		VALUES
+		(SMS_LOG_SEQ.NEXTVAL,#status#,SYSDATE,#content#,#recipientsToLog#,#userID#,#function#,#remarks#) 
+	</insert>
+
+	<select id="fetchSMSMessages" resultClass="cargo.cms.services.sms.SMSBO">
+		SELECT LOG_ID,STATUS,STATUS_DT,MESSAGE_TEXT,RECIPIENT_MOB_NO,USERID,SENDING_FUNCTION,REMARKS
+		FROM SMS_LOG WHERE STATUS = 'NEW' 
+	</select>
+	 -->	
+	 
+	 <select id="fetchWeighingScales" resultClass="cargo.cms.services.weighingscale.WScaleDetails">
+	 	SELECT scale_id scaleId, scale_name scaleName, loc_id locationId, ip_addr ipAddress, port port,
+	 	socketTimeoutMillis socketTimeoutMillis, retryMillis retryMillis, retryCount retryCount
+	 	 FROM WEIGHING_SCALE_DET
+	 </select>
+
+	<select id="fetchWeighingScaleLOV" resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT distinct scale_id codeId, scale_name codeDesc FROM WEIGHING_SCALE_DET 
+		ORDER BY scale_name ASC
+	</select>
+
+	 <select id="fetchLocNameForId" parameterClass="java.lang.String" resultClass="java.lang.String">
+	 	SELECT code_desc from mast_wh_loc where code=#locid#
+	 </select>
+	 	
+	 <select id="getEIServicesConfig" resultClass="cargo.cms.afw.ei.config.ServiceConfigRecordBO">
+		select srvcfg.service_config_name serviceConfigName, srvcfg.service_config_id serviceConfigId, 
+		(select b.service_config_name from EI_SERVICES_CONFIG a 
+		left outer join EI_SERVICES_CONFIG b on a.service_config_parent_id = b.service_config_id 
+		where  a.service_config_id = srvcfg.service_config_id) parentConfigName, srvcfg.service_config_parent_id parentId,
+		property_name propertyName, property_value propertyValue, property_group propertyGroup
+		from EI_SERVICES_CONFIG srvcfg
+		left outer join EI_SRV_PROPERTY_MAP prop on srvcfg.service_config_id = prop.service_config_id
+		order by parentConfigName desc, srvcfg.service_config_name, property_group	 
+	 </select>
+
+	 	
+	 <select id="getEIMsgBfrId" resultClass="java.lang.String">
+		SELECT EI_MSG_BFR_SEQ.NEXTVAL from dual
+	</select>
+	
+	<select id="serviceStatusList" parameterClass="cargo.cms.afw.ei.service.manager.EIServiceStatusBO" resultClass="cargo.cms.afw.ei.service.manager.EIServiceStatusBO">
+		SELECT 	SERVICE_STATUS_ID as serviceStatusId,
+				SERVICE_NAME as serviceName,
+				SERVICE_GROUP as serviceGroup,
+				STATUS as status,
+				RETRIED_ATTEMPTS as retriedAttempts,
+				to_char(RETRIED_DT,'DD-MON-YYYY HH24:MI:SS') as retriedDateTime,
+				to_char(CREATED_DT,'DD-MON-YYYY HH24:MI:SS') as createdDt,
+				to_char(LAST_MODIFIED_DT,'DDMONYY HH24:MI:SS') as lastModifiedDt,
+				STATUS_RMK as statusRemark
+				FROM ei_service_status order by serviceGroup
+	</select>
+	
+	<select id="fetchserviceStatusDetails" parameterClass="cargo.cms.afw.ei.service.manager.EIServiceStatusBO" resultClass="cargo.cms.afw.ei.service.manager.EIServiceStatusBO">
+		SELECT 	SERVICE_STATUS_ID as serviceStatusId,
+				SERVICE_NAME as serviceName,
+				SERVICE_GROUP as serviceGroup,
+				STATUS as status,
+				RETRIED_ATTEMPTS as retriedAttempts,  
+				to_char(RETRIED_DT,'DD-MON-YYYY HH24:MI:SS') as retriedDateTime,
+				to_char(CREATED_DT,'DD-MON-YYYY HH24:MI:SS') as createdDt,
+				to_char(LAST_MODIFIED_DT,'DDMONYY HH24:MI:SS') as lastModifiedDt,
+				STATUS_RMK as statusRemark
+				FROM ei_service_status 
+				where SERVICE_STATUS_ID = #serviceStatusId#
+				
+	</select>
+	
+	
+	<update id="updateServiceStatusDtl" parameterClass="cargo.cms.afw.ei.service.manager.EIServiceStatusBO">
+		UPDATE EI_SERVICE_STATUS SET 
+			STATUS=#status#,
+			RETRIED_ATTEMPTS=#retriedAttempts#,
+			RETRIED_DT=TO_DATE(#retriedDateTime#, 'DD-MON-YYYY HH24:MI:SS'),
+			LAST_MODIFIED_DT=SYSDATE,
+			LAST_MODIFIED_BY=#modifiedUserId#
+			<isEqual property="purgeStatusInfo" compareValue="Y"> 
+			   	, STATUS_RMK=#statusRemark#
+			</isEqual>			
+		WHERE 
+			SERVICE_STATUS_ID=#serviceStatusId#
+	</update>
+	
+	<select id="sqlFetchQrtzTriggers" parameterClass="java.util.HashMap" resultClass="cargo.cms.afw.ei.service.manager.JobDetailBO">
+		SELECT TRIGGER_NAME AS triggerName,
+  				JOB_NAME AS jobName,
+  				JOB_GROUP AS jobGroup,
+                TO_CHAR(TO_DATE('01-JAN-1970','DD-MON-YYYY') + ( PREV_FIRE_TIME / (1000 * 60 * 60 * 24) +8/24 ),'DD-MON-YYYY HH24:MI:SS') AS prevFireTime,
+                TO_CHAR(SYSDATE,'DD-MON-YYYY HH24:MI:SS') AS currentFireTime,
+  				TO_CHAR(TO_DATE('01-JAN-1970','DD-MON-YYYY') + ( NEXT_FIRE_TIME / (1000 * 60 * 60 * 24) +8/24 ),'DD-MON-YYYY HH24:MI:SS') AS nextFireTime,
+  				round(((sysdate - to_date('01-JAN-1970','DD-MON-YYYY')) * (1000 * 60 * 60 * 24) +8/24)) AS longNextFireTime
+		FROM qrtz_triggers
+		WHERE 1 = 1
+		<isNotEmpty prepend="AND" property="jobName">
+			JOB_NAME = #jobName#
+		</isNotEmpty>
+	</select> 
+	
+	<update id="sqlUpdateQrtzTriggers" parameterClass="java.util.HashMap">
+		UPDATE QRTZ_TRIGGERS SET TRIGGER_STATE = NVL(#triggerState#,TRIGGER_STATE), NEXT_FIRE_TIME = NVL(#nextFireTime#, NEXT_FIRE_TIME) WHERE JOB_NAME = #jobName# AND TRIGGER_NAME = #triggerName# AND TRIGGER_STATE != 'ACQUIRED'
+	</update>
+	<update id="sqlUpdateQrtzSimpleTriggers" parameterClass="java.util.HashMap">
+		UPDATE QRTZ_SIMPLE_TRIGGERS SET REPEAT_INTERVAL = NVL(#newJobTime#, REPEAT_INTERVAL) WHERE TRIGGER_NAME = #triggerName#
+	</update>
+	<update id="sqlUpdateOBMsgToRetry" parameterClass="cargo.cms.afw.ei.core.OutboundMessage">
+		UPDATE $bufferTableName$ SET 
+			STATUS=#statusStr#,
+			STATUS_DT=TO_DATE(#statusDt#, 'DD-MON-YYYY HH24:MI:SS'),
+			SENDER_PROCESS_ID=#jobId#
+			<isNotEmpty property="messageId">
+				,MSG_ID=#messageId#
+			</isNotEmpty>
+			<isNotEmpty property="nextSendDt">
+				,NEXT_SEND_DT=TO_DATE(#nextSendDt#, 'DD-MON-YYYY HH24:MI:SS')
+			</isNotEmpty>			
+		WHERE
+			MSG_BFR_ID=#msgBufferId#
+			AND STATUS = 'IN_PROCESS'
+	</update>
+	
+	
+	<select id="fetchAllServiceMessages" parameterClass="java.util.Map" resultMap="fetchOBMessages-result">
+		SELECT * FROM (
+			SELECT MSG_BFR_ID msgBufferId, SRC_EVENT eventType, MSG_PAYLOAD payload, 
+			SERVICE_CONFIG_NAME serviceConfigName, DEST_SERVICE_GROUP destServiceGroup, 
+			DEST_SERVICE_NAME destServiceName, POST_PROCESSOR_EVENT postProcessorEvent, 
+			bfr.STATUS statusStr, TO_CHAR(STATUS_DT,'DD-MON-YYYY HH24:MI:SS') statusDt, 
+			MSG_ID messageId, TO_CHAR(MSG_CREATE_DT,'DD-MON-YYYY HH24:MI:SS') createDate, 
+			REMARKS remarks
+			FROM EI_MSG_BFR_COM bfr
+			JOIN EI_SERVICE_STATUS stat ON bfr.DEST_SERVICE_GROUP = stat.SERVICE_GROUP
+			AND   bfr.DEST_SERVICE_NAME = stat.SERVICE_NAME
+			WHERE 
+			bfr.STATUS IN ('NEW','RETRY') AND bfr.DEST_SERVICE_GROUP = #destServiceGroup# AND bfr.DEST_SERVICE_NAME = #destServiceName#)
+		ORDER BY createDate
+	</select>
+	
+</sqlMap>

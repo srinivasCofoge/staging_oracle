@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://www.ibatis.com/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="FinanceOutboundModule">
+
+
+	 <select id="fetchFlightIsUnderTrnPeriodFDDS" parameterClass="cargo.cms.common.ext.bo.FddsBO" resultClass="java.lang.Integer">
+	  SELECT COUNT(1) FROM TRN_SETUP,TRN_SETUP_CARR 
+      WHERE TRN_SETUP_CARR.TR_NO=TRN_SETUP.TR_NO
+      AND TRN_SETUP_CARR.CARR_CODE= (SELECT CARR_CODE FROM TRN_FLT_OPR WHERE FLT_KEY = #flightKey# AND SCH_DATE = to_date(#scheduledDate#,'DD/MM/YYYY')  AND FLT_TYPE = #flightType#)
+      AND TO_DATE(#scheduledDate#,'DD/MM/YYYY') BETWEEN TRN_SETUP.PERIOD_FRM AND TRN_SETUP.PERIOD_TO
+     </select> 
+     
+     
+     <update id="updateTrnFlightOpr" parameterClass="cargo.cms.common.ext.bo.FddsBO">
+		UPDATE TRN_FLT_OPR SET 
+			<isNotEmpty  property="stand">
+				ACFT_PRK_BAY = #stand#,
+			</isNotEmpty>
+			<isNotEmpty  property="status">
+				STATUS = #status#,
+			</isNotEmpty>
+			<isNotEmpty  property="aircraftType">
+				ACFT_TYPE= #aircraftType#,
+			</isNotEmpty>
+			<isNotEmpty  property="gateStatus">
+				SCH_GATE=#gateStatus#,
+			</isNotEmpty> 
+			<isNotEmpty  property="delay">
+				DELAY_CODE=#delay#, 
+			</isNotEmpty> 
+			<isNotEmpty  property="registration">
+				ACFT_REG_NO=#registration#,
+			</isNotEmpty> 
+			<isNotEmpty  property="actualTIme">
+				ACT_DATE=pkg_common.get_flt_chocks_date(#flightType#, to_date(#actualDate#, 'DD/MM/YYYY hh24mi'), #actualTIme#),
+				ACT_TIME=#actualTIme#, 
+			</isNotEmpty>
+			<isNotEmpty  property="estimatedDate">
+				EST_DATE=to_date(#estimatedDate#, 'DD/MM/YYYY'), 
+				EST_TIME=#estimatedTime#, 
+			</isNotEmpty>			
+			<isNotEmpty property="actualTIme">
+				<isEmpty property="estimatedDate">
+					MHCSSEND_YN = 'N',
+				</isEmpty>
+			</isNotEmpty>
+			<isNotEmpty property="estimatedDate">
+				<isEmpty property="actualTIme">
+					MHCSSEND_YN = 'N',
+				</isEmpty>
+			</isNotEmpty>
+			<isNotEmpty property="actualTIme">
+				<isNotEmpty property="estimatedDate">
+					MHCSSEND_YN = 'N',
+				</isNotEmpty>
+			</isNotEmpty>					
+			LM_USER_ID='SYSTEM_FDDS', LM_DATE=SYSDATE , TR_TYPE = 'FLTFDS'
+		WHERE FLT_KEY=#flightKey# 
+		AND SCH_DATE=to_date(#scheduledDate#,'DD/MM/YYYY') 
+		AND FLT_TYPE=#flightType#	
+	</update>
+	
+	<select id="checkFlightForMobile" parameterClass="cargo.cms.common.ext.bo.FddsBO" resultClass="java.lang.Integer">
+ 	  select count(1) from FLT_OPR where 
+	(ACT_DATE != pkg_common.get_flt_chocks_date(#flightType#, to_date(#actualDate#, 'DD/MM/YYYY hh24mi'), #actualTIme#) or ACT_TIME != #actualTIme#
+	or EST_DATE != to_date(#estimatedDate#, 'DD/MM/YYYY') or EST_TIME != #estimatedTime#) and FLT_KEY=#flightKey# AND SCH_DATE=to_date(#scheduledDate#,'DD/MM/YYYY') AND FLT_TYPE=#flightType#
+ 	  </select>
+	
+   <update id="updateFlightOpr" parameterClass="cargo.cms.common.ext.bo.FddsBO">
+		UPDATE FLT_OPR SET 
+			ACFT_PRK_BAY = #stand#, SCH_GATE = #gateStatus#,
+			<isNotEmpty  property="status">
+				STATUS = #status#,
+			</isNotEmpty>
+			<isNotEmpty  property="aircraftType">
+				ACFT_TYPE= #aircraftType#,
+			</isNotEmpty>
+			<isNotEmpty  property="delay">
+				DELAY_CODE=#delay#, 
+			</isNotEmpty> 
+			<isNotEmpty  property="registration">
+				ACFT_REG_NO=#registration#,
+			</isNotEmpty> 
+			<isNotEmpty  property="actualTIme">
+				ACT_DATE= pkg_common.get_flt_chocks_date(#flightType#, to_date(#actualDate#, 'DD/MM/YYYY hh24mi'), #actualTIme#),
+				ACT_TIME=#actualTIme#, 
+			</isNotEmpty>
+			<isEmpty property="actualTIme">
+				ACT_DATE = NULL, ACT_TIME = NULL, 
+			</isEmpty>
+			<isNotEqual property="stopEstUpdate" compareValue="Y">
+			<isNotEmpty property="estimatedDate">
+				EST_DATE=to_date(#estimatedDate#, 'DD/MM/YYYY'), 
+				EST_TIME=#estimatedTime#, 
+				EST_TIME_SOURCE = 'FIDS',
+			</isNotEmpty>
+			<isEmpty property="estimatedDate">
+				EST_DATE = CASE WHEN EST_DATE IS NOT NULL THEN SCH_DATE ELSE NULL END, 
+				EST_TIME = CASE WHEN EST_DATE IS NOT NULL THEN SCH_TIME ELSE NULL END, 
+				EST_TIME_SOURCE = 'FIDS',
+			</isEmpty>
+			</isNotEqual>
+			MHCSSEND_YN = NVL(#mhcssend_yn#,MHCSSEND_YN),
+			LM_USER_ID='SYSTEM_FDDS', LM_DATE=SYSDATE , TR_TYPE = 'FLTFDS'
+		WHERE FLT_KEY=#flightKey# 
+		AND SCH_DATE=to_date(#scheduledDate#,'DD/MM/YYYY') 
+		AND FLT_TYPE=#flightType#	
+	</update>
+
+        <select id="sqlGetChocksDate" parameterClass="cargo.cms.common.ext.bo.FddsBO" resultClass="java.lang.String">
+		<![CDATA[
+			SELECT
+			TO_CHAR(TO_DATE(PKG_COMMON.GET_FLT_CHOCKS_DATE(#flightType#, TO_DATE(#actualDate#, 'DD/MM/YYYY HH24MI'), #actualTIme#)), 'DD/MM/YYYY')
+			FROM DUAL
+		]]>
+   	</select>	
+	<select id="validateAirCraft" parameterClass="cargo.cms.common.ext.bo.FddsBO" resultClass="cargo.cms.common.ext.bo.FddsBO">
+		<![CDATA[
+			select CODE as aircraftType from MAST_ACFT_TYPE where code=#aircraftType#
+		]]>
+   	</select>	
+	
+	
+	<select id="selectFlightOpr" resultClass="cargo.cms.common.ext.bo.FddsBO">
+		<![CDATA[
+			SELECT DISTINCT CODE3 as airlineCode, FLT_TYPE as flightType, 
+			DECODE(CGO_ACFT_TYPE,'PSR','T','F') As paxCarrying, TO_CHAR(SCH_DATE,'mm/dd/yyyy') AS estimatedDate  
+			FROM FLT_OPR F, MAST_CARRIER C
+			WHERE CARR_CODE = CODE AND CODE3 IS NOT NULL
+			AND SYSDATE -(SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'FIDS_FREQUENCY_FROM')/24  < TO_DATE((TO_CHAR(SCH_DATE, 'dd/mm/yyyy') || ' ' || TO_CHAR(TO_CHAR(SCH_TIME, '0099'))), 'dd/mm/yyyy HH24mi')
+			AND SYSDATE +(SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'FIDS_FREQUENCY_TO')/24  > TO_DATE((TO_CHAR(SCH_DATE, 'dd/mm/yyyy') || ' ' || TO_CHAR(TO_CHAR(SCH_TIME, '0099'))), 'dd/mm/yyyy HH24mi')
+			UNION
+			SELECT DISTINCT CODE3_2 as airlineCode, FLT_TYPE as flightType, 
+			DECODE(CGO_ACFT_TYPE,'PSR','T','F') As paxCarrying, TO_CHAR(SCH_DATE,'mm/dd/yyyy') AS estimatedDate  
+			FROM FLT_OPR F, MAST_CARRIER C
+			WHERE CARR_CODE = CODE AND CODE3_2 IS NOT NULL
+			AND SYSDATE -(SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'FIDS_FREQUENCY_FROM')/24  < TO_DATE((TO_CHAR(SCH_DATE, 'dd/mm/yyyy') || ' ' || TO_CHAR(TO_CHAR(SCH_TIME, '0099'))), 'dd/mm/yyyy HH24mi')
+			AND SYSDATE +(SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'FIDS_FREQUENCY_TO')/24  > TO_DATE((TO_CHAR(SCH_DATE, 'dd/mm/yyyy') || ' ' || TO_CHAR(TO_CHAR(SCH_TIME, '0099'))), 'dd/mm/yyyy HH24mi')
+			UNION
+			SELECT DISTINCT CODE3_3 as airlineCode, FLT_TYPE as flightType, 
+			DECODE(CGO_ACFT_TYPE,'PSR','T','F') As paxCarrying, TO_CHAR(SCH_DATE,'mm/dd/yyyy') AS estimatedDate  
+			FROM FLT_OPR F, MAST_CARRIER C
+			WHERE CARR_CODE = CODE AND CODE3_3 IS NOT NULL
+			AND SYSDATE -(SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'FIDS_FREQUENCY_FROM')/24  < TO_DATE((TO_CHAR(SCH_DATE, 'dd/mm/yyyy') || ' ' || TO_CHAR(TO_CHAR(SCH_TIME, '0099'))), 'dd/mm/yyyy HH24mi')
+			AND SYSDATE +(SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'FIDS_FREQUENCY_TO')/24  > TO_DATE((TO_CHAR(SCH_DATE, 'dd/mm/yyyy') || ' ' || TO_CHAR(TO_CHAR(SCH_TIME, '0099'))), 'dd/mm/yyyy HH24mi')
+			ORDER BY 4 ASC
+		]]>
+   	</select>
+
+	<select id="fetchAirportForArrivalFlt" resultClass="cargo.cms.common.ext.bo.FddsBO">
+		<![CDATA[
+			select   distinct orig as airportCode from flt_opr 
+			where flt_type='A'
+			and  sysdate -(SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'FIDS_FREQUENCY_FROM')/24  < to_date((to_char(sch_date, 'dd/mm/yyyy') || ' ' || to_char(to_char(sch_time, '0099'))), 'dd/mm/yyyy HH24mi')
+			and  sysdate +(SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'FIDS_FREQUENCY_TO')/24  > to_date((to_char(sch_date, 'dd/mm/yyyy') || ' ' || to_char(to_char(sch_time, '0099'))), 'dd/mm/yyyy HH24mi')
+		]]>
+   	</select>		
+
+	<select id="fetchAirportForDepFlt" resultClass="cargo.cms.common.ext.bo.FddsBO">
+		<![CDATA[
+			select distinct dest as airportCode from flt_opr 
+			where flt_type='D' 
+			and  sysdate -(SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'FIDS_FREQUENCY_FROM')/24  < to_date((to_char(sch_date, 'dd/mm/yyyy') || ' ' || to_char(to_char(sch_time, '0099'))), 'dd/mm/yyyy HH24mi')
+			and  sysdate +(SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE = 'FIDS_FREQUENCY_TO')/24  > to_date((to_char(sch_date, 'dd/mm/yyyy') || ' ' || to_char(to_char(sch_time, '0099'))), 'dd/mm/yyyy HH24mi')
+		]]>
+   	</select>
+	<update id="update_fdds_airlines" parameterClass="cargo.cms.common.ext.bo.FddsBO">
+		UPDATE MAST_CARRIER SET CODE_DESC = #airlineName#, LM_USER_ID='SYSTEM_FDDS', LM_DATE=SYSDATE  WHERE CODE = #airlineCode#
+	</update>	
+	<update id="update_fdds_airports"
+		parameterClass="cargo.cms.common.ext.bo.FddsBO">
+		UPDATE MAST_ARPT SET CODE_DESC = #airportName#, LM_USER_ID='SYSTEM_FDDS', LM_DATE=SYSDATE  WHERE CODE = #airportCode#
+	</update>
+	<update id="updateFlightOprLeg" parameterClass="cargo.cms.common.ext.bo.FddsBO">
+		UPDATE FLT_OPR_LEG SET 			
+			<isNotEmpty  property="aircraftType">
+				ACFT_TYPE= #aircraftType#,
+			</isNotEmpty>	
+			LM_USER_ID='SYSTEM_FDDS', LM_DATE=SYSDATE , TR_TYPE = 'FLTFDS'
+		WHERE FLT_KEY=#flightKey# 
+		AND SCH_DATE=to_date(#scheduledDate#,'DD/MM/YYYY') 
+		AND FLT_TYPE=#flightType#	
+		AND (BRD_POINT='HKG' or OFF_POINT='HKG')
+	</update>
+	<select id="getFltOprTimestamps" parameterClass="cargo.cms.common.ext.bo.FddsBO" resultClass="java.util.HashMap">
+     	select TO_CHAR(ACT_DATE,'DDMONYY') as ACT_DATE, ACT_TIME as ACT_TIME, TO_CHAR(EST_DATE,'DDMONYY') as EST_DATE, EST_TIME as EST_TIME 
+     	from FLT_OPR WHERE FLT_KEY=#flightKey# AND SCH_DATE=to_date(#scheduledDate#,'DD/MM/YYYY') AND FLT_TYPE=#flightType#
+      </select>
+	  <select id="getMhcssend_actualYN" parameterClass="cargo.cms.common.ext.bo.FddsBO" resultClass="java.lang.String">
+        select  CASE WHEN (to_date(TO_CHAR(NVL(ACT_DATE,SYSDATE),'DDMONYY'),'DDMONYY') != NVL( pkg_common.get_flt_chocks_date(#flightType#, to_date(#actualDate#, 'DD/MM/YYYY hh24mi'), #actualTIme#) , TRUNC(SYSDATE)))
+        				    OR (NVL(ACT_TIME,'0') != NVL(#actualTIme#,'0')) THEN 'N' END 
+        from FLT_OPR WHERE FLT_KEY=#flightKey# AND SCH_DATE=to_date(#scheduledDate#,'DD/MM/YYYY') AND FLT_TYPE=#flightType#
+ 	  </select>
+	  <select id="getMhcssend_estYN" parameterClass="cargo.cms.common.ext.bo.FddsBO" resultClass="java.lang.String">
+ 	  	select  CASE WHEN (to_date(TO_CHAR(NVL(EST_DATE,SYSDATE),'DD/MM/YYYY'),'DD/MM/YYYY') !=  to_date(NVL(#estimatedDate#,SYSDATE),'DD/MM/YYYY'))  OR  (NVL(EST_TIME,'0') != NVL(#estimatedTime#,'0'))
+	 	THEN 'N' END from FLT_OPR WHERE FLT_KEY=#flightKey# AND SCH_DATE=to_date(#scheduledDate#,'DD/MM/YYYY') AND FLT_TYPE=#flightType#
+ 	  </select>
+       <select id="sqlGetFIDSVerifyEstStopUpdateFlag" parameterClass="java.util.Map" resultClass="java.lang.String">
+		<![CDATA[
+			SELECT DECODE(COUNT(1), 0, 'N', 'Y')
+			FROM FLT_OPR
+			WHERE FLT_KEY = #FLT_KEY# AND SCH_DATE = TO_DATE(#FLT_DATE#, 'DD/MM/YYYY') AND FLT_TYPE = #FLT_TYPE# 
+			AND NVL(STOP_AUTO_EST_YN, 'N') = 'Y'
+		]]>
+   	</select>
+	<select id="sqlGetFIDSVerifyEstFromAirlineFlag" parameterClass="java.util.Map" resultClass="java.lang.String">
+		<![CDATA[
+			SELECT DECODE(COUNT(1), 0, 'N', 'Y')
+			FROM MAST_CARRIER CARR
+			JOIN FLT_OPR FLT
+			ON FLT.CARR_CODE = CARR.CODE
+			WHERE NVL(CARR.ETD_FROM_AIRLINE_YN, 'N') = 'Y'
+			AND FLT.FLT_KEY = #FLT_KEY# AND FLT.SCH_DATE = TO_DATE(#FLT_DATE#, 'DD/MM/YYYY') AND FLT_TYPE = #FLT_TYPE#
+		]]>
+   	</select>
+   	<select id="sqlGetMVTFlightDate" parameterClass="java.util.Map" resultClass="java.lang.String">
+   	SELECT TO_CHAR(SCH_DATE,'DD/MM/YYYY') FROM FLT_OPR_LEG WHERE FLT_KEY = #FLT_KEY# AND TRUNC(TO_DATE(TO_CHAR(SCH_DEP_DATE,'DDMONYY')||LPAD(SCH_DEP_TIME,4,0),'DDMONYYHH24MI') -
+			(GET_TIME_GMT_DIFF(BRD_POINT))/24) = TO_DATE(#FLT_DATE#, 'DD/MM/YYYY') AND LEG_ORD=1 AND FLT_TYPE = 'D' AND BRD_POINT='HKG'
+   	</select>
+   	
+   	 <select id="fetchFDDSexistingATD" parameterClass="cargo.cms.common.ext.bo.FddsBO" resultClass="java.lang.String">
+		SELECT TO_CHAR(ACT_DATE,'DDMONYY')||' '||lpad(act_time,4,0) AS actTime FROM FLT_OPR WHERE FLT_KEY=#flightKey# AND SCH_DATE=to_date(#scheduledDate#,'DD/MM/YYYY') AND FLT_TYPE=#flightType#	
+	  </select>
+	  <select id="checkFDDSFlightisalreadyclosed" parameterClass="cargo.cms.common.ext.bo.FddsBO" resultClass="java.lang.Integer">
+		SELECT COUNT(1) FROM FLT_OPR_EVENTS WHERE FLT_KEY=#flightKey# AND SCH_DATE=to_date(#scheduledDate#,'DD/MM/YYYY') AND FLT_TYPE=#flightType# AND flt_cls_yn='Y' AND flt_cls_date IS NOT NULL AND FLT_CLS_TIME IS NOT NULL
+      </select>
+      <select id="convertFDDSFlightDateformt" parameterClass="cargo.cms.common.ext.bo.FddsBO" resultClass="java.lang.String">
+      SELECT TO_CHAR(to_date(#actualDate#, 'DD/MM/YYYY hh24mi'),'DDMONYY') FROM DUAL
+      </select>
+	  <select id="checkFDDSFlightDateDiff" parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+		SELECT CASE WHEN (TO_CHAR(TO_DATE(#oldActDate#,'DDMONYY HH24MI') - TO_DATE(#newActDate#,'DDMONYY HH24MI'))) !=0 THEN 1 ELSE 0 END DAYDIFF FROM DUAL
+      </select>
+	  <update id="updateFDDSFLTClosEAmendFlt" parameterClass="cargo.cms.common.ext.bo.FddsBO">
+		UPDATE FLT_OPR_EVENTS SET FLT_CLS_YN='Y', FLT_CLS_DATE = SYSDATE, FLT_CLS_TIME = TO_CHAR(SYSDATE,'HH24MI'), FLT_CLS_USER_ID = 'SYSTEM',LM_USER_ID= 'SYSTEM',LM_DATE = SYSDATE,TR_TYPE='CLFLT' WHERE FLT_KEY=#flightKey# AND SCH_DATE=to_date(#scheduledDate#,'DD/MM/YYYY') AND FLT_TYPE=#flightType#
+	  </update>
+</sqlMap>

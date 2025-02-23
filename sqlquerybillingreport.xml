@@ -1,0 +1,2158 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN" "http://www.ibatis.com/dtd/sql-map-2.dtd">
+
+	<!--
+		The SQL in these maps files has purposely been typed with more
+		verbosity than is actually required. For example, many of the selects
+		could have just used SELECT * FROM... instead of listing all of the
+		columns. This is to demonstrate that even complex SQL can be handled
+		and coded and formatted the way SQL was meant to be (i.e. not a bunch
+		of concatenated strings in a Java class).
+	-->
+	<!-- This XML file will hold only the queries which would be used for Billing module Reports -->
+	<!-- Added by Varadaraj Muni 01-Sep-2010 -->
+<sqlMap namespace="BillingReportModule">
+	
+	<!--To make aat handler carriers dropdown. It should be done in framework -->
+	<select id="aatHandlerCarriersForItemMaster"  parameterClass="java.lang.Object" resultClass="cargo.cms.billing.bo.CarrierBO">
+		SELECT CODE AS carrCode FROM MAST_CARRIER WHERE OWNED_CARR = 'Y'
+		UNION
+		SELECT 'Without Carrier' FROM DUAL
+		UNION
+		SELECT 'Select All' FROM DUAL  
+	</select>
+	
+	<!--To make aat handler carriers dropdown. It should be done in framework -->
+	<select id="fetchAATHdlCarriers"  parameterClass="java.lang.Object" resultClass="cargo.cms.billing.bo.CarrierBO">
+		SELECT CODE AS carrCode FROM MAST_CARRIER WHERE OWNED_CARR = 'Y'
+		UNION
+		SELECT 'Without Carrier' FROM DUAL		
+	</select>	
+	
+	<!--To make INV_PRINTER dropdown. It should be done in framework -->
+	<select id="sqllovinvprinter"  parameterClass="java.lang.String" resultClass="cargo.cms.afw.bo.MasterBO">
+		SELECT CODE AS codeId, CODE_DESC AS codeDesc FROM MAST_PRT_DTL WHERE UPPER(PRT_TYPE)=UPPER(#PARAM#) ORDER BY CODE_DESC
+   	</select>
+	
+	<!--To Check Item Code (and Item Code Suffix) is exist or not-->
+	<select id="checkItemCode" parameterClass="cargo.cms.billing.bo.ItemBO" resultClass="java.lang.String">
+		SELECT TO_CHAR(COUNT(*)) 
+		FROM 
+			BILL_ITM_MASTER 
+		WHERE 
+		UPPER(ITM_CODE)=UPPER(#itemCode#) 
+		<isNotEmpty property="itemCodeSuffix">
+			AND UPPER(NVL(ITM_CODE_SFX,'*'))=UPPER(#itemCodeSuffix#)	
+		</isNotEmpty>
+		<isEmpty property="itemCodeSuffix">
+			AND ITM_CODE_SFX IS NULL
+		</isEmpty>
+		<isNotEmpty property="ectHandler">
+			AND UPPER(NVL(ECT_HANDLER,'*'))=UPPER(#ectHandler#)	
+		</isNotEmpty>
+		<isEmpty property="ectHandler">
+			AND UPPER(ECT_HANDLER) IS NULL
+		</isEmpty>	
+		 
+	</select>
+	
+	<!--To Check Item Desc is exist or not-->
+	<select id="checkItemDesc" parameterClass="cargo.cms.billing.bo.ItemBO" resultClass="java.lang.String">
+		SELECT TO_CHAR(COUNT(*)) 
+		FROM 
+			BILL_ITM_MASTER 
+		WHERE 
+		UPPER(ITM_DESC)=UPPER(#itemDesc#) 
+		<isNotEmpty property="itemCode">
+		<![CDATA[
+		AND UPPER(ITM_CODE||'/'||NVL(ITM_CODE_SFX,'*')) <> UPPER(#itemCode#||'/'||NVL(#itemCodeSuffix#,'*'))
+		]]>
+		</isNotEmpty>
+	</select>
+	
+	<!--To Check Item Code Status-->
+	<select id="checkItemCodeStatus" parameterClass="cargo.cms.billing.bo.ItemBO" resultClass="java.lang.Integer">
+		SElECT (SELECT COUNT(STATUS) 
+		FROM BILL_CHARGE_DTL
+		<dynamic prepend="WHERE">
+				UPPER(ITM_CODE)=UPPER(#itemCode#) 
+				<isNotEmpty property="itemCodeSuffix">
+					AND UPPER(ITM_CODE_SFX)=UPPER(#itemCodeSuffix#)	
+				</isNotEmpty>
+				<isEmpty property="itemCodeSuffix">
+					AND UPPER(ITM_CODE_SFX) IS NULL
+				</isEmpty>					
+		</dynamic>		
+		)+ 
+		(SELECT COUNT(1) 
+		FROM BILL_INV_DTL
+		<dynamic prepend="WHERE">
+				UPPER(ITM_CODE)=UPPER(#itemCode#) 
+				<isNotEmpty property="itemCodeSuffix">
+					AND UPPER(ITM_CODE_SFX)=UPPER(#itemCodeSuffix#)	
+				</isNotEmpty>
+				<isEmpty property="itemCodeSuffix">
+					AND UPPER(ITM_CODE_SFX) IS NULL
+				</isEmpty>					
+		</dynamic>	
+		)+
+		(SELECT COUNT(1) 
+		FROM BILL_ADJ_DTL
+		<dynamic prepend="WHERE">
+				UPPER(ITM_CODE)=UPPER(#itemCode#) 
+				<isNotEmpty property="itemCodeSuffix">
+					AND UPPER(ITM_CODE_SFX)=UPPER(#itemCodeSuffix#)	
+				</isNotEmpty>
+				<isEmpty property="itemCodeSuffix">
+					AND UPPER(ITM_CODE_SFX) IS NULL
+				</isEmpty>					
+		</dynamic>	
+		) count from dual
+	</select>
+	
+	<!--To Check Item Code Suffix is exist or not-->	
+	<select id="checkItemCodeSfx" parameterClass="java.lang.String" resultClass="java.lang.Integer" >
+		SELECT COUNT(CODE) FROM MAST_CARRIER WHERE OWNED_CARR = 'Y' AND UPPER(CODE) = UPPER(#PARAM#)
+	</select>	
+	
+	<!--To Check AWB No is exist or not-->
+	<select id="sqlCountAWBNo" parameterClass="java.lang.String" resultClass="java.lang.Integer" >
+		SELECT COUNT(AWB_NO) FROM AWB WHERE UPPER(AWB_NO)=UPPER(#PARAM#)
+	</select>
+
+	<select id="checkvaliditemcode" parameterClass="map" resultClass="java.lang.Integer" >
+		SELECT COUNT(1) FROM BILL_CHARGE_DTL WHERE tr_no = #trNo#
+	</select>
+	
+	<!--To Check SRF No is exist or not-->
+	<select id="sqlCountSRFNo" parameterClass="java.lang.String" resultClass="java.lang.Integer" >
+		SELECT COUNT(SRF_NO) FROM IMP_SRF WHERE UPPER(SRF_NO)=UPPER(#PARAM#)
+	</select>
+	
+	<!--To Check RCL No is exist or not-->
+	<select id="sqlCountRCLNo" parameterClass="java.lang.String" resultClass="java.lang.Integer" >
+		SELECT COUNT(RCL_NO) FROM EXP_RCL_HD WHERE UPPER(RCL_NO)=UPPER(#PARAM#)
+	</select>
+	
+	<!--To Check ULD Key is exist or not-->
+	<select id="sqlCountULDNo" parameterClass="java.lang.String" resultClass="java.lang.Integer" >
+		SELECT COUNT(ULD_KEY) FROM ULD_INVENTORY WHERE UPPER(ULD_KEY)=UPPER(#PARAM#)
+	</select>
+	
+	<!--To Check Customer No is exist or not-->
+	<select id="sqlCountCustNo" parameterClass="java.lang.String" resultClass="java.lang.Integer" >
+		SELECT COUNT(CODE) FROM CUST_COMPANY WHERE UPPER(CODE)=UPPER(#PARAM#)
+	</select>
+	
+	<!--To Check Agent Name is exist or not-->
+	<select id="sqlCountAgentName" parameterClass="java.lang.String" resultClass="java.lang.Integer" >
+		SELECT COUNT(CODE_DESC) FROM CUST_COMPANY WHERE UPPER(CODE_DESC)=UPPER(#PARAM#)
+	</select>
+	
+	<!--Get ECT Handler for Item-->
+	<select id="sqlgetEctHandler" parameterClass="map" resultClass="java.lang.String" >
+		select ect_handler from bill_itm_master where itm_code = #P_ITM_CODE# and itm_code_sfx = #P_ITM_SFX#
+	</select>
+	
+	<!--To Check IATA Code is exist or not-->
+	<select id="sqlCountAgentIata" parameterClass="java.lang.String" resultClass="java.lang.Integer" >
+		SELECT COUNT(CO_IATA_CODE) FROM CUST_COMPANY WHERE UPPER(CO_IATA_CODE)=UPPER(#PARAM#)
+	</select>
+	
+	<!--To Check SRF is Voided, Printed, Expired, or Posted -->
+	<select id="sqlCountSRFVoidPrintExpPost" parameterClass="java.lang.String" resultClass="java.lang.Integer" >
+		SELECT COUNT(SRF_NO) FROM IMP_SRF WHERE UPPER(SRF_NO)=UPPER(#PARAM#)
+		AND (STATUS='VOID' OR STATUS='POSTED' OR SRF_EXPY_DATE &lt; sysdate)
+	</select>
+	
+	<!--To Check RCL is Voided or Printed -->
+	<select id="sqlCountRCLVoidPrint" parameterClass="java.lang.String" resultClass="java.lang.Integer" >
+		SELECT COUNT(RCL_NO) FROM EXP_RCL_HD WHERE UPPER(RCL_NO)=UPPER(#PARAM#)
+		AND STATUS='VOID'
+	</select>
+	
+	<!--To Check The associated AWB of the RCL has other outstanding payments-->
+	<select id="sqlCountAWBofRCLHasOutstanding" parameterClass="cargo.cms.billing.bo.ExpRclDtlBO" resultClass="java.lang.Integer" >
+		SELECT COUNT(TR_NO) FROM BILL_CHARGE_DTL 
+		WHERE 
+			STATUS='PENDING'
+			AND CHRG_AMT &gt; 0
+			AND UPPER(AWB_NO)=UPPER(#awbNo#)
+			AND TO_CHAR(AWB_DATE, 'DDMONYY HH24:MI:SS') = #awbDate#
+			AND ((UPPER(RCL_NO)!=UPPER(#rclNo#)) OR RCL_NO IS NULL)
+	</select>
+	
+	<!--To Check The associated AWB of the SRF has other outstanding payments-->
+	<select id="sqlCountAWBofSRFHasOutstanding" parameterClass="cargo.cms.billing.bo.ImpSrf" resultClass="java.lang.Integer" >
+		SELECT COUNT(TR_NO) FROM BILL_CHARGE_DTL 
+		WHERE 
+			STATUS='PENDING'
+			AND CHRG_AMT &gt; 0
+			AND UPPER(AWB_NO)=UPPER(#awbNo#)
+			AND TO_CHAR(AWB_DATE, 'DDMONYY HH24:MI:SS') = #awbDate#
+			AND ((UPPER(SRF_NO)!=UPPER(#srfNo#)) OR SRF_NO IS NULL)
+	</select>
+	
+	<!--To Check CC Company is exist or not-->
+	<select id="sqlCountCCCompany" parameterClass="java.lang.String" resultClass="java.lang.Integer" >
+		SELECT COUNT(GROUP_CODE) FROM MAST_CODE_DTL WHERE CODE_TYPE='CC_COMPANY' AND UPPER(CODE)=UPPER(#PARAM#)
+	</select>
+	
+	<!--To Check Item Code is exist or not-->
+	<select id="sqlCountItemCode" parameterClass="cargo.cms.billing.bo.ItemBO" resultClass="java.lang.Integer" >
+		SELECT 
+			COUNT(ITM_CODE)
+		FROM 
+			BILL_ITM_MASTER 
+		<dynamic prepend="WHERE">
+			<isNotEmpty prepend="AND" property="itemCode">
+				UPPER(ITM_CODE)=UPPER(#itemCode#)
+			</isNotEmpty>			
+			<isNotEmpty prepend="AND" property="itemCodeSuffix">			
+				UPPER(ITM_CODE_SFX) = UPPER(#itemCodeSuffix#) 	
+			</isNotEmpty>
+			<isEmpty prepend="AND" property="itemCodeSuffix">
+				UPPER(ITM_CODE_SFX) IS NULL
+			</isEmpty>			
+		</dynamic>
+	</select>
+	
+	<!--To Check GL AC No is exist or not-->
+	<select id="sqlCountGlAcc" parameterClass="map" resultClass="java.lang.Integer" >
+		SELECT 
+			COUNT(CODE)
+		FROM 
+			MAST_CODE_DTL 
+		WHERE		
+			UPPER(CODE)=UPPER(#code#)		
+			AND UPPER(CODE_TYPE) = UPPER(#codeType#)			
+	</select>
+	
+	
+	
+	
+	<!--To fetch Item Code List-->
+	<select id="fetchItemList" parameterClass="cargo.cms.billing.bo.ItemBO" resultClass="cargo.cms.billing.bo.ItemBO">
+		SELECT
+			ITM_CODE AS itemCode,				
+			ITM_CODE_SFX AS itemCodeSuffix,
+			ITM_DESC AS itemDesc,           
+			REV_IND AS revenueIndicator,          
+			OWNER_IND AS ownerIndicator,       
+			STD_IND AS standardIndicator,   
+			WAVR_IND AS waiverIndicator,
+			SRVC_IND AS serviceItem,
+			SRVC_IND AS oldServiceItem,
+			ECT_HANDLER AS ectHandler,
+			ALLOW_EPAYMENT AS allowePayment         
+		FROM 
+			BILL_ITM_MASTER 
+		<dynamic prepend="WHERE">
+			<isNotEmpty prepend="AND" property="itemCode">
+				UPPER(ITM_CODE) like '%'||UPPER(#itemCode#)||'%'
+			</isNotEmpty>
+			<isNotEqual property="itemCodeSuffix" compareValue="Select All">
+				<isNotEqual property="itemCodeSuffix" compareValue="Without Carrier">
+					<isNotEmpty prepend="AND" property="itemCodeSuffix">			
+						UPPER(ITM_CODE_SFX) like '%'||UPPER(#itemCodeSuffix#)||'%' 	
+					</isNotEmpty>
+				</isNotEqual>
+				<isEqual prepend="AND" property="itemCodeSuffix" compareValue="Without Carrier">			
+					UPPER(ITM_CODE_SFX) IS NULL		
+				</isEqual>
+			</isNotEqual>
+		</dynamic>
+		ORDER BY ITM_DESC
+	</select>
+	
+	<!--To check waiver Done Status(NotDone) for Waiver Charge By AWB No or SRF No or RCL No or ULD Key-->
+	<select id="checkChargesForWaiverNotDone" parameterClass="cargo.cms.billing.bo.PaymentBO" resultClass="java.lang.String">
+		SELECT TO_CHAR(COUNT(*))
+		FROM 
+			BILL_CHARGE_DTL  BCD 
+			WHERE 1 = 1
+			<isNotEmpty property="awbNo">
+				AND UPPER(BCD.AWB_NO)=UPPER(#awbNo#)
+				<isNotEmpty property="awbDate">			
+					AND BCD.AWB_DATE=TO_DATE(#awbDate#, 'DDMONYY') 
+				</isNotEmpty>
+			</isNotEmpty>
+			<isNotEmpty property="rclNo">
+				AND UPPER(BCD.RCL_NO)=UPPER(#rclNo#)
+			</isNotEmpty>
+			<isNotEmpty property="vclNo">
+				AND UPPER(BCD.RCL_NO)= NVL((SELECT UPPER(RCL_NO) FROM EXP_RCL_HD WHERE VCL_NO = #vclNo#),'*')
+			</isNotEmpty>
+			<isNotEmpty property="srfNo">
+				AND UPPER(BCD.SRF_NO)=UPPER(#srfNo#)
+			</isNotEmpty>
+			<isNotEmpty property="uldNo">
+				AND UPPER(BCD.ULD_KEY)=UPPER(#uldNo#)
+			</isNotEmpty>
+			<isNotEmpty property="agentCustNo">
+				AND UPPER(BCD.CUST_NO)=UPPER(#agentCustNo#)
+			</isNotEmpty>
+			<isNotEmpty property="truckNo">
+				AND UPPER(BCD.TRUCK_NO)=UPPER(#truckNo#)
+			</isNotEmpty>
+			 <iterate prepend="AND" property="srfArray" open="(" close=")" conjunction="OR" >
+                            UPPER(BCD.SRF_NO)= #srfArray[]#
+            </iterate> 
+			AND BCD.STATUS='PENDING' 
+			AND NVL(BCD.WAVR_IND,'N')='Y'
+			AND NVL(BCD.WAVR_DONE,'N')='N' 
+	</select>
+	
+	<!--To check waiver Done Status(NotDone) for Waiver Charge By Agent-->
+	<select id="checkChargesForWaiverNotDoneByAgent" parameterClass="cargo.cms.billing.bo.PaymentBO" resultClass="java.lang.String">
+		SELECT TO_CHAR(COUNT(*))
+		FROM 
+			BILL_CHARGE_DTL 
+		WHERE
+			CUST_NO=#agentCustNo#
+			AND NVL(UPPER(AWB_NO),'N') = NVL(UPPER(''),'N')
+			AND NVL(UPPER(RCL_NO),'N') = NVL(UPPER(''),'N')
+			AND NVL(UPPER(SRF_NO),'N') = NVL(UPPER(''),'N')
+			AND STATUS='PENDING' 
+			AND WAVR_IND='Y'
+			AND WAVR_DONE='N' 
+	</select>
+	
+	<!--To fecth Agent Details-->
+	<select id="fetchAgent" parameterClass="cargo.cms.billing.bo.AgentBO" resultClass="cargo.cms.billing.bo.AgentBO">
+		SELECT
+			CODE AS custNo,
+			CODE_DESC AS agentName,
+			CO_IATA_CODE AS agentIATA
+		FROM 
+			CUST_COMPANY
+		<dynamic prepend="WHERE">
+			<isNotEmpty prepend="AND" property="custNo">
+				UPPER(CODE)=UPPER(#custNo#)
+			</isNotEmpty>
+			<isNotEmpty prepend="AND" property="agentName">
+				UPPER(CODE_DESC)=UPPER(#agentName#)
+			</isNotEmpty>
+			<isNotEmpty prepend="AND" property="agentIATA">
+				UPPER(CO_IATA_CODE)=UPPER(#agentIATA#)
+			</isNotEmpty>
+		</dynamic>
+	</select>
+	
+	<!--To fetch Exchange Rate-->
+	<select id="fetchExchangeRate"  parameterClass="cargo.cms.billing.bo.CurrencyBO"  resultClass="cargo.cms.billing.bo.CurrencyBO">
+	SELECT exchangerate, currcode, unit, carrCode 
+	FROM (SELECT   NVL (exch_rate, 0) AS exchangerate, curr_code AS currcode,
+                 forgn_unit AS unit, carr_code as carrCode
+        FROM mast_curr_exrate
+        WHERE UPPER (curr_code) = UPPER (#currCode#)
+             AND eff_date = (select eff_date
+			 	 		  	from (SELECT eff_date
+                               	 FROM mast_curr_exrate
+                              	 WHERE UPPER (curr_code) = UPPER (#currCode#)
+								 AND NVL(carr_code, nvl(#carrCode#, '*')) = nvl(#carrCode#, '*')
+							  	 order by carr_code, eff_date desc)
+							where ROWNUM = 1)
+             AND NVL(carr_code, nvl(#carrCode#, '*')) = nvl(#carrCode#, '*')
+        ORDER BY carr_code)
+     WHERE ROWNUM = 1
+	</select>
+
+	
+	<!--To fetch Charges for Waive Charge-->
+	<select id="fetchWaiveCharge" parameterClass="cargo.cms.billing.bo.ChargeBO" resultClass="cargo.cms.billing.bo.ChargeBO">
+		SELECT DISTINCT 
+			BCD.TR_NO AS trNo,			
+			BCD.CUST_NO AS custNo,
+			BCD.CUST_NAME AS agentName,
+  			BCD.AWB_NO AS awbNo,
+  			(SELECT AWB_TYPE FROM AWB WHERE AWB_NO = BCD.AWB_NO) srfType,
+  			BCD.AWB_DATE AS awbDate,
+  			BCD.SRF_NO AS srfNo,
+  			BCD.RCL_NO AS rclNo,	
+  			BCD.ULD_KEY AS uldNo,
+  			BCD.ITM_CODE AS itemCode,
+  			BCD.ITM_CODE_SFX AS itemCodeSfx,
+	  		BCD.ITM_DESC AS itemDesc,
+	  		BCD.WAVR_IND AS waverInd,
+  			BCD.WAVR_AMT AS waverAmt,
+  			BCD.WAVR_RMK AS waverRmk,
+			BCD.WAVR_FORM_NO AS waverFormNumber,
+  			BCD.CHRG_AMT AS chargeAmount,
+  			BCD.CHRG_AMT AS oriChargeAmount 
+		FROM 
+			BILL_CHARGE_DTL BCD  JOIN BILL_ITM_MASTER BIM ON BIM.ITM_CODE = BCD.ITM_CODE AND NVL(BIM.ITM_CODE_SFX,'**') = NVL(BCD.ITM_CODE_SFX,'**')
+		<dynamic prepend="WHERE">
+			    UPPER(BCD.WAVR_DONE) = UPPER(#waverDone#) 
+			AND UPPER(BCD.VOID_IND) = UPPER(#voidInd#)
+			AND BCD.STATUS != 'VOID' 
+			AND (NVL(BIM.WAVR_IND,'N') = 'Y' OR NVL(BCD.WAVR_IND,'N') = 'Y')
+			AND BCD.STATUS = 'PENDING'
+			AND BCD.CHRG_AMT > 0
+			AND (BCD.SRF_NO IS NULL OR BCD.SRF_NO IN (SELECT SRF_NO FROM IMP_SRF 
+										  WHERE (SRF_EXPY_DATE > sysdate and STATUS ='ISSUED') or STATUS ='POSTED' 
+				  	  					  or SRF_NO in (select SRF_NO from IMP_CDIF where VOID_USER is null)))
+			<!-- AND UPPER(STD_IND) = UPPER(#stdInd#) --> 
+			<isNotEmpty property="awbNo">
+				AND UPPER(BCD.AWB_NO)=UPPER(#awbNo#)
+			</isNotEmpty>
+			<isNotEmpty property="awbDate">
+				AND BCD.AWB_DATE=to_date(#awbDate#,'DDMONYY')
+			</isNotEmpty>
+			<isNotEmpty property="rclNo">
+				AND UPPER(BCD.RCL_NO)=UPPER(#rclNo#)
+			</isNotEmpty>
+			<isNotEmpty property="srfNo">
+				AND UPPER(BCD.SRF_NO)=UPPER(#srfNo#)
+			</isNotEmpty>
+			<isNotEmpty property="uldNo">
+				AND UPPER(BCD.ULD_KEY)=UPPER(#uldNo#)
+			</isNotEmpty>	
+			<isNotEmpty property="truckNo">
+				AND UPPER(BCD.TRUCK_NO)=UPPER(#truckNo#) AND BCD.RCL_NO is null AND BCD.ULD_KEY is null AND BCD.SRF_NO is null
+			</isNotEmpty>			
+			<isNotEmpty property="agentName">
+				AND NVL(UPPER(BCD.CUST_NAME),'**')=UPPER(#agentName#)
+				AND BCD.RCL_NO is null AND BCD.ULD_KEY is null AND BCD.SRF_NO is null AND BCD.AWB_NO is null AND BCD.TRUCK_NO IS NULL
+			</isNotEmpty>	
+			<isNotEmpty property="custNo">
+				AND NVL(UPPER(BCD.CUST_NO),'**')=UPPER(#custNo#)
+				AND BCD.RCL_NO is null AND BCD.ULD_KEY is null AND BCD.SRF_NO is null AND BCD.AWB_NO is null AND BCD.TRUCK_NO IS NULL
+			</isNotEmpty>	
+		</dynamic>
+	</select>
+	
+	<select id="fetchWaiveChargeForAwb" parameterClass="cargo.cms.billing.bo.ChargeBO" resultClass="cargo.cms.billing.bo.ChargeBO">
+	SELECT 
+	TR_NO trNo,
+	AWB_NO awbNo,
+	to_char(AWB_DATE,'DDMONYY')awbDate,
+	ITM_CODE itemCode,
+	ITM_CODE_SFX itemCodeSfx,
+	WAVR_AMT waverAmt,
+	WAVR_RMK waverRmk,
+	WAVR_FORM_NO waverFormNumber,
+	'N' as inputField
+	FROM BILL_WAIVE_CHARGE
+	WHERE UPPER(AWB_NO)=UPPER(#awbNo#)
+	AND AWB_DATE=to_date(#awbDate#,'DDMONYY')
+	AND NVL(CHARGE_CREATED,'N') = 'N'
+	</select>
+	
+	<update id="updateWaiveCharges1" parameterClass="cargo.cms.billing.bo.ChargeBO">
+	UPDATE BILL_WAIVE_CHARGE
+	SET
+	ITM_CODE =#itemCode#,
+	ITM_CODE_SFX = #itemCodeSfx#,
+	WAVR_AMT = #waverAmt#,
+	WAVR_RMK = #waverRmk#,
+	WAVR_FORM_NO = #waverFormNumber#
+	WHERE 	TR_NO = #trNo#
+	</update>
+	
+	
+	<!--To check wiaver Done Status is yes or not for Waive Charge-->
+	<select id="fetchWaiveChargeDone" parameterClass="cargo.cms.billing.bo.ChargeBO" resultClass="java.lang.Integer">
+		SELECT COUNT(*)			
+		FROM 
+			BILL_CHARGE_DTL BCD
+		<dynamic prepend="WHERE">
+			 UPPER(BCD.WAVR_DONE) = UPPER(#waverDone#) 
+			<isNotEmpty property="awbNo">
+				AND UPPER(BCD.AWB_NO)=UPPER(#awbNo#)
+			</isNotEmpty>
+			<isNotEmpty property="rclNo">
+				AND UPPER(BCD.RCL_NO)=UPPER(#rclNo#)
+			</isNotEmpty>
+			<isNotEmpty property="srfNo">
+				AND UPPER(BCD.SRF_NO)=UPPER(#srfNo#)
+			</isNotEmpty>
+			<isNotEmpty property="uldNo">
+				AND UPPER(BCD.ULD_KEY)=UPPER(#uldNo#)
+			</isNotEmpty>
+	 	</dynamic>
+	</select>	
+	
+	<!--To fetch SRF details By SRF No-->
+	<select id="fetchSRFDetailsBySRFNo" parameterClass="cargo.cms.billing.bo.ImpSrf" resultClass="cargo.cms.billing.bo.ImpSrf">
+		SELECT
+			SRF_NO AS srfNo,		
+			AWB_NO AS awbNo,		
+			TO_CHAR(AWB_DATE, 'DDMONYY HH24:MI:SS') AS awbDate,
+			TO_CHAR(AWB_DATE, 'DDMONYY') AS awbDateFrm			
+		FROM 
+			IMP_SRF
+		WHERE
+			UPPER(SRF_NO)=UPPER(#srfNo#)
+	</select>
+	
+	
+	<!--To fetch RCL Details for Waive Charge By RCL-->
+	<select id="fetchWaiveChargeRCL" parameterClass="cargo.cms.billing.bo.ChargeBO" resultClass="cargo.cms.billing.bo.ExpRclDtlBO">
+		SELECT		
+			RCL_PCS AS pcs,
+			TO_CHAR(NVL(RCL_WT,0),'99999999999999990.0') AS wt,
+			PRT_CODE AS rclPrtCode,
+			PPK_TYPE AS ppkType		
+		FROM 
+			EXP_RCL_HD
+		<dynamic prepend="WHERE">
+			<isNotEmpty property="rclNo">
+				UPPER(RCL_NO)=UPPER(#rclNo#)
+			</isNotEmpty>				
+		</dynamic>
+	</select>
+	
+	<!--To fetch AWB Details for Waive Charge By AWB-->
+	<select id="fetchWaiveChargeAWB" parameterClass="cargo.cms.billing.bo.ChargeBO" resultClass="cargo.cms.billing.bo.AwbBO">
+		SELECT
+			AWB_DATE AS awbDate,		
+			AWB_TYPE AS awbType,		
+			PCS AS pcs,
+  			TO_CHAR(NVL(WT,0),'99999999999999990.0') AS wt,
+  			CONTENT AS content,
+  			(NVL(SPL_CODE1,'') || ' ' || NVL(SPL_CODE2,'') || NVL(SPL_CODE3,'') || ' ' || NVL(SPL_CODE4,'') || NVL(SPL_CODE5,'') || ' ' || NVL(SPL_CODE6,'') || NVL(SPL_CODE7,'') || ' ' || NVL(SPL_CODE8,'')) AS splCode
+		FROM 
+			AWB
+		<dynamic prepend="WHERE">			
+			<isNotEmpty property="awbNo">
+				UPPER(AWB_NO)=UPPER(#awbNo#)
+			</isNotEmpty>
+			<!--
+			<isNotEmpty property="awbClosed">
+				AND UPPER(AWB_CLOSED_YN)=UPPER(#awbClosed#)
+			</isNotEmpty>
+			-->
+		</dynamic>
+	</select>
+	
+	<!--To fetch AWB Details By AWB No-->
+	<select id="fetchAWBDetailsByAWBNo" parameterClass="cargo.cms.billing.bo.AwbBO" resultClass="cargo.cms.billing.bo.AwbBO">
+		SELECT
+			AWB_NO AS awbNo,
+			AGENT_CODE AS custNo,
+			AGENT_NAME AS agentName,
+			CARR_CODE AS carrCode,
+			CATALOG AS catalog,
+			TO_CHAR(AWB_DATE,'DDMONYY') AS awbDate,
+			TO_CHAR(AWB_DATE, 'DDMONYY') AS awbDateFrm,		
+			AWB_TYPE AS awbType,		
+			PCS AS pcs,
+  			TO_CHAR(NVL(WT,0),'99999999999999990.0') AS wt,
+  			CONTENT AS content,
+  			PPK_TYPE AS ppkType,
+  			(NVL(SPL_CODE1,'') || ' ' || NVL(SPL_CODE2,'') || NVL(SPL_CODE3,'') || ' ' || NVL(SPL_CODE4,'') || NVL(SPL_CODE5,'') || ' ' || NVL(SPL_CODE6,'') || NVL(SPL_CODE7,'') || ' ' || NVL(SPL_CODE8,'')) AS splCode
+		FROM 
+			AWB
+		<dynamic prepend="WHERE">			
+			<isNotEmpty property="awbNo" prepend = "AND">
+				AWB_NO = #awbNo#
+			</isNotEmpty>
+			<isNotEmpty property="awbDate"  prepend = "AND">
+				to_date(to_char(AWB_DATE,'DDMONYY'),'DDMONYY')=TO_DATE(#awbDate#, 'DDMONYY')
+			</isNotEmpty>
+			<isEmpty property="awbDate"  prepend = "AND">
+				 AWB_DATE = (SELECT MAX(AWB_DATE) FROM AWB WHERE AWB_NO = #awbNo#)
+			</isEmpty>
+			<!--
+			<isNotEmpty property="awbClosed">
+				AND UPPER(AWB_CLOSED_YN)=UPPER(#awbClosed#)
+			</isNotEmpty>
+			-->
+		</dynamic>
+	</select>
+	
+	<!--To fetch AWB Details List By AWB No-->
+	<select id="fetchAWBDtlListByAWBNo" parameterClass="cargo.cms.billing.bo.AwbBO" resultClass="cargo.cms.billing.bo.AwbBO">
+		SELECT
+			AWB_NO AS awbNo,			
+			TO_CHAR(AWB_DATE,'DDMONYY') AS awbDate,
+			AWB_TYPE AS awbType				
+		FROM 
+			AWB
+		<dynamic prepend="WHERE">			
+			<isNotEmpty property="awbNo">
+				AWB_NO = #awbNo#
+			</isNotEmpty>
+			<isNotEmpty property="awbDate">
+				AND AWB_DATE=TO_DATE(#awbDate#, 'DDMONYY')
+			</isNotEmpty>
+		</dynamic>
+		
+		ORDER BY AWB_DATE DESC
+	</select>
+	
+	<!--To fetch SRF Details for Waive Charge By SRF-->
+	<select id="fetchWaiveChargeSRF" parameterClass="cargo.cms.billing.bo.ChargeBO" resultClass="cargo.cms.billing.bo.ImpSrf">
+		SELECT		
+			 SRF_PRT_CODE AS srfPrtCode				
+		FROM 
+			IMP_SRF
+		<dynamic prepend="WHERE">			
+			<isNotEmpty property="srfNo">
+				UPPER(SRF_NO)=UPPER(#srfNo#)
+			</isNotEmpty>			
+		</dynamic>
+	</select>
+	
+	<select id="sqlCountAWBClosedHAWB" parameterClass="cargo.cms.billing.bo.ChargeBO" resultClass="cargo.cms.billing.bo.ChargeBO">
+		SELECT COUNT(AWB_NO) FROM AWB WHERE AWB_NO = UPPER(#hawbAwbNo#) AND AWB_DATE = (select max(awb_date) from  awb where  awb_no = #hawbAwbNo#) AND NVL(AWB_CLOSED_YN,'N') = 'Y'
+	</select> 
+	<!--To fetch SRF Details for Waive Charge By SRF-->
+	<select id="fetchSrfPrinterForCharges" parameterClass="java.lang.String" resultClass="java.lang.String">
+		SELECT  SRF_PRT_CODE AS srfPrtCode	FROM IMP_SRF WHERE UPPER(SRF_NO)=UPPER(#srfNo#)
+	</select>
+	
+	<!--To check AWB No is closed-->
+	<select id="sqlCountAWBClosed" parameterClass="cargo.cms.billing.bo.ChargeBO" resultClass="java.lang.Integer">
+		SELECT COUNT(AWB_NO) FROM AWB WHERE AWB_NO = UPPER(#awbNo#) AND AWB_DATE = (select max(awb_date) from  awb where  awb_no = #awbNo#) AND NVL(AWB_CLOSED_YN,'N') = 'Y'
+	</select>
+	
+	<!--To fetch Charges For Maintain-->
+	<select id="fetchChargeForMaintain" parameterClass="cargo.cms.billing.bo.ChargeBO" resultClass="cargo.cms.billing.bo.ChargeBO">
+		SELECT DISTINCT  
+			bcd.TR_NO AS trNo,	
+			bcd.AWB_NO AS awbNo,
+			bcd.CUST_NO AS custNo,
+			bcd.CUST_NAME AS agentName,
+			bcd.ITM_CODE AS itemCode,
+			bcd.ITM_CODE_SFX AS itemCodeSfx,
+			bcd.ITM_DESC AS itemDesc,
+			bcd.REV_IND AS revInd,
+			bcd.UPD_DESC_IND AS updDescIndicator,
+			bcd.CASH_IND AS cashInd,
+			bcd.UPD_RATE_IND AS updRateIndicator,
+			bcd.STD_IND AS stdInd,
+			bcd.QTY AS quantity,
+			bcd.UOM AS uom,
+			bcd.UNIT_PRICE AS unitPrice,
+			bcd.CHRG_AMT AS chargeAmount,
+			bcd.TRIP_ID AS tripId,
+			bcd.REMARKS AS chargeRmk,
+			bcd.WAVR_IND AS waverInd,
+			NVL(BIM.MIN_CHRG,0) AS minCharge,
+			NVL(BIM.MAX_CHRG,0) AS maxCharge
+		FROM 
+			BILL_CHARGE_DTL bcd join BILL_ITM_MASTER BIM on BCD.ITM_CODE = BIM.ITM_CODE and NVL(BCD.ITM_CODE_SFX,'**') = NVL(BIM.ITM_CODE_SFX,'**')  
+		<dynamic prepend="WHERE">
+		   <isNotEmpty property="chargeType">
+			<isEqual property ="chargeType" compareValue="CPCT">
+			<isNotEmpty prepend="AND" property="awbNo">
+				    UPPER(bcd.AWB_NO) = UPPER(#awbNo#)
+				<isNotEmpty property="awbDate">
+					AND bcd.AWB_DATE=TO_DATE(#awbDate#, 'DDMONYY')
+				</isNotEmpty>
+			</isNotEmpty>			
+			<isNotEmpty prepend="AND" property="custNo">
+				UPPER(CUST_NO)=UPPER(#custNo#)
+			</isNotEmpty>
+			<isNotEmpty prepend="AND" property="agentName">
+				UPPER(CUST_NAME)=UPPER(#agentName#)
+			</isNotEmpty>
+			<isNotEmpty prepend="AND" property="awbStatus">
+				UPPER(STATUS)=UPPER(#awbStatus#)
+			</isNotEmpty>	
+			<isNotEmpty prepend="AND" property="truckNo">
+				UPPER(TRUCK_NO)=UPPER(#truckNo#)
+			</isNotEmpty>	
+			AND bcd.HAWB_NO is null
+			</isEqual>
+			</isNotEmpty>
+			
+			<isNotEmpty property="chargeType">
+			<isEqual property ="chargeType" compareValue="AGENT_SERVICES">
+				<isNotEmpty prepend="AND" property="hawbNo">
+				bcd.HAWB_NO=#hawbNo#
+				</isNotEmpty>
+					
+				<isNotEmpty prepend="AND" property="hawbAwbNo">
+				bcd.AWB_NO=#hawbAwbNo#
+				</isNotEmpty>
+					
+				<isNotEmpty prepend="AND" property="hawbAwbDate">
+				bcd.AWB_DATE=to_date(#hawbAwbDate#,'DDMONYY')
+				</isNotEmpty>
+				
+				<isNotEmpty prepend="AND" property="hawbAgentCode">
+				bcd.HAWB_AGENT_CODE=#hawbAgentCode#
+				</isNotEmpty>
+				
+				<isNotEmpty prepend="AND" property="shprOrCnsgn">
+				bcd.HAWB_SHPR_OR_CNSGN=#shprOrCnsgn#
+				</isNotEmpty>
+			</isEqual>
+			
+			</isNotEmpty>
+			AND NVL(bcd.STATUS,'**')='PENDING'
+			AND NVL(bcd.STD_IND,'N')='N'
+			AND SRF_NO IS NULL
+			AND RCL_NO IS NULL
+		</dynamic>
+	</select>
+	
+	<!--To check ItemCode Exists For Charges-->
+	<select id="checkItemCodeExistsForCharges" parameterClass="cargo.cms.billing.bo.ChargeBO" resultClass="java.lang.String">
+		SELECT TO_CHAR(COUNT(*)) 
+		FROM BILL_CHARGE_DTL
+		<dynamic prepend="WHERE">
+				UPPER(ITM_CODE)=UPPER(#itemCode#) 
+				AND UPPER(NVL(ITM_CODE_SFX,'N')) = UPPER(NVL(#itemCodeSfx#,'N'))
+				AND STATUS='PENDING'
+				AND CHRG_AMT &gt; 0	
+			<isNotEmpty property="awbNo">
+				AND UPPER(AWB_NO) = UPPER(#awbNo#)				  
+			</isNotEmpty>			
+			<isNotEmpty property="awbDate">
+				AND AWB_DATE=TO_DATE(#awbDate#, 'DDMONYY')
+			</isNotEmpty>
+			<isNotEmpty property="custNo">
+				AND UPPER(CUST_NO)=UPPER(#custNo#)
+			</isNotEmpty>
+			<isNotEmpty property="agentName">
+				AND UPPER(CUST_NAME)=UPPER(#agentName#)
+			</isNotEmpty>
+			<isNotEmpty property="truckNo">
+				AND UPPER(TRUCK_NO)=UPPER(#truckNo#)
+			</isNotEmpty>
+			<isNotEmpty property="hawbNo">
+				AND UPPER(HAWB_NO)=UPPER(#hawbNo#)
+					<isNotEmpty property="hawbAwbNo">
+								AND UPPER(AWB_NO)=UPPER(#hawbAwbNo#)
+					</isNotEmpty>
+					<isNotEmpty property="hawbAgentCode">
+								AND UPPER(CUST_NO)=UPPER(#hawbAgentCode#)
+					</isNotEmpty>
+					<isNotEmpty property="hawbAgentName">
+								AND UPPER(CUST_NAME)=UPPER(#hawbAgentName#)
+					</isNotEmpty>
+			</isNotEmpty>
+		</dynamic>		
+	</select>	
+	
+	<!--To fetch Itemcode Details to add to Charges-->
+	<select id="fetchItemcodeDetailsToAdd" parameterClass="cargo.cms.billing.bo.ItemBO" resultClass="cargo.cms.billing.bo.ChargeBO">
+		SELECT
+			ITM_CODE AS itemCode,
+			ITM_CODE_SFX AS itemCodeSfx,			
+			ITM_DESC AS itemDesc,
+			UPD_DESC AS updDescIndicator,	
+			REV_IND AS revInd,	
+			CASH_IND AS cashInd,
+			UPD_RATE AS updRateIndicator,
+			STD_IND AS stdInd,
+			WAVR_IND AS waverInd,
+			UOM AS uom,
+			NVL(MIN_CHRG,0) minCharge,	   
+			NVL(MAX_CHRG,0) maxCharge						
+		FROM 
+			BILL_ITM_MASTER
+		<dynamic prepend="WHERE">
+			<isNotEmpty property="itemCode">
+				    UPPER(ITM_CODE)=UPPER(#itemCode#)
+				AND UPPER(OWNER_IND) = UPPER(#ownerIndicator#)				
+			</isNotEmpty>
+			<isNotEmpty property="itemCodeSuffix">							
+				AND UPPER(ITM_CODE_SFX) = UPPER(#itemCodeSuffix#)	
+			</isNotEmpty>
+			<isEmpty property="itemCodeSuffix">							
+				AND UPPER(ITM_CODE_SFX) IS NULL	
+			</isEmpty>
+		</dynamic>
+	</select>
+	
+	<!--To create Item code in Item Master-->
+	<insert id="createItemMaster" parameterClass="cargo.cms.billing.bo.ItemBO">
+		INSERT INTO BILL_ITM_MASTER (
+			ITM_CODE,				
+			ITM_CODE_SFX,          
+			ITM_DESC,           
+			ITM_CATEGORY,        
+			REV_IND,          
+			OWNER_IND,       
+			STD_IND,   
+			CASH_IND,    
+			WAVR_IND,                
+			UOM,
+			GST_RATE,
+			MIN_CHRG,
+			MAX_CHRG,
+			UPD_DESC,
+			UPD_RATE,
+			ECT_HANDLER,
+			ALLOW_EPAYMENT,
+			CR_USER_ID,
+			CR_DATE,            
+			LM_USER_ID,         
+			LM_DATE,
+			SRVC_IND)            
+		VALUES ( 
+            UPPER(#itemCode#),
+            UPPER(#itemCodeSuffix#),  
+            UPPER(#itemDesc#),
+            #itemCategory#,
+            #revenueIndicator#,
+            #ownerIndicator#,
+            #standardIndicator#,
+            #cashIndicator#,
+            #waiverIndicator#,
+            #uom#,
+            #gst#,
+            #minCharge#,
+            #maxCharge#,
+            #updateDescIndicator#,
+            #updateRateIndicator#,
+		    #ectHandler#,
+		    #allowePayment#,
+            #crUserId#,
+            sysdate,
+            #lastModUserId#,
+            sysdate,
+            #serviceItem#)
+	</insert>
+	
+	<!--To create unit price rate for Item-->
+	<insert id="createItemRate" parameterClass="cargo.cms.billing.bo.ItemUnitPriceBO">
+		INSERT INTO BILL_ITM_RATE (
+			TR_NO,
+			ITM_CODE,				
+			ITM_CODE_SFX,          
+			EFF_DATE,           
+			UNIT_PRICE,        
+			LOWER_LIMIT,          
+			UPPER_LIMIT,
+			ECT_HANDLER,       
+			CR_USER_ID,
+			CR_DATE,            
+			LM_USER_ID,         
+			LM_DATE)            
+		VALUES ( 
+            BILL_ITM_RATE_SEQ.nextval,
+            UPPER(#itemCode#),
+            UPPER(#itemCodeSuffix#),
+            TO_DATE(#effectiveDate#,'DDMONYY'),  
+            #unitPrice#,
+            #lowerLimit#,
+            #upperLimit#,
+			#ectHandler#,
+            #crUserId#,
+            sysdate,
+            #lastModUserId#,
+            sysdate)
+	</insert>
+	
+	<!--To create GL AC for Item-->
+	<insert id="createItemGlAcct" parameterClass="cargo.cms.billing.bo.ItemGLAccountBO">
+		INSERT INTO BILL_ITM_GL_ACC (
+			ITM_CODE,				
+			ITM_CODE_SFX,          
+			GL_AC_NO,           
+			GL_AC_DESC,           
+			DSTBN_PER,        
+			DSTBN_AMT,
+			ECT_HANDLER,        
+			CR_USER_ID,
+			CR_DATE,            
+			LM_USER_ID,         
+			LM_DATE)            
+		VALUES ( 
+            UPPER(#itemCode#),
+            UPPER(#itemCodeSuffix#), 
+            #glAcctNo#,
+            #glAcctDesc#,
+            #percentage#,
+            #amount#,
+			#ectHandler#,
+            #crUserId#,
+            sysdate,
+            #lastModUserId#,
+            sysdate)
+	</insert>
+	
+	<!--To create Payment-->
+	<insert id="createPayment" parameterClass="cargo.cms.billing.bo.PaymentBO">
+		INSERT INTO BILL_PAYMENT (
+			PAY_NO,				
+			PAY_TYPE,          
+			PAY_DATE,
+			INV_NO,           
+			ADJ_NO,           
+			OTH_AMT,        
+			ADJ_AMT,          
+			CHQ1_NO,       
+			CHQ1_AMT,   
+			CHQ1_BANK, 
+			CHQ2_NO,       
+			CHQ2_AMT,   
+			CHQ2_BANK,
+			CHQ3_NO,       
+			CHQ3_AMT,   
+			CHQ3_BANK,   
+			CC_AMT,                
+			CC_COMPANY,
+			EPS_AMT,
+			CURR_CODE,
+			EXCH_RATE,
+			FORGN_UNIT,
+			CASH_AMT,
+			CASH_AMT_LOCAL,
+			CHQ1_DATE,
+			CHQ2_DATE,
+			CHQ3_DATE,
+			APPRV_CODE,
+			CHANGE_RETURNED,
+			E_PAYMENT_AMMOUNT)
+		VALUES ( 
+            BILL_PAYMENT_SEQ.nextval,
+            #payType#,  
+            sysdate,
+            #invoiceNo#,
+            #adjNoteNo#,
+            #others#,
+            #adjAmtPaid#,
+            #chequeNo1#,
+            #chequeAmt1#,
+            #chequeBnk1#,
+            #chequeNo2#,
+            #chequeAmt2#,
+            #chequeBnk2#,
+            #chequeNo3#,
+            #chequeAmt3#,
+            #chequeBnk3#,
+            #creditCardAmt#,
+            #creditCardCompany#,
+            #eps#,
+            #currency#,
+            #exchangeRate#,
+            #unit#,
+            #cash#,
+            #cashHKD#,
+            to_date(#chequeDate1#,'DDMONYY'),
+            to_date(#chequeDate2#,'DDMONYY'),
+            to_date(#chequeDate3#,'DDMONYY'),
+            #approvalCode#,
+            #changeReturned#,
+            #ePayment#)
+	</insert>
+	
+	<insert id="createPaymenttruck" parameterClass="cargo.cms.billing.bo.PaymentBO">
+		INSERT INTO BILL_PAYMENT (
+			PAY_NO,				
+			PAY_TYPE,          
+			PAY_DATE,
+			INV_NO,           
+			ADJ_NO,           
+			OTH_AMT,        
+			ADJ_AMT,          
+			CHQ1_NO,       
+			CHQ1_AMT,   
+			CHQ1_BANK, 
+			CHQ2_NO,       
+			CHQ2_AMT,   
+			CHQ2_BANK,
+			CHQ3_NO,       
+			CHQ3_AMT,   
+			CHQ3_BANK,   
+			CC_AMT,                
+			CC_COMPANY,
+			EPS_AMT,
+			CURR_CODE,
+			EXCH_RATE,
+			FORGN_UNIT,
+			CASH_AMT,
+			CASH_AMT_LOCAL,
+			CHQ1_DATE,
+			CHQ2_DATE,
+			CHQ3_DATE,
+			APPRV_CODE,
+			CHANGE_RETURNED)
+		VALUES ( 
+            BILL_PAYMENT_SEQ.nextval,
+            #payType#,  
+            sysdate,
+            #invoiceNo#,
+            #adjNoteNo#,
+            #others#,
+            #adjAmtPaid#,
+            #chequeNo1#,
+            #chequeAmt1#,
+            #chequeBnk1#,
+            #chequeNo2#,
+            #chequeAmt2#,
+            #chequeBnk2#,
+            #chequeNo3#,
+            #chequeAmt3#,
+            #chequeBnk3#,
+            #creditCardAmt#,
+            #creditCardCompany#,
+            #eps#,
+            #currency#,
+            #exchangeRate#,
+            #unit#,
+            #cash#,
+            #cashHKD#,
+            to_date(#chequeDate1#,'DDMONYY'),
+            to_date(#chequeDate2#,'DDMONYY'),
+            to_date(#chequeDate3#,'DDMONYY'),
+            #approvalCode#,
+            #changeReturned#)
+	</insert>
+
+	<!--To create Invoice-->
+	<insert id="createInvoice" parameterClass="cargo.cms.billing.bo.InvoiceBO">
+		INSERT INTO BILL_INV_HD (
+			INV_NO,
+			INV_DATE,				
+			INV_TYPE,          
+			CUST_NO,
+			CUST_NAME,        
+			CARR_CODE,          
+			RMK,
+			CHARGE_AMT,
+			CR_TYPE,
+			CR_USER_ID,
+			CR_DATE,            
+			LM_USER_ID,         
+			LM_DATE) 
+		VALUES ( 
+            #invoiceNo#,
+            sysdate,
+            #invoiceType#,
+            #custNo#,
+			#custName#,
+            #carrCode#,
+            #remarks#,
+            NVL(#chrgAmount#,0)-NVL(#changeReturned#,0),
+            #crType#,
+            #crUserId#,
+            sysdate,
+            #lastModUserId#,
+            sysdate)
+	</insert>
+	
+	<insert id="createInvoiceTruck" parameterClass="cargo.cms.billing.bo.InvoiceBO">
+		INSERT INTO BILL_INV_HD (
+			INV_NO,
+			INV_DATE,				
+			INV_TYPE,          
+			CUST_NO,
+			CUST_NAME,        
+			CARR_CODE,          
+			RMK,
+			CHARGE_AMT,
+			CR_TYPE,
+			CR_USER_ID,
+			CR_DATE,            
+			LM_USER_ID,         
+			LM_DATE) 
+		VALUES ( 
+            #invoiceNo#,
+            sysdate,
+            #invoiceType#,
+            #custNo#,
+			#custName#,
+            #carrCode#,
+            #remarks#,
+            NVL(#chrgAmount#,0),
+            #crType#,
+            #crUserId#,
+            sysdate,
+            #lastModUserId#,
+            sysdate)
+	</insert>
+	<!--To create AdjNote-->
+	<insert id="createAdjNote" parameterClass="cargo.cms.billing.bo.AdjNoteBO">
+		INSERT INTO BILL_ADJ_HD (
+			ADJ_NO,
+			ADJ_DATE,				
+			ADJ_TYPE,				
+			INV_NO,				
+			RSN,          
+			RMK,        
+			CR_IND,          
+			AR_IND,
+			AMT_PAID,
+			CUST_NO,
+			CUST_NAME,
+			CR_USER_ID,
+			CR_DATE,            
+			LM_USER_ID,         
+			LM_DATE) 
+		VALUES ( 
+            #adjNo#,
+            sysdate,
+            #adjType#,
+            #invoiceNo#,
+            #reason#,
+            #remarks#,
+            #crIndicator#,
+            #arIndicator#,
+            #amtPaid#,
+            #custNo#,
+			#custName#,
+            #crUserId#,
+            sysdate,
+            #lastModUserId#,
+            sysdate)
+	</insert>
+	
+	<!--To create Invoice Details-->
+	<insert id="createInvoiceDtl" parameterClass="cargo.cms.billing.bo.InvoiceDTLBO">
+		INSERT INTO BILL_INV_DTL (
+			INV_NO,
+			DOC_LINE_NO,				
+			CHRG_TR_NO,				
+			ITM_CODE,				
+			ITM_CODE_SFX,        
+			REV_IND,          
+			CASH_IND,          
+			CHARGE_AMT,
+			CR_USER_ID,
+			CR_DATE,            
+			LM_USER_ID,         
+			LM_DATE) 
+		VALUES (
+			#invoiceNo#, 
+            #docLineNo#,
+            #chrgTrNo#,
+            #itemCode#,
+            #itemCodeSuffix#,
+            #revenueIndicator#,
+            #cashInd#,
+            #chargeAmount#,
+            #crUserId#,
+            sysdate,
+            #lastModUserId#,
+            sysdate)
+	</insert>
+	
+	<!--To create AdjNote Details-->
+	<insert id="createAdjNoteDtl" parameterClass="cargo.cms.billing.bo.AdjNoteDTLBO">
+		INSERT INTO BILL_ADJ_DTL (
+			ADJ_NO,
+			DOC_LINE_NO,
+			INV_NO,
+			IDOC_LINE_NO,				
+			ITM_CODE,				
+			ITM_CODE_SFX,        
+			ORG_AMT,
+			ADJ_AMT,
+			REV_IND,
+			CR_USER_ID,
+			CR_DATE,            
+			LM_USER_ID,         
+			LM_DATE,
+			ADJ_AMT_DM) 
+		VALUES (
+			#adjNo#, 
+            #docLineNo#,
+            #invoiceNo#, 
+            #invoiceDocLineNo#,
+            #itemCode#,
+            #itemCodeSuffix#,
+            #orgAmt#,
+            #adjAmt#,
+            #revenueIndicator#,
+            #crUserId#,
+            sysdate,
+            #lastModUserId#,
+            sysdate,
+            #dmApprAmt#)
+	</insert>
+	
+	<select id="getAWBListForInvoice" parameterClass="java.util.HashMap" resultClass="java.util.HashMap">
+		select DISTINCT awb_no as AWB_NO, to_char(awb_date,'DDMONYY')  as AWB_DATE from bill_charge_dtl where tr_no IN (select chrg_tr_no from bill_inv_dtl where inv_no = #INV_NO#) 
+		AND EXISTS (select null from AWB where awb_no = bill_charge_dtl.awb_no AND awb_date = bill_charge_dtl.awb_date AND awb_closed_yn = 'Y')
+	</select>
+	
+	<update id="uncloseAWBONCreatingAdjustmentNote" parameterClass="java.util.HashMap">
+		UPDATE AWB set awb_closed_yn = 'N' , awb_rmk = 'System unclose due to reimbursement' , lm_user_id = #USER# , 
+		lm_date = SYSDATE  where awb_no = #AWB_NO# AND AWB_DATE = TO_DATE(#AWB_DATE#,'DDMONYY')
+	</update>
+		
+	<!--To generate the Invoice/AdjNote No-->
+	<parameterMap id="invMap" class="map" >
+		<parameter property="RESULT" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="OUT"/>
+		<parameter property="TR_TYPE" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+	</parameterMap>
+	<procedure id="generateinvnumber" parameterMap="invMap" >
+		{? = call FUN_GET_TR_NO(?)}
+	</procedure>
+	
+	<!--To Delete Item Code details-->
+	<delete id="sqlItemMasterdelete" parameterClass="cargo.cms.billing.bo.ItemBO" >
+	<![CDATA[
+		DELETE FROM BILL_ITM_MASTER WHERE 
+			ITM_CODE = #itemCode#				
+			AND UPPER(NVL(ITM_CODE_SFX,'N')) = UPPER(NVL(#itemCodeSuffix#,'N'))
+			AND UPPER(NVL(ECT_HANDLER,'N')) = UPPER(NVL(#ectHandler#,'N'))   		
+	]]>
+	</delete>
+	
+	<!--To Delete GL AC details-->
+	<delete id="sqlItemGlAccdelete" parameterClass="cargo.cms.billing.bo.ItemBO" >
+	<![CDATA[
+		DELETE FROM BILL_ITM_GL_ACC WHERE 
+			ITM_CODE = #itemCode#				
+			AND UPPER(NVL(ITM_CODE_SFX,'N')) = UPPER(NVL(#itemCodeSuffix#,'N')) 
+			AND UPPER(NVL(ECT_HANDLER,'N')) = UPPER(NVL(#ectHandler#,'N')) 		
+	]]>
+	</delete>
+	
+	<!--To Delete Unit Price Ranges details-->
+	<delete id="sqlItemRatedelete" parameterClass="cargo.cms.billing.bo.ItemBO" >
+	<![CDATA[
+		DELETE FROM BILL_ITM_RATE WHERE 
+			ITM_CODE = #itemCode#				
+			AND UPPER(NVL(ITM_CODE_SFX,'N')) = UPPER(NVL(#itemCodeSuffix#,'N'))	
+			AND UPPER(NVL(ECT_HANDLER,'N')) = UPPER(NVL(#ectHandler#,'N'))					
+	]]>
+	</delete>
+	
+	<!--To fetch Item Code details for Item-->
+	
+	<select id="fetchItemDetails" parameterClass="cargo.cms.billing.bo.ItemBO" resultClass="cargo.cms.billing.bo.ItemBO">
+		SELECT
+			BILL_ITM_MASTER.ITM_CODE AS itemCode,				
+			BILL_ITM_MASTER.ITM_CODE_SFX AS itemCodeSuffix,          
+			BILL_ITM_MASTER.ITM_DESC AS itemDesc,  
+			BILL_ITM_MASTER.ITM_CATEGORY AS itemCategory,         
+			BILL_ITM_MASTER.REV_IND AS revenueIndicator,          
+			BILL_ITM_MASTER.OWNER_IND AS ownerIndicator,       
+			BILL_ITM_MASTER.STD_IND AS standardIndicator,
+			BILL_ITM_MASTER.STD_IND AS standardIndicator, 
+			BILL_ITM_MASTER.CASH_IND AS cashIndicator,			   
+			BILL_ITM_MASTER.WAVR_IND AS waiverIndicator,                
+			BILL_ITM_MASTER.UOM AS uom,
+			BILL_ITM_MASTER.GST_RATE AS gst,
+			BILL_ITM_MASTER.MIN_CHRG AS minCharge,
+			BILL_ITM_MASTER.MAX_CHRG AS maxCharge,
+			BILL_ITM_MASTER.UPD_DESC AS updateDescIndicator,
+			BILL_ITM_MASTER.UPD_RATE  AS updateRateIndicator,
+			BILL_ITM_MASTER.ECT_HANDLER AS ectHandler,
+			BILL_ITM_MASTER.ALLOW_EPAYMENT AS allowePayment,
+			BILL_ITM_MASTER.SRVC_IND AS serviceItem			
+		FROM 
+			BILL_ITM_MASTER 
+		WHERE 
+		    UPPER(ITM_CODE) = UPPER(#maintainItemCode#)
+		    AND UPPER(NVL(ITM_CODE_SFX,'N')) = UPPER(NVL(#maintainItemCodeSuffix#,'N')) 
+			AND UPPER(NVL(ECT_HANDLER,'N')) = UPPER(NVL(#ectHandler#,'N'))
+	</select>
+	
+	<!--To fetch Unit Price Ranges for Item-->
+	<select id="fetchItemRate" parameterClass="cargo.cms.billing.bo.ItemBO" resultClass="cargo.cms.billing.bo.ItemUnitPriceBO">
+	 <![CDATA[
+		SELECT 
+		    BILL_ITM_RATE.TR_NO AS trNo,
+			BILL_ITM_RATE.ITM_CODE AS itemCode,
+			BILL_ITM_RATE.ITM_CODE_SFX AS itemCodeSuffix,          
+			TO_CHAR(BILL_ITM_RATE.EFF_DATE,'DDMONYY') AS effectiveDate,           
+			BILL_ITM_RATE.UNIT_PRICE AS unitPrice,        
+			BILL_ITM_RATE.LOWER_LIMIT AS lowerLimit,          
+			BILL_ITM_RATE.UPPER_LIMIT AS upperLimit			
+		FROM 
+			  BILL_ITM_RATE 
+		WHERE EFF_DATE >= NVL((SELECT MAX(EFF_DATE) EFF_DATE FROM BILL_ITM_RATE 
+            			   WHERE EFF_DATE <= sysdate AND UPPER(ITM_CODE)=UPPER(#itemCode#) AND NVL(UPPER(ITM_CODE_SFX), 'N') = NVL(UPPER(#itemCodeSuffix#), 'N') AND UPPER(NVL(ECT_HANDLER,'N')) = UPPER(NVL(#ectHandler#,'N'))),sysdate) 
+			  AND UPPER(ITM_CODE)=UPPER(#itemCode#) AND NVL(UPPER(ITM_CODE_SFX), 'N') = NVL(UPPER(#itemCodeSuffix#), 'N') AND UPPER(NVL(ECT_HANDLER,'N')) = UPPER(NVL(#ectHandler#,'N'))
+				   ORDER BY EFF_DATE ASC	
+	 ]]>	    		 
+	</select>
+	
+	<!--To fetch GL AC details for Item-->
+	<select id="fetchItemGlAcct" parameterClass="cargo.cms.billing.bo.ItemBO" resultClass="cargo.cms.billing.bo.ItemGLAccountBO">
+		SELECT
+			BILL_ITM_GL_ACC.ITM_CODE AS itemCode,				
+			BILL_ITM_GL_ACC.ITM_CODE_SFX AS itemCodeSuffix,
+			BILL_ITM_GL_ACC.GL_AC_NO AS glAcctNo,           
+			BILL_ITM_GL_ACC.GL_AC_DESC AS glAcctDesc,           
+			BILL_ITM_GL_ACC.DSTBN_PER AS percentage,        
+			BILL_ITM_GL_ACC.DSTBN_AMT AS amount					
+		FROM 
+			BILL_ITM_GL_ACC 
+		WHERE 
+		    UPPER(ITM_CODE)=UPPER(#itemCode#)	
+		    AND UPPER(NVL(ITM_CODE_SFX,'N')) = UPPER(NVL(#itemCodeSuffix#,'N'))	
+			AND UPPER(NVL(ECT_HANDLER,'N')) = UPPER(NVL(#ectHandler#,'N'))				 
+	</select>
+	
+	<!--To fetch Unit Price Effective Dates for Item-->
+	<select id="fetchItemRateEffDates" parameterClass="cargo.cms.billing.bo.ItemBO" resultClass="cargo.cms.billing.bo.ItemUnitPriceBO">
+		SELECT 
+			DISTINCT(TO_CHAR(BILL_ITM_RATE.EFF_DATE,'DDMONYY')) AS effectiveDate,
+			BILL_ITM_RATE.EFF_DATE AS trno
+		FROM 
+			BILL_ITM_RATE 
+		WHERE 
+		    UPPER(ITM_CODE)=UPPER(#itemCode#)	
+		    AND UPPER(NVL(ITM_CODE_SFX,'N')) = UPPER(NVL(#itemCodeSuffix#,'N'))	
+			AND UPPER(NVL(ECT_HANDLER,'N')) = UPPER(NVL(#ectHandler#,'N'))			
+			<isNotEmpty property="effectiveDate">
+				AND UPPER(TO_CHAR(EFF_DATE,'DDMONYY'))=UPPER(#effectiveDate#)
+			</isNotEmpty>			
+			<isEmpty property="effectiveDate">
+			<![CDATA[
+			AND EFF_DATE >= NVL((SELECT MAX(EFF_DATE) EFF_DATE FROM BILL_ITM_RATE 
+            			   WHERE EFF_DATE <= sysdate AND UPPER(ITM_CODE)=UPPER(#itemCode#) AND NVL(UPPER(ITM_CODE_SFX), 'N') = NVL(UPPER(#itemCodeSuffix#), 'N') AND UPPER(NVL(ECT_HANDLER,'N')) = UPPER(NVL(#ectHandler#,'N'))),sysdate) 
+			  AND UPPER(ITM_CODE)=UPPER(#itemCode#) AND NVL(UPPER(ITM_CODE_SFX), 'N') = NVL(UPPER(#itemCodeSuffix#), 'N') AND UPPER(NVL(ECT_HANDLER,'N')) = UPPER(NVL(#ectHandler#,'N'))
+			  ]]>
+			</isEmpty>
+			ORDER BY EFF_DATE DESC			 
+	</select>	
+	
+	<!--To Update Item-->
+	<update id="updateItem" parameterClass="cargo.cms.billing.bo.ItemBO" >	
+		UPDATE BILL_ITM_MASTER
+		SET ITM_DESC = #itemDesc#,           
+			ITM_CATEGORY = #itemCategory#,        
+			REV_IND = #revenueIndicator#,          
+			OWNER_IND = #ownerIndicator#,      
+			STD_IND = #standardIndicator#,   
+			CASH_IND = #cashIndicator#,   
+			WAVR_IND = #waiverIndicator#,                
+			UOM = #uom#,
+			GST_RATE = #gst#,
+			MIN_CHRG = #minCharge#,
+			MAX_CHRG = #maxCharge#,
+			ALLOW_EPAYMENT =  #allowePayment#,
+			UPD_DESC = #updateDescIndicator#,
+			UPD_RATE = #updateRateIndicator#,		
+			SRVC_IND = #serviceItem#,			
+			LM_USER_ID = #lastModUserId#,         
+			LM_DATE = sysdate
+		WHERE 
+		        ITM_CODE = #itemCode#
+		    AND UPPER(NVL(ITM_CODE_SFX,'N')) = UPPER(NVL(#itemCodeSuffix#,'N'))	
+			AND UPPER(NVL(ECT_HANDLER,'N')) = UPPER(NVL(#ectHandler#,'N'))	        
+	</update>
+	
+	<!--To Delete Unit Price Ranges By TrNo-->
+	<delete id="sqlItemRatedeleteByTrNo" parameterClass="cargo.cms.billing.bo.ItemUnitPriceBO" >
+	<![CDATA[
+		DELETE FROM BILL_ITM_RATE WHERE 
+			UPPER(ITM_CODE) = UPPER(#itemCode#)	
+			AND UPPER(NVL(ITM_CODE_SFX,'N')) = UPPER(NVL(#itemCodeSuffix#,'N'))			
+			AND UPPER(TR_NO) = UPPER(#trNo#)						
+	]]>
+	</delete>	
+	
+	<!--To Update Charge-->   
+	<update id="updateBillChargeDtl" parameterClass="cargo.cms.billing.bo.ChargeBO" >	
+		UPDATE BILL_CHARGE_DTL
+		SET WAVR_AMT = #waverAmt#,           
+			WAVR_RMK = #waverRmk#,
+			WAVR_DONE = #waverDone#,               
+			CHRG_AMT = #chargeAmount#,
+			NET_AMT = NVL(NET_AMT,'0') - NVL(#waverAmt#,0),
+			WAVR_FORM_NO = #waverFormNumber#,
+			LM_USER_ID = #lmUserId#,
+			LM_DATE = sysdate,
+			WAVR_USER_ID = #lmUserId#,
+			WAVR_DATE = sysdate						
+		WHERE 
+		        UPPER(TR_NO) = UPPER(#trNo#)
+		    AND UPPER(ITM_CODE) = UPPER(#itemCode#)
+		    AND UPPER(NVL(ITM_CODE_SFX,'N')) = UPPER(NVL(#itemCodeSfx#,'N'))		    
+	</update>
+	
+	<!--To Insert Charges For Charges -->  
+	<insert id="insertChargeForMaintain" parameterClass="cargo.cms.billing.bo.ChargeBO">
+	
+		INSERT INTO BILL_CHARGE_DTL (
+			TR_NO, 
+			CUST_NO, 
+			AWB_NO,
+			AWB_DATE, 					  
+		    ITM_CODE,
+			ITM_CODE_SFX,
+		    STATUS,
+		    ITM_DESC,
+		    REV_IND,
+			STD_IND,
+			CASH_IND,
+			QTY,
+			UNIT_PRICE,
+			CHRG_AMT,
+			UOM,
+			UPD_DESC_IND,
+			UPD_RATE_IND, 
+			CR_USER_ID,
+			CR_DATE,
+			LM_USER_ID,
+			LM_DATE,
+			CUST_NAME,
+			TRUCK_NO,
+			TRIP_ID,
+			HAWB_NO,
+			HAWB_AGENT_CODE,
+			REMARKS,
+			WAVR_AMT,
+	        WAVR_RMK,
+	        WAVR_FORM_NO,
+	        WAVR_DONE,
+	        WAVR_DATE,
+	        WAVR_USER_ID,
+			HAWB_SHPR_OR_CNSGN,
+			CALC_CHRG,
+			NET_AMT,
+			ECT_HANDLER) 
+		VALUES (
+			BILL_CHARGE_DTL_SEQ.nextval,
+			NVL(#custNo#,#hawbAgentCode#),
+			NVL(#awbNo#,#hawbAwbNo#),
+			TO_DATE(NVL(#awbDate#,#hawbAwbDate#),'DDMONYY HH24:MI:SS'),					
+			#itemCode#,
+			#itemCodeSfx#,
+			#awbStatus#,
+			#itemDesc#,
+			#revInd#,
+			#stdInd#,
+			#cashInd#,
+			#quantity#,
+			#unitPrice#,
+			decode(substr((NVL(#chargeAmount#,0)-NVL(#waverAmt#,0)),0,1),'-',0,(NVL(#chargeAmount#,0)-NVL(#waverAmt#,0))),
+			#uom#,
+			#updDescIndicator#,
+			#updRateIndicator#,
+			#crUserId#,
+			sysdate ,
+			#lmUserId#,
+			sysdate,
+			NVL(#agentName#,#hawbAgentName#),
+			#truckNo#,
+			#tripId#,
+			#hawbNo#,
+			#hawbAgentCode#,
+			#chargeRmk#,
+			NVL(#waverAmt#,0),
+			#waverRmk#,
+			#waverFormNumber#,
+			NVL(#waverDone#,'N'),
+			TO_DATE(#waiverDate#,'DDMONYY HH24:MI:SS'),
+			#waiverUsedId#,
+			#shprOrCnsgn#,
+			decode(substr((NVL(#chargeAmount#,0)-NVL(#waverAmt#,0)),0,1),'-',0,(NVL(#chargeAmount#,0)-NVL(#waverAmt#,0))),
+			decode(substr((NVL(#chargeAmount#,0)-NVL(#waverAmt#,0)),0,1),'-',0,(NVL(#chargeAmount#,0)-NVL(#waverAmt#,0))),
+			#ectHandler#
+			)
+
+	</insert>	
+	
+	<!--To Update Charges For Maintain Charges-->    
+	<update id="updateChargeForMaintain" parameterClass="cargo.cms.billing.bo.ChargeBO" >	
+		UPDATE BILL_CHARGE_DTL
+		SET STATUS = #awbStatus#,
+		    ITM_DESC = #itemDesc#,
+		    REV_IND = #revInd#,
+			STD_IND = #stdInd#,
+			CASH_IND = #cashInd#,
+			REMARKS = #chargeRmk#,
+			QTY = #quantity#,
+			UNIT_PRICE = #unitPrice#,
+			CHRG_AMT = #chargeAmount#,
+			CALC_CHRG = decode(substr((NVL(#chargeAmount#,0)-NVL(#waverAmt#,0)),0,1),'-',0,(NVL(#chargeAmount#,0)-NVL(#waverAmt#,0))),
+			NET_AMT = decode(substr((NVL(#chargeAmount#,0)-NVL(#waverAmt#,0)),0,1),'-',0,(NVL(#chargeAmount#,0)-NVL(#waverAmt#,0))),
+			UOM = #uom#,             
+			LM_USER_ID = #lmUserId#,
+			LM_DATE = sysdate			
+		WHERE 
+		        UPPER(TR_NO) = UPPER(#trNo#)
+		    AND UPPER(ITM_CODE) = UPPER(#itemCode#)
+		    AND UPPER(NVL(ITM_CODE_SFX,'N')) = UPPER(NVL(#itemCodeSfx#,'N'))
+	</update>
+	
+	<!--To Delete Charges For Maintain Charges-->   
+	<delete id="deleteChargeForMaintain" parameterClass="cargo.cms.billing.bo.ChargeBO" >
+	<![CDATA[
+		DELETE FROM BILL_CHARGE_DTL WHERE 
+			UPPER(TR_NO) = UPPER(#trNo#)
+			AND UPPER(ITM_CODE) = UPPER(#itemCode#)
+		    AND UPPER(NVL(ITM_CODE_SFX,'N')) = UPPER(NVL(#itemCodeSfx#,'N'))				
+	]]>	
+	</delete>	
+	
+	<!--To fetch Unit Price for Charges-->
+	<select id="getUnitPrice" parameterClass="map" resultClass="java.lang.String" >
+		SELECT 	TO_CHAR(PKG_CALCULATE.GET_UNIT_PRICE(UPPER(#ITEMCODE#),UPPER(#ITEMCODESFX#),#QTY#)) FROM  DUAL		
+	</select>
+	
+	<!--To update Paid Charges-->	
+	<update id="updatePaidCharges" parameterClass="cargo.cms.billing.bo.ChargeBO" >	
+		UPDATE BILL_CHARGE_DTL
+		SET STATUS = #status#,
+			PAID_AMT_CASH = NVL(#paidAmtCash#,0),
+			PAID_AMT_CREDIT = NVL(#paidAmtCredit#,0),
+			PAID_AMT_DM = NVL(#paidAmtDm#,0),
+			LM_USER_ID = #lmUserId#,
+			<isNotEmpty property="headerAgentCode"> 
+			CUST_NO = 	#headerAgentCode#,
+			CUST_NAME = (SELECT CODE_DESC FROM CUST_COMPANY WHERE CODE = #headerAgentCode#  and rownum =1 ),
+			</isNotEmpty>
+			LM_DATE = sysdate
+		WHERE 
+		    UPPER(TR_NO) = UPPER(#trNo#)
+	</update>
+
+	<select id="getPaidCharges" parameterClass="cargo.cms.billing.bo.ChargeBO" resultClass="java.lang.String" >	
+		Select STATUS from BILL_CHARGE_DTL
+		WHERE UPPER(TR_NO) = UPPER(#trNo#)
+	</select>
+	
+	<!--To update the AAT/Airl credit balance-->
+	<parameterMap id="crdBalanceMap" class="map" >
+		<parameter property="INV_NO" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+	</parameterMap>
+	<procedure id="updateCreditBalance" parameterMap="crdBalanceMap" >
+		{call PKG_BILLING.UPDATE_CREDIT_BALANCE(?)}
+	</procedure>
+	<procedure id="updateAdjustmentBalance" parameterMap="crdBalanceMap" >
+		{call PKG_BILLING.UPDATE_ADJUSTMENT_BALANCE(?)}
+	</procedure>
+
+		<parameterMap id="overChargeMap" class="map" >
+		<parameter property="SRF_NO" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="APP_AGT_NAME" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="INV_NO" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="INV_DOC_LINE_NO" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="USER" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="CHARGE_AMT" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="IN"/>
+		<parameter property="ADJ_NO" jdbcType="VARCHAR"	javaType="java.lang.String"	mode="OUT"/>
+	</parameterMap>
+	<procedure id="overChargeSettlement" parameterMap="overChargeMap" >
+		{call PKG_BILLING.SRF_ADJUSTMENT_TC_CHARGES(?,?,?,?,?,?,?)}
+	</procedure>
+	
+
+	<!--To check whether the cheque has been received-->
+	<select id="checkChequeReceived" parameterClass="cargo.cms.billing.bo.ChequeBO" resultClass="java.lang.Integer" >
+		SELECT COUNT(PAY_NO) FROM BILL_PAYMENT 
+		WHERE 
+			INV_NO=#invoiceNo# AND ADJ_NO IS NULL AND
+			((CHQ1_NO=#chequeNo# AND CHQ1_AMT=#amount# AND CHQ1_BANK=#bank#) 
+			OR (CHQ2_NO=#chequeNo# AND CHQ2_AMT=#amount# AND CHQ2_BANK=#bank#) 
+			OR (CHQ3_NO=#chequeNo# AND CHQ3_AMT=#amount# AND CHQ3_BANK=#bank#))
+	</select>
+	
+	<!--To check whether the cheque has been reimbursed-->
+	<select id="checkChequeReimbursed" parameterClass="cargo.cms.billing.bo.ChequeBO" resultClass="java.lang.Integer" >
+		SELECT COUNT(PAY_NO) FROM BILL_PAYMENT 
+		WHERE 
+			INV_NO IS NULL AND ADJ_NO IS NOT NULL AND
+			((CHQ1_NO=#chequeNo# AND CHQ1_AMT=#amount# AND CHQ1_BANK=#bank#) 
+			OR (CHQ2_NO=#chequeNo# AND CHQ2_AMT=#amount# AND CHQ2_BANK=#bank#) 
+			OR (CHQ3_NO=#chequeNo# AND CHQ3_AMT=#amount# AND CHQ3_BANK=#bank#))
+	</select>
+	
+	<!--To fetch AdjNote No-->
+	<select id="fetchAdjNoteNo" parameterClass="cargo.cms.billing.bo.AdjNoteDTLBO" resultClass="cargo.cms.billing.bo.AdjNoteDTLBO" >
+		SELECT 
+			DISTINCT ADJ_NO AS adjNo			
+		FROM 
+			BILL_ADJ_DTL 
+		WHERE 
+			UPPER(INV_NO) = UPPER(#invoiceNo#)
+			<isNotEmpty property="rcount"> 
+			<isEqual property="rcount" compareValue="0">
+				AND ADJ_NO not like '%C%'
+			</isEqual>	 
+			</isNotEmpty>
+		ORDER BY ADJ_NO DESC
+	</select>
+	
+		<!--To fetch AdjNote No-->
+		<!--  Changed by Ranjith :: Access Control exists in base code :: As Per DDS its not required now  :: hence changed the query to return 0 always :: if access control is required this query can be activated again -->
+	<select id="fetchCountForAdjNote" parameterClass="cargo.cms.billing.bo.AdjNoteDTLBO" resultClass="java.lang.Integer" >
+		select 1 from dual 
+		<!-- select count(1)
+		from sec_role_sub_function sf
+			 join sec_user_role ur on ur.role_name = sf.role_code
+		where sf.Sub_Function_code = 'MISC_19_001' and ur.user_id = #crUserId# and enable_yn = 'Y' -->
+	</select>
+	
+	<!--To check AdjNote No is exist-->
+	<select id="sqlCountAdjNoteNo" parameterClass="java.lang.String" resultClass="java.lang.Integer" >
+		SELECT COUNT(ADJ_NO) FROM BILL_ADJ_HD WHERE UPPER(ADJ_NO)=UPPER(#PARAM#)
+	</select>	
+	
+	<!--To fetch AdjNote Header-->
+	<select id="fetchAdjNoteHeader" parameterClass="java.lang.String" resultClass="cargo.cms.billing.bo.AdjNoteBO" >
+		SELECT 
+			ADJ_NO AS adjNo,
+			to_char(ADJ_DATE,'DDMONYY HH24:MI') AS adjDate,
+			CUST_NO AS custNo,
+			CUST_NAME AS custName,
+			ADJ_AMT AS adjAmt,
+			AMT_PAID AS amtPaid, 
+			RMK AS remarks,
+			ADJ_TYPE As	adjType,
+			RSN reason		
+		FROM 
+			BILL_ADJ_HD 
+		WHERE 
+			UPPER(ADJ_NO)=UPPER(#PARAM#)
+	</select>
+	
+	<select id="fetchAdjNoteDetail" parameterClass="cargo.cms.billing.bo.AdjNoteDTLBO"
+	resultClass="cargo.cms.billing.bo.AdjNoteDTLBO">
+	SELECT DISTINCT
+	A.ADJ_NO AS adjNo,
+	A.DOC_LINE_NO AS docLineNo,
+	A.INV_NO AS invoiceNo,
+	A.IDOC_LINE_NO AS invoiceDocLineNo,
+	A.ITM_CODE AS itemCode,
+	A.ITM_CODE_SFX AS itemCodeSuffix,
+	A.ORG_AMT AS orgAmt,
+	A.ADJ_AMT AS adjAmt,
+	B.ITM_DESC AS itemDesc,
+	INVDTL.CASH_IND AS cashInd,
+	A.REV_IND AS revenueIndicator,
+	BCD.awb_no as awbNo,
+	to_char(BCD.awb_date,'DDMONYY') as awbDate,
+	BCD.HAWB_NO hawbNo
+	FROM BILL_ADJ_DTL A
+  join BILL_INV_DTL INVDTL on A.INV_NO = INVDTL.INV_NO and A.IDOC_LINE_NO = INVDTL.DOC_LINE_NO
+	join BILL_CHARGE_DTL BCD on INVDTL.CHRG_TR_NO = BCD.TR_NO
+	left join IMP_CAR_AWB ica on ica.AWB_NO = BCD.awb_No AND ica.AWB_DATE =
+	BCD.awb_Date
+	JOIN BILL_ITM_MASTER B ON b.ITM_CODE = a.ITM_CODE AND
+	NVL(UPPER(b.ITM_CODE_SFX),'N') = NVL(UPPER(a.ITM_CODE_SFX),'N')
+	and nvl(b.ECT_HANDLER, NVL(BCD.ECT_HANDLER, 'CPCT')) = NVL(BCD.ECT_HANDLER,
+	'CPCT')
+	WHERE UPPER(A.ADJ_NO)=UPPER(#adjNo#)
+	</select>
+	
+	<!--To fetch Payment By AdjNote No-->
+	<select id="fetchPaymentByAdjNoteNo" parameterClass="java.lang.String" resultClass="cargo.cms.billing.bo.PaymentBO" >
+		SELECT 
+			ADJ_NO AS adjNoteNo,
+			OTH_AMT others,        
+			ADJ_AMT AS adjAmtPaid,         
+			CHQ1_NO AS chequeNo1,    
+			CHQ1_AMT AS chequeAmt1,   
+			CHQ1_BANK AS chequeBnk1, 
+			CHQ2_NO AS chequeNo2,       
+			CHQ2_AMT AS chequeAmt2,   
+			CHQ2_BANK AS chequeBnk2,
+			CHQ3_NO AS chequeNo3,       
+			CHQ3_AMT AS chequeAmt3,   
+			CHQ3_BANK AS chequeBnk3,   
+			CC_AMT AS creditCardAmt,                
+			CC_COMPANY AS creditCardCompany,
+			EPS_AMT AS eps,
+			CURR_CODE AS currency,
+			EXCH_RATE AS exchangeRate,
+			FORGN_UNIT AS unit,
+			CASH_AMT AS cash,
+			CASH_AMT_LOCAL AS cashHKD,
+			E_PAYMENT_AMMOUNT ePayment
+		FROM 
+			BILL_PAYMENT 
+		WHERE 
+			UPPER(ADJ_NO)=UPPER(#PARAM#) AND UPPER(PAY_TYPE)='ADJ'
+	</select>
+	
+	<!--To fetch Invoice No-->
+	<select id="fetchInvoiceNo" parameterClass="java.lang.String" resultClass="cargo.cms.billing.bo.InvoiceBO" >
+		SELECT 
+			DISTINCT INV_NO AS invoiceNo			
+		FROM 
+			BILL_ADJ_DTL 
+		WHERE 
+			UPPER(ADJ_NO) = UPPER(#PARAM#)
+	</select>
+	
+	<!--Not in use (onsite sutharman) -->
+	<!--To fetch the agent details by AWB -->
+	<select id="fetchAgentDetailsByAWB" parameterClass="cargo.cms.billing.bo.ChargeBO" resultClass="cargo.cms.billing.bo.AgentBO">
+		<![CDATA[
+			   SELECT
+			   		A.AGENT_CODE as custNo, 
+		          	C.code_desc as agentName			
+               FROM 
+               		AWB A , CUST_COMPANY C 
+               WHERE 
+               		UPPER(A.AWB_NO)=UPPER(#awbNo#)
+               		AND A.AGENT_CODE=C.CODE  
+		   ]]>   
+	</select>
+	
+	<!--To fetch Invoice No By AWB No-->
+	<select id="fetchInvoiceNoByAWB" parameterClass="cargo.cms.billing.bo.InvoiceBO" resultClass="cargo.cms.billing.bo.InvoiceBO" >
+	
+	SELECT 
+			DISTINCT BID.INV_NO AS invoiceNo,
+			BCD.AWB_NO AS awbNo,
+			SUBSTR(BCD.AWB_NO,0,3) AS awbNoPFX,
+			SUBSTR(BCD.AWB_NO,4) AS awbNoSFX, 
+			awb.AWB_TYPE AS awbType,
+			TO_CHAR(BCD.AWB_DATE, 'DDMONYY') AS awbDate			
+		FROM 
+			BILL_INV_DTL BID join  BILL_CHARGE_DTl  BCD on BID.CHRG_TR_NO = BCD.TR_NO
+			join awb awb on awb.awb_no = BCD.awb_no and awb.awb_date =BCD.awb_date
+		<dynamic prepend="WHERE">
+			<isNotEmpty prepend="AND" property="awbNo">
+				BCD.AWB_NO = #awbNo#
+				<isNotEmpty property="awbDate">
+					AND BCD.AWB_DATE=TO_DATE(#awbDate#, 'DDMONYY')
+				</isNotEmpty>
+			</isNotEmpty>
+			<isNotEmpty prepend="AND" property="custNo">
+				BCD.CUST_NO = #custNo#
+			</isNotEmpty>
+			<isNotEmpty prepend="AND" property="custName">
+				BCD.CUST_NAME = #custName#
+			</isNotEmpty>
+			<isNotEmpty prepend="AND" property="srfNo">
+				BCD.SRF_NO = #srfNo#
+			</isNotEmpty>
+			<isNotEmpty prepend="AND" property="rlcNo">
+				BCD.RCL_NO = #rlcNo#
+			</isNotEmpty>
+			<isNotEmpty prepend="AND" property="uldKey">
+				BCD.ULD_KEY = #uldKey#
+			</isNotEmpty>
+			<isNotEmpty property="dateFrom">
+				<isNotEmpty property="dateTo">
+					AND (UPPER(BIH.CR_DATE)&gt;= TO_DATE(#dateFrom#, 'DDMONYY') AND UPPER(BIH.CR_DATE) &lt;= TO_DATE(#dateTo#, 'DDMONYY'))
+				</isNotEmpty>
+			</isNotEmpty>
+		</dynamic>
+	
+	</select>
+	
+	<!--To fetch AAT Credit balance-->
+
+	
+	<!--To check AWB No is closed-->
+	<select id="sqlCountCollectPaymentAWBClosed" parameterClass="cargo.cms.billing.bo.AwbBO" resultClass="java.lang.Integer">
+		SELECT COUNT(AWB_NO)
+		FROM 
+			AWB			
+		<dynamic prepend="WHERE">
+			<isNotEmpty property="awbNo">
+				    UPPER(AWB_NO) = UPPER(#awbNo#)
+				AND UPPER(AWB_CLOSED_YN) = UPPER('Y')  
+			</isNotEmpty>				
+		</dynamic>	
+	</select>
+	
+	<!--To fetch chargeds By Agent for Enquire Charges -->
+	<select id="fetchEnquireChargeByAgent" parameterClass="cargo.cms.billing.bo.ChargeBO" resultClass="cargo.cms.billing.bo.ChargeBO">
+		SELECT
+			BCD.TR_NO AS trNo,
+			BCD.AWB_NO AS awbNo,
+			to_char(BCD.AWB_DATE,'DDMONYY') AS awbDate,
+			A.AGENT_CODE AS custNo,
+			A.AGENT_NAME AS agentName,
+			BCD.ITM_CODE AS itemCode,
+			BCD.ITM_CODE_SFX AS itemCodeSfx,
+			BCD.ITM_DESC AS itemDesc,
+			BCD.REV_IND AS revInd,
+			BCD.CASH_IND AS cashInd,
+			(BCD.CHRG_AMT+BCD.WAVR_AMT) AS chargeAmount,
+			BCD.PAID_AMT_CASH AS paidAmtCash,
+			BCD.PAID_AMT_CREDIT AS paidAmtCredit,
+			BCD.STATUS AS awbStatus,
+			BCD.ADJ_AMT AS adjAmount,
+			BCD.WAVR_AMT AS waverAmt,
+			BCD.REMARKS AS chargeRmk,
+			BCD.QTY as quantity,
+			BCD.UOM uom,
+			BCD.UNIT_PRICE unitPrice
+		FROM 
+			BILL_CHARGE_DTL  BCD LEFT JOIN AWB A ON A.AWB_NO = BCD.AWB_NO AND A.AWB_DATE = BCD.AWB_DATE 
+		<dynamic prepend="WHERE">
+			BCD.STATUS != 'VOID'
+			<!-- AND NVL(UPPER(AWB_NO),'N') = NVL(UPPER(''),'N')
+			AND NVL(UPPER(RCL_NO),'N') = NVL(UPPER(''),'N')
+			AND NVL(UPPER(SRF_NO),'N') = NVL(UPPER(''),'N') -->
+			<isNotEmpty property="dateFrom">
+				<isNotEmpty property="dateTo">
+					AND (to_date(to_char(BCD.CR_DATE,'DDMONYY'),'DDMONYY')&gt;= TO_DATE(#dateFrom#, 'DDMONYY') AND to_date(to_char(BCD.CR_DATE,'DDMONYY'),'DDMONYY') &lt;= TO_DATE(#dateTo#, 'DDMONYY'))
+				</isNotEmpty>
+			</isNotEmpty>
+			<isNotEmpty property="custNo">
+				AND (UPPER(BCD.CUST_NO)=UPPER(#custNo#) OR UPPER(A.AGENT_CODE)=UPPER(#custNo#))
+			</isNotEmpty>
+			<isNotEmpty property="agentName">
+				AND (UPPER(BCD.CUST_NAME)=UPPER(#agentName#) OR UPPER(A.AGENT_NAME)=UPPER(#agentName#))
+			</isNotEmpty>				
+		    <isNotEmpty property="loginCarrier">
+                AND ((A.CARR_CODE = #loginCarrier#
+				OR A.CARR_CODE IN (SELECT CARR_CODE FROM MAST_CARR_GRP WHERE GRP_CARR_CODE= #loginCarrier#)) OR BCD.AWB_NO is null)
+			</isNotEmpty>
+		</dynamic>
+		order by BCD.AWB_NO ,BCD.AWB_DATE
+	</select>
+	
+	<!--To check AWB Type is closed-->
+	<select id="fetchAwbTypeByAWB" parameterClass="java.lang.String" resultClass="cargo.cms.billing.bo.AwbBO">
+		SELECT  AWB_TYPE AS awbType,
+				TO_CHAR(AWB_DATE, 'DDMONYY') AS awbDate
+		FROM    AWB			
+		WHERE  	AWB_NO = #PARAM#
+		    <!-- AND AWB_CLOSED_YN = 'N' --> 		
+		    AND ROWNUM = 1	
+	</select>
+	
+	<!--For Enquire charges Through AWB_NO, if AWB_TYPE is I(import) then we need to call this Pro-->
+	<delete id="DELETE_GT_SRF_CHARGES" parameterClass="java.lang.String" >
+		delete from GT_SRF_CHARGES
+	</delete>
+	
+	<parameterMap id="enquireChargesMap" class="map" >
+		<parameter property="P_AWB_NO" jdbcType="VARCHAR" javaType="java.lang.String"	mode="IN"/>	
+		<parameter property="P_AWB_DATE" jdbcType="VARCHAR" javaType="java.lang.String"	mode="IN"/>		
+	</parameterMap>
+	<procedure id="enquireChargesPro" parameterMap="enquireChargesMap" >
+		{ call PRC_ENQ_CHARGES(?,?)}
+	</procedure>
+	
+	<!-- Added for CR:14100903. Sanket 11Nov14 -->
+	<select id="fetchCarrForImpAWB" parameterClass="map"  resultClass="java.lang.String">
+	  select carr_code from imp_car_shp where awb_no=#awbNo# and awb_date=#awbDate# and flt_key=#fltKey# and flt_date=#fltDate#
+	</select>
+	
+	<!-- Added for CR:14100903. Sanket 11Nov14 -->
+	<select id="fetchNotificationDtls" parameterClass="java.lang.String"  resultClass="cargo.cms.imprt.bo.ImpAWBNotificationBO">
+	  select NOA_EMAIL_TMP noaEmailTmp, NOA_FAX_TMP noaFaxTmp, AUTO_NOA_EMAIL autoNoaEmail, AUTO_NOA_FAX autoNoaFax, NONDLV_EMAIL_TMP nonDlvEmailTmp, 
+      NONDLV_FAX_TMP nonDlvFaxTmp from mast_carrier where code = #PARAM#
+	</select>
+	
+	<!--To fetch chargeds for Enquire Charges through AWB, if its AWB_TYPE is I (import)-->
+
+		 <!-- Changed on 25 FEB 2007 by atul  -->
+		<select id="fetchEnquireChargeByAWBNOI" parameterClass="cargo.cms.billing.bo.ChargeBO"	resultClass="cargo.cms.billing.bo.ChargeBO">
+		<![CDATA[
+		SELECT *
+		FROM (
+			SELECT
+				TR_NO AS trNo,
+				AWB_NO AS awbNo,
+				to_char(AWB_DATE, 'DDMONYY') AS awbDate,
+				CUST_NO AS custNo,
+				CUST_NAME AS agentName,
+				ITM_CODE AS itemCode,
+				ITM_CODE_SFX AS itemCodeSfx,
+				ITM_DESC AS itemDesc,
+				REV_IND AS revInd,
+				CASH_IND AS cashInd,
+				(CHRG_AMT + WAVR_AMT) AS chargeAmount,
+				PAID_AMT_CASH AS paidAmtCash,
+				PAID_AMT_CREDIT AS paidAmtCredit,
+				STATUS AS awbStatus,
+				ADJ_AMT AS adjAmount,
+				nvl(WAVR_AMT,0) AS waverAmt,
+				REMARKS AS chargeRmk,
+				QTY as quantity,
+				UOM uom,
+				UNIT_PRICE unitPrice
+			FROM
+				BILL_CHARGE_DTL
+			WHERE
+				STATUS != 'VOID'
+				AND AWB_NO = #awbNo# and AWB_DATE = to_date(#awbDate#, 'DDMONYY')
+				AND (STATUS = 'PAID'
+					or (STATUS = 'PENDING' 
+						AND SRF_NO IN (SELECT SRF_NO FROM IMP_SRF 
+										  WHERE (SRF_EXPY_DATE > sysdate and STATUS ='ISSUED') or STATUS ='POSTED' 
+				  	  					  or SRF_NO in (select SRF_NO from IMP_CDIF where VOID_USER is null)))
+					or (STATUS = 'PENDING' 
+					    AND WAVR_AMT > 0 AND WAVR_DONE = 'Y' 
+						AND SRF_NO IN (SELECT SRF_NO FROM BILL_CHARGE_DTL WHERE STATUS = 'PAID'))
+					or (STATUS = 'PENDING' AND SRF_NO IS NULL)
+					)						
+			UNION ALL
+			SELECT '', awbNo,  awbDate, AGENT_CODE custNo, AGENT_NAME agentName, itemCode, itemCodeSfx, itemDesc, revInd, m.CASH_IND cashInd, 
+				   chamt chargeAmount, 0 paidAmtCash, 0 paidAmtCredit, 'PENDING' awbStatus, 0 adjAmount, 0 waverAmt ,'',qty,'',unitPrice
+			FROM (
+				SELECT G.AWB_NO awbNo, to_char(G.AWB_DATE, 'DDMONYY') AS awbDate, G.ITM_CODE itemCode , G.ITM_CODE_SFX itemCodeSfx, 
+							 min(G.ITM_DESC) itemDesc, min(G.REV_IND) revInd,sum(G.QTY) qty, max(G.UNIT_PRICE) unitPrice, sum(G.AMT) chamt, 
+							 min(G.MIN_CHRG_IND) minChrgInd, min(G.MAX_CHRG_IND) maxChrgInd
+				FROM GT_SRF_CHARGES G
+				WHERE LENGTH(FLT_KEY) > 8
+				group by G.AWB_NO, G.AWB_DATE, G.ITM_CODE, G.ITM_CODE_SFX) C
+			join IMP_CAR_AWB ica on ica.AWB_NO = c.awbNo AND ica.AWB_DATE = c.awbDate
+			join BILL_ITM_MASTER m on m.ITM_CODE = c.itemCode and NVL(m.ITM_CODE_SFX, '**') = NVL(c.itemCodeSfx, '**') and nvl(m.ECT_HANDLER, NVL(ica.ECT_HANDLER, 'CPCT')) = NVL(ica.ECT_HANDLER, 'CPCT')
+			join AWB a on a.AWB_NO = c.awbNo and a.AWB_DATE = c.awbDate and a.awb_type = 'I'
+			UNION ALL
+			select '', awbNo, awbDate, AGENT_CODE custNo, AGENT_NAME agentName, itemCode, itemCodeSfx, itemDesc, m.REV_IND revInd, m.CASH_IND cashInd, 
+				    case when (chamt - nvl(pchrg, 0)) < 0 then 0 else (chamt - nvl(pchrg, 0)) end  chargeAmount, 0 paidAmtCash, 0 paidAmtCredit, 'PENDING' awbStatus, 0 adjAmount, nvl(advWavr.AD_WAVR,0) waverAmt,'',qty,'',unitPrice
+			from 
+				 (select G.AWB_NO awbNo,to_char(G.AWB_DATE, 'DDMONYY') AS awbDate, G.ITM_CODE itemCode , G.ITM_CODE_SFX itemCodeSfx, 
+						  min(G.ITM_DESC) itemDesc, min(G.REV_IND) revInd,sum(G.QTY) qty, max(G.UNIT_PRICE) unitPrice, sum(G.AMT) chamt, 
+						 min(G.MIN_CHRG_IND) minChrgInd, min(G.MAX_CHRG_IND) maxChrgInd
+						 from GT_SRF_CHARGES G
+						 where G.AWB_NO = #awbNo# and G.AWB_DATE = to_date(#awbDate#, 'DDMONYY')
+						 and G.RMODE = 'SRF' and (LENGTH(FLT_KEY) <= 8 or FLT_KEY is null)
+						 group by G.AWB_NO, G.AWB_DATE, G.ITM_CODE, G.ITM_CODE_SFX
+				  union
+				  Select AWB_NO awbNo, to_char(AWB_DATE, 'DDMONYY') AS awbDate , ITM_CODE itemCode, ITM_CODE_SFX itemCodeSfx, 
+				  		 ITM_DESC itemDesc, REV_IND revInd, 1, 0, CHRG_AMT chamt, 
+						 'N', 'N'
+						  from IMP_CHRG_ITM_REV_AWB 
+						  where AWB_NO = #awbNo# and AWB_DATE = to_date(#awbDate#, 'DDMONYY')
+						  AND ITM_CODE in ('CCIMPO', 'FCIMFC', 'DBIMPO')
+				  ) c 
+			join IMP_CAR_AWB ica on ica.AWB_NO = c.awbNo AND ica.AWB_DATE = c.awbDate
+			join BILL_ITM_MASTER m on m.ITM_CODE = c.itemCode and NVL(m.ITM_CODE_SFX, '**') = NVL(c.itemCodeSfx, '**') and nvl(m.ECT_HANDLER, NVL(ica.ECT_HANDLER, 'CPCT')) = NVL(ica.ECT_HANDLER, 'CPCT')
+			join AWB a on a.AWB_NO = c.awbNo and a.AWB_DATE = c.awbDate and a.awb_type = 'I'
+			left join IMP_CHRG_ITM_REV_AWB ic on ic.AWB_NO = c.awbNo AND  ic.AWB_DATE = c.awbDate
+				 AND ic.ITM_CODE = c.itemCode and NVL(ic.ITM_CODE_SFX, '**') = NVL(c.itemCodeSfx, '**')
+			left join (select AWB_NO, AWB_DATE, ITM_CODE, ITM_CODE_SFX, sum(CHRG_AMT + Wavr_Amt) pchrg,  0 Wavr
+				 from BILL_CHARGE_DTL where (Status = 'PAID' or (Status = 'PENDING' and Wavr_Amt > 0 and SRF_NO IN (SELECT SRF_NO FROM BILL_CHARGE_DTL WHERE STATUS = 'PAID' AND SRF_NO IS NOT NULL)))
+				 group by AWB_NO, AWB_DATE, ITM_CODE, ITM_CODE_SFX) cp on cp.AWB_NO = c.awbNo AND  cp.AWB_DATE = c.awbDate
+				 AND cp.ITM_CODE = c.itemCode and NVL(cp.ITM_CODE_SFX, '**') = NVL(c.itemCodeSfx, '**')
+			left join (SELECT AWB_NO AWB_NO , AWB_DATE AWB_DATE,ITM_CODE ITM_CODE, ITM_CODE_SFX ITM_CODE_SFX,  SUM(WAVR_AMT) AD_WAVR 
+                  FROM BILL_WAIVE_CHARGE WHERE NVL(CHARGE_CREATED,'N') = 'N'
+                  GROUP BY AWB_NO,AWB_DATE,ITM_CODE,ITM_CODE_SFX)  advWavr
+                ON  ica.AWB_NO = advWavr.AWB_NO AND ica.AWB_DATE = advWavr.AWB_DATE
+                 AND m.ITM_CODE = advWavr.ITM_CODE and NVL(m.ITM_CODE_SFX, '**') = NVL(advWavr.ITM_CODE_SFX, '**') 	 
+			left join (select AWB_NO, AWB_DATE from imp_car_awb a
+				 	  where not exists (select null from BILL_CHARGE_DTL 
+					  				   where ITM_CODE like 'SC%'
+				 	  				   and awb_no = a.awb_no and awb_date = a.awb_date
+									   and status != 'VOID')
+						and exists (select null from BILL_CHARGE_DTL 
+								   where status = 'PAID' and awb_no = a.awb_no and awb_date = a.awb_date)) chk 
+							on chk.awb_no = ica.awb_no and chk.awb_date = ica.awb_date 
+			left join (select * 
+				 	  from (select s.srf_no, s.awb_no, s.awb_date, s.SRF_EXPY_DATE, s.STATUS
+					 	  from imp_srf s 
+					 	  left join imp_srf_flt sf on sf.srf_no = s.srf_no 
+						  where s.AWB_NO = #awbNo# and s.AWB_DATE = to_date(#awbDate#, 'DDMONYY')
+						  order by s.srf_date desc) si
+					  where rownum = 1) s 
+				on ica.awb_no = s.awb_no and ica.awb_date = s.awb_date 
+			where (chamt - nvl(pchrg, 0)) > 0 AND NVL(ic.PAYMENT_MODE, 'Revenue') not in ('No value') 
+			and not ((NVL(s.STATUS, '**') = 'ISSUED' and NVL(s.SRF_EXPY_DATE, '01JAN2000') >= sysdate)
+							or (a.AWB_CLOSED_YN = 'Y' and NVL(s.STATUS, '**') = 'POSTED'))
+		)
+		order by itemCode
+		]]>	
+	</select>
+	<!-- Changed on 25 FEB 2007 by atul  -->
+	<select id="fetch_GT_SRF_CHARGES" parameterClass="java.lang.String" resultClass="cargo.cms.billing.bo.GtSRFChargesBO">
+		SELECT AWB_NO,
+	      AWB_DATE,
+	      FLT_KEY,
+	      FLT_DATE,
+	      CARGO_TYPE,
+	      RMODE,
+	      CHRG_TYPE,
+	      ITM_CODE,
+	      ITM_CODE_SFX,
+	      ITM_DESC,
+	      REV_IND,
+	      QTY,
+	      UNIT_PRICE,
+	      AMT,
+	      MIN_CHRG_IND,
+	      MAX_CHRG_IND,
+	      AWB_TYPE
+	      FROM GT_SRF_CHARGES 
+	</select>
+	
+	<!--To fetch PPK_Type By ULD-KEY-->
+	<select id="fetchPpkTypeByUldKey" parameterClass="cargo.cms.billing.bo.PaymentBO" resultClass="cargo.cms.billing.bo.AwbBO">
+		SELECT
+			PPK_TYPE AS ppkType		
+		FROM 
+			EXP_RCL_HD
+		WHERE
+			UPPER(ULD_KEY)=UPPER(#uldNo#)
+	</select>
+	
+	<select id="fetchEctHanlerdbySRF" parameterClass="cargo.cms.billing.bo.ImpSrf" resultClass="java.lang.String">
+		SELECT
+			ECT_HANDLER	
+		FROM 
+			IMP_CAR_AWB
+		WHERE
+				AWB_NO = #awbNo#
+			AND AWB_DATE = TO_DATE(#awbDateFrm#, 'DDMONYY')
+	</select>	
+	
+	<!--For Collect Payment Through SRF No then we need to call this Pro-->
+	<parameterMap id="collectPaymentBySrfMap" class="map" >
+		<parameter property="P_SRF_NO" jdbcType="VARCHAR" javaType="java.lang.String"	mode="IN"/>	
+		<parameter property="P_AWB_NO" jdbcType="VARCHAR" javaType="java.lang.String"	mode="IN"/>	
+		<parameter property="P_AWB_DATE" jdbcType="VARCHAR" javaType="java.lang.String"	mode="IN"/>	
+		<parameter property="P_USER" jdbcType="VARCHAR" javaType="java.lang.String"	mode="IN"/>	
+		<parameter property="V_INV_NO" jdbcType="VARCHAR" javaType="java.lang.String"	mode="IN"/>		
+	</parameterMap>
+	<procedure id="pkg_billing.prc_cr_note" parameterMap="collectPaymentBySrfMap" >
+		{ call PKG_BILLING.PRC_CR_NOTE(?,?,?,?,?)}
+	</procedure>
+	
+	<select id="fetchItemStatusForSavePayment" parameterClass="cargo.cms.billing.bo.ChargeBO" resultClass="java.lang.String">
+		SELECT
+			STATUS	
+		FROM 
+			BILL_CHARGE_DTL
+		WHERE
+			TR_NO = #trNo#
+	</select>	
+
+	<select id="getEINVOICE_IND" parameterClass="java.lang.String" resultClass="java.lang.String">
+			select EINVOICE_IND from cust_company where code = #PARAM#
+	</select>		
+
+	<select id="getAGENT_CODE_for_awb" parameterClass="cargo.cms.billing.bo.PaymentBO" resultClass="java.lang.String">
+		select AGENT_CODE from awb where awb_no = #awbNo# and awb_date = to_date(#awbDate#,'DDMONYY') and awb_Type = 'I'
+	</select>
+
+	<select id="getAGENT_CODE_for_srf" parameterClass="cargo.cms.billing.bo.PaymentBO" resultClass="java.lang.String">
+		select AGENT_CODE from Imp_srf a , awb b where a.awb_no = b.awb_no and 	a.awb_date = b.awb_date and 
+		b.awb_Type = 'I' and srf_no = #srfNo#
+	</select>
+
+	<select id="getCatalogForOBC" parameterClass="cargo.cms.billing.bo.ExpRclDtlBO" resultClass="java.lang.String">
+		SELECT catalog 	
+		FROM awb Where awb_no = #awbNo# and awb_date = #awbDate# and awb_type = 'E' 
+	</select>	
+	
+	
+	
+	<!--  Queries For Invoice Report -->
+	<select id="blgInvPaymtRept_145A" parameterClass="cargo.cms.billing.report.bo.CollectionPayment_145ABO" resultClass="cargo.cms.billing.report.bo.CollectionPayment_145ABO" >
+ SELECT A.INV_NO AS invNo,
+ 			C.AWB_NO AS awbNo,	
+            TO_CHAR(A.INV_DATE,'DDMONYY HH24:MI')AS invDate,
+            TO_CHAR(A.INV_DATE,'DDMONYY HH24:MI') AS invFromDt,
+            TO_CHAR(A.INV_DATE,'DDMONYY HH24:MI') AS invToDt_old,
+			DECODE(A.INV_TYPE,'CRD',TO_CHAR(A.INV_DATE+14,'DDMONYY HH24:MI'),TO_CHAR(A.INV_DATE,'DDMONYY HH24:MI')) as invToDt,
+            C.CUST_NO AS custNo, A.RMK AS remarks,   
+            CASE WHEN (C.ITM_CODE = 'SCEXPO' AND A.INV_TYPE = 'CRD')  then (m.ITM_DESC || '(' || C.REMARKS || ')' ) else m.ITM_DESC end AS itemDesc,
+            TO_CHAR(D.PAY_DATE,'DDMONYY HH24:MI')AS paymentDt,  
+            TRIM(RPAD(D.CHQ1_NO,6)) AS chqNo1,
+            D.CHQ1_AMT AS chqAmt1,
+            TRIM(RPAD(D.CHQ1_BANK,6)) AS chqBank1,
+            to_char(D.CHQ1_DATE,'DDMONYY') AS chqDate1,
+            TRIM(RPAD(D.CHQ2_NO,6)) AS chqNo2,
+            D.CHQ2_AMT AS chqAmt2,
+            TRIM(RPAD(D.CHQ2_BANK,6)) AS chqBank2,
+            to_char(D.CHQ2_DATE,'DDMONYY') AS chqDate2,
+            TRIM(RPAD(D.CHQ3_NO,6)) AS chqNo3,
+            D.CHQ3_AMT AS chqAmt3,
+            TRIM(RPAD(D.CHQ3_BANK,6)) AS chqBank3,
+            to_char(D.CHQ3_DATE,'DDMONYY') AS chqDate3,
+            D.CC_AMT AS crdCardAmt,
+            D.CC_COMPANY AS crdCardComp,
+            D.EPS_AMT AS epsAmt,
+            D.CURR_CODE AS currCode,
+            D.CASH_AMT_LOCAL AS localcash,
+            (D.CHQ1_AMT+D.CHQ2_AMT+D.CHQ3_AMT) AS chqAmt,
+            NVL(C.QTY,0) AS itmQty,
+            to_char(nvl(C.UNIT_PRICE,0.00),'99999999999999990.00') AS itmPrice,
+            to_char(nvl(B.CHARGE_AMT,0.00),'99999999999999990.00') AS amtHKD,
+            NVL((SELECT code_desc FROM cust_company WHERE code = C.CUST_NO), C.CUST_NAME) invPerson,
+             C.TRUCK_NO invTruck,
+            NVL((SELECT code_desc FROM cust_company WHERE code = C.CUST_NO), NVL(C.CUST_NAME,C.TRUCK_NO)) AS invAddress,   SUBSTR(A.AWB_NO,1,3)||'-'||SUBSTR(A.AWB_NO,4) as awbNo,
+                  DECODE(A.INV_TYPE,'CSH','COD',A.INV_TYPE) as invType        
+            FROM BILL_INV_HD A            
+            LEFT JOIN BILL_PAYMENT D ON UPPER(A.INV_NO)=UPPER(D.INV_NO) AND D.PAY_TYPE='INV'             
+            LEFT JOIN BILL_INV_DTL B ON UPPER(A.INV_NO)=UPPER(B.INV_NO)             
+            LEFT JOIN BILL_CHARGE_DTL C ON UPPER(B.ITM_CODE)=UPPER(C.ITM_CODE)            
+                  AND NVL(UPPER(B.ITM_CODE_SFX),'N') = NVL(UPPER(C.ITM_CODE_SFX),'N')           
+                  AND UPPER(B.CHRG_TR_NO )=UPPER(C.TR_NO)
+		    left JOIN IMP_CAR_AWB ica on ica.AWB_NO = C.awb_No AND ica.AWB_DATE = C.awb_Date
+			JOIN BILL_ITM_MASTER M ON B.ITM_CODE = M.ITM_CODE AND NVL(B.ITM_CODE_SFX,'N') = NVL(M.ITM_CODE_SFX,'N')	
+				and nvl(M.ECT_HANDLER, NVL(C.ECT_HANDLER, 'CPCT')) = NVL(C.ECT_HANDLER, 'CPCT')
+            WHERE UPPER(A.INV_NO)= UPPER(#invNo#) ORDER BY C.AWB_NO,M.itm_code
+	</select> 
+ 
+ 
+	<select id="blgInvPaymtTotAmt_145A" parameterClass="cargo.cms.billing.report.bo.CollectionPayment_145ABO" resultClass="cargo.cms.billing.report.bo.CollectionPayment_145ABO" >
+	 SELECT to_char(nvl(sum(CHARGE_AMT),0.00),'99999999999999990.00')as sumAmt	 
+	 FROM BILL_INV_DTL WHERE UPPER(INV_NO)= UPPER(#invNo#)
+	 </select>
+	 <select id="blgInvPaymtRetAmt_145A" parameterClass="cargo.cms.billing.report.bo.CollectionPayment_145ABO" resultClass="cargo.cms.billing.report.bo.CollectionPayment_145ABO" >
+	 SELECT trim(to_char(nvl(CHANGE_RETURNED,0.00),'99999999999999990.00')) as chengeReturn	 
+	 FROM BILL_PAYMENT WHERE UPPER(INV_NO)= UPPER(#invNo#)
+	 </select>
+	 
+	 
+	<select id="sqlGetAdressForAgent" parameterClass="cargo.cms.billing.report.bo.CollectionPayment_145ABO" resultClass="cargo.cms.billing.report.bo.CollectionPayment_145ABO" >
+			select bill_add1 as billadd1,
+			       bill_add2 as billadd2,
+			       bill_add3 as billadd3,
+			       bill_add4 as billadd4,
+			       bill_add5 as billadd5,
+			       bill_city as billCity,
+			       bill_pin_code as billPincode,
+			       bill_ctry_code as billCountry,
+			       bill_attn as billAttn,
+			       code as custNo
+			       from cust_company where upper(code_desc) = upper(#invPerson#)
+	</select>  
+ 
+	<!--  Queries For Invoice Report -->
+	
+	<!--  Qyeries For Adjustment Report :: Ranjith :: Starts-->
+	
+	<select id="blgAdjPaymtRept_146A" parameterClass="cargo.cms.billing.report.bo.AdjustmentNote_146ABO" resultClass="cargo.cms.billing.report.bo.AdjustmentNote_146ABO" >
+      SELECT      A.ADJ_NO AS adjNo,
+				  TO_CHAR(A.ADJ_DATE,'DDMONYY HH24:MI') AS adjDate,
+			  	  TO_CHAR(A.ADJ_DATE,'DDMONYY HH24:MI') AS adjFromDt,
+				  TO_CHAR(A.ADJ_DATE,'DDMMYYYY HH24:MI') AS adjToDt,
+				  C.CUST_NO AS custNo,
+				  A.RMK AS remarks,
+                  M.ITM_DESC AS itemDesc,
+                  '' AS itmQty,
+                  '' AS itmPrice,
+                  NVL(B.ADJ_AMT,0.0) AS amtHKD,
+					NVL(C.CUST_NAME, NVL((SELECT code_desc FROM cust_company  WHERE code = C.cust_no),'')) AS invAddress,
+					C.TRUCK_NO as truckNo,
+				   DECODE(A.ADJ_TYPE,'CSH','COD',A.ADJ_TYPE) as adjType,
+				   A.INV_NO as invNo,
+           		   A.RSN as adjResn,
+           		   C.awb_No as awbNo
+			 FROM BILL_ADJ_HD A 
+			 LEFT JOIN  BILL_PAYMENT D ON  A.ADJ_NO = D.ADJ_NO AND D.PAY_TYPE='ADJ'   
+			 JOIN  BILL_ADJ_DTL  B ON A.ADJ_NO = B.ADJ_NO 
+			 JOIN BILL_INV_HD INV on A.INV_NO = INV.INV_NO			              
+			 LEFT JOIN  BILL_INV_DTL  INVD ON B.INV_NO = INVD.INV_NO AND B.IDOC_LINE_NO = INVD.DOC_LINE_NO               
+			 LEFT JOIN  BILL_CHARGE_DTL C ON INVD.CHRG_TR_NO = C.TR_NO
+			   			  AND INVD.ITM_CODE=C.ITM_CODE AND NVL(INVD.ITM_CODE_SFX,'N') = NVL(C.ITM_CODE_SFX,'N') 
+		     left JOIN IMP_CAR_AWB ica on ica.AWB_NO = C.awb_No AND ica.AWB_DATE = C.awb_Date
+			 JOIN BILL_ITM_MASTER M ON B.ITM_CODE=M.ITM_CODE AND NVL(B.ITM_CODE_SFX,'N') = NVL(M.ITM_CODE_SFX,'N')	
+				and nvl(M.ECT_HANDLER, NVL(C.ECT_HANDLER, 'CPCT')) = NVL(C.ECT_HANDLER, 'CPCT')
+			  WHERE A.ADJ_NO= #adjNo# order by M.ITM_DESC 
+</select> 
+<select id="fetchAgentForEnquiry" parameterClass="cargo.cms.billing.bo.AgentBO" resultClass="cargo.cms.billing.bo.AgentBO">
+		SELECT
+			CODE AS custNo,
+			CODE_DESC AS agentName,
+			CO_IATA_CODE AS agentIATA
+		FROM 
+			CUST_COMPANY
+		<dynamic prepend="WHERE">
+			<isNotEmpty prepend="AND" property="custNo">
+				UPPER(CODE)=UPPER(#custNo#)
+			</isNotEmpty>
+			<isNotEmpty prepend="AND" property="agentIATA">
+				UPPER(CO_IATA_CODE)=UPPER(#agentIATA#)
+			</isNotEmpty>
+		</dynamic>
+	</select>
+	<!--  Qyeries For Adjustment Report :: Ranjith :: Ends-->
+	<!-- To fetch AWB No by VCL No. bug fix 12465. Sanket 14AUG14 -->
+	<select id="fetchAWBNoByVCLNo" parameterClass="java.lang.String" resultClass="java.lang.String">
+	SELECT AWB_NO FROM BILL_CHARGE_DTL WHERE UPPER(RCL_NO)=NVL((select UPPER(RCL_NO) from EXP_RCL_HD where VCL_NO=#PARAM#),'*') AND AWB_NO IS NOT NULL AND ROWNUM = 1
+	</select>
+	
+	<!--To fetch SRF Details for Waive Charge By SRF-->
+	<!-- To fetch AWB No by SRF No. bug fix 12419. Sanket 03JUL14 -->
+	<select id="fetchAWBNoBySRFNo" parameterClass="java.lang.String" resultClass="java.lang.String">
+	 SELECT DISTINCT(AWB_NO) FROM BILL_CHARGE_DTL WHERE UPPER(SRF_NO)=UPPER(#PARAM#)
+	</select>
+	
+	<!-- To fetch AWB No by RCL No. bug fix 12440. Sanket 11AUG14 -->
+	<!-- To fetch AWB No by RCL No. bug fix 12440. Sanket 11AUG14 -->
+	<select id="fetchAWBNoByRCLNo" parameterClass="java.lang.String" resultClass="java.lang.String">
+	 SELECT AWB_NO FROM BILL_CHARGE_DTL WHERE UPPER(RCL_NO)=UPPER(#PARAM#) AND AWB_NO IS NOT NULL AND ROWNUM = 1
+	</select>	
+	
+	<!-- To fetch AWB No by VCL No. bug fix 12465. Sanket 14AUG14 -->
+</sqlMap> 

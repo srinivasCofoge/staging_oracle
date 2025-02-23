@@ -1,0 +1,719 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="TriggerCode">
+	<!-- Trigger TRG_AWB_RELOC_ISS on table TRG_AWB_RELOC_ISS >>This Will be called after in some of the use cases to update Awb_inventory indirectly -->
+	<select id="sqlGetTrType" parameterClass="java.lang.String" resultClass="java.lang.String" >
+	 select decode((SELECT TR_TYPE FROM REGISTER_TR_NO_EVENTS WHERE EVENT_ID =#relocType# AND ROWNUM = 1),null,'RA',(SELECT TR_TYPE FROM REGISTER_TR_NO_EVENTS WHERE EVENT_ID =#relocType# AND ROWNUM = 1))
+  from dual
+	</select>
+	
+	<select id="sqlGetSequenceNo" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO" resultClass="java.lang.String" >
+		 SELECT SEQ_NO seqNo
+		 FROM AWB_INVENTORY
+	     WHERE AWB_NO = #awbNo#
+	     AND AWB_DATE = #awbDate#
+	     AND NVL(FLT_KEY,'*')  = NVL(#fltKey#,'*')
+	     AND  NVL(FLT_DATE,SYSDATE) = NVL(decode(#fltDate#,'',SYSDATE,#fltDate#),SYSDATE)
+	     AND NVL(LOC_CODE,'*') = NVL(#locCode#,'*')
+	     AND NVL(LSP_NO,0)   = NVL(#lspNo#,0)
+	     AND NVL(ULD_KEY,'*')  = NVL(#uldKey#,'*')
+	     AND NVL(SRF_NO,'*')  = NVL(#srfNo#,'*')
+	     AND NVL(TRM_NO,'*')  = NVL(#trmNo#,'*')
+	     AND NVL(CDIF_NO,'*') = NVL(#cdifNo#,'*')
+	     AND NVL(RTN_NO,'*') = NVL(#rtnNo#,'*')
+	</select>
+	
+	<update id="sqlUpdateAwbInventory" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO">
+	UPDATE AWB_INVENTORY
+SET LOCN_PCS      = (LOCN_PCS - DECODE(#hht#,'Y',NVL(#hhtNewPcs#,0),NVL(#locnPcs#,0))),
+  LOCN_WT         = (LOCN_WT  - DECODE(#hht#,'Y',NVL(#hhtNewWt#,0),NVL(#locnWt#,0))),
+		    BUP_WT     = (BUP_WT   - NVL(#bupWt#,0)),
+		    BULK_WT    = (BULK_WT  - NVL(#bulkWt#,0)),
+		    DAM_PCS    = (DAM_PCS - NVL(#damPcs#,0)),
+		    DAM_WT     = (DAM_WT - NVL(#damWt#,0)),
+		    LM_USER_ID = #lmUserId#,
+		    LM_DATE    = sysdate,
+	        REF_TR_NO      = #trNo#,
+	        REF_TR_TYPE    = #trType#,
+	        REF_TR_EVENT   = #trEvent#,
+	        REF_TR_DATE    = sysdate,
+	        REF_DOC_LINE_NO  = #docLineNo#,
+	        REF_LOC_FROM     = #locCode#,
+  REF_AWB_EVENT   = NVL(#trtypeEvt#,'DUMMY')
+      WHERE SEQ_NO = #seqNo#
+    </update>  
+    
+    <select id="sqlGetLocnPcWt" parameterClass="java.lang.String" resultClass="cargo.cms.imprt.bo.AWBStorDtlBO" >
+	SELECT LOCN_PCS locnPcs, LOCN_WT locnWt 
+		 FROM AWB_INVENTORY
+		 WHERE SEQ_NO = #seqNo#
+	</select>
+    
+    <delete id="sqlDeleteAwbInv" parameterClass="java.lang.String" >
+    	 DELETE FROM AWB_INVENTORY WHERE SEQ_NO = #seqNo#
+	</delete>
+    
+    <select id="sqlGetPpkType" parameterClass="java.lang.String" resultClass="java.lang.String" >
+     select decode( (select i.awb_no
+		FROM AWB_INVENTORY I
+		LEFT JOIN IMP_CAR_AWB A ON A.AWB_NO = I.AWB_NO AND A.AWB_DATE = I.AWB_DATE 
+		WHERE NVL(A.PPK_TYPE, 'B') IN ('M', 'P') AND I.ULD_KEY = #uldKey# AND ROWNUM = 1), null,'N','Y') from dual
+	</select>		
+		    
+	<select id="sqlGetUldLocnCount" parameterClass="java.lang.String" resultClass="java.lang.Integer" >
+     SELECT COUNT(1) 
+	    FROM AWB_INVENTORY
+	    WHERE  NVL(ULD_KEY,'*')  = #uldKey# AND LOCN_PCS > 0
+	</select>	
+	<select id="sqlGetEmptyIndFromImpRampChkDtl" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO" resultClass="java.lang.String" >
+    select empty_ind from imp_ramp_chk_dtl where flt_key=#fltKey# AND flt_date=#fltDate# and uld_key=#uldKey# and BRKDN_COMPL_YN ='N'
+	</select>
+	
+		<update id="sqlUpdateUldInv" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO">
+	UPDATE ULD_INVENTORY
+    	SET EMPTY_FLG 	= DECODE(#emptyFlag#,'Y', 'Y', 'N'),
+		<!-- PPK_IND	  = DECODE(#awbType#, 'I', #ppkType#, PPK_IND), --> <!-- commented for PR102332 -->
+		ULD_FLOW = NVL(DECODE(#awbType#,'T','I',#awbType#),ULD_FLOW),
+	   <isEqual  property="emptyFlag"  compareValue="Y">
+	     HANDLING_MODE = '',
+	   </isEqual>	   
+        LM_USER_ID  = #lmUserId#,
+        LM_DATE     = SYSDATE,
+        REF_TR_NO      = #trNo#,
+        REF_TR_TYPE    = #trType#,
+        REF_TR_DATE    = sysdate,
+        REF_IN_CARR    = NULL,
+        REF_OUT_CARR   = NULL,
+        REF_DOC_LINE_NO  = #docLineNo#,
+        REF_LOC_FROM     = #locCode#,
+        REF_TR_EVENT     = #relocType#,
+        REF_RMK          = NULL
+    WHERE ULD_KEY = #uldKey#
+    </update>
+		 
+	<select id="sqlGetLspLocnCount" parameterClass="java.lang.String" resultClass="java.lang.Integer" >
+     SELECT COUNT(1) 
+    FROM AWB_INVENTORY
+    WHERE  NVL(LSP_NO,0)  = #lspNo#
+	</select>	
+		  
+	
+	<update id="sqlUpdateLspInv" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO">
+	UPDATE LSP_INVENTORY
+	   SET EMPTY_FLG       = DECODE(NVL(#lspCount#, 0), 0, 'Y', 'N'),
+	       REF_TR_TYPE     =#trType#,
+           REF_TR_NO       = #trNo#,
+           REF_TR_EVENT    = #relocType#,
+           REF_TR_DATE     = sysdate,
+           REF_DOC_LINE_NO = #docLineNo#,
+           REF_LOC_FROM    = #locCode#,
+           REF_RMK         = NULL,
+           STRG_DATE = DECODE(NVL(#lspCount#, 0), 0, STRG_DATE, SYSDATE) 
+       WHERE LSP_NO = #lspNo#
+	 </update>
+	
+	<select id="sqlGetDamDataForDelete" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO" resultClass="cargo.cms.imprt.bo.AWBStorDtlBO" >
+    	SELECT NVL(SUM(LOCN_PCS),'0') damPcs, NVL(SUM(LOCN_WT),'0') damWt
+		 FROM AWB_INVENTORY
+		 WHERE DAM_IND = 'Y' AND AWB_NO = #awbNo# AND AWB_DATE = #awbDate# 
+		 AND NVL(FLT_KEY,'*')  = NVL(#fltKey#,'*')
+		 AND NVL(FLT_TYPE,'*')  = NVL(#fltType#,'*')
+		 AND NVL(FLT_DATE,SYSDATE) = NVL(#fltDate#,SYSDATE)
+	</select>
+	
+	<select id="sqlGetLocnDataForDelete" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO" resultClass="cargo.cms.imprt.bo.AWBStorDtlBO" >
+    	 SELECT NVL(SUM(LOCN_PCS),'0') locnPcs, NVL(SUM(LOCN_WT),'0') locnWt
+		 FROM AWB_INVENTORY
+		 WHERE AWB_NO = #awbNo# AND AWB_DATE = #awbDate# 
+		 AND NVL(FLT_KEY,'*')  = NVL(#fltKey#,'*')
+		 AND NVL(FLT_TYPE,'*')  = NVL(#fltType#,'*')
+		 AND NVL(FLT_DATE,SYSDATE) = NVL(#fltDate#,SYSDATE)
+	</select>
+	
+	<select id="sqlGetDelvDataForDelete" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO" resultClass="cargo.cms.imprt.bo.AWBStorDtlBO" >
+		 SELECT NVL(SUM(sf.DLV_PCS),'0') tempPcs, NVL(SUM(sf.DLV_WT),'0')  tempWt
+		 FROM IMP_SRF S
+		 JOIN IMP_SRF_FLT SF ON S.SRF_NO = SF.SRF_NO
+		 WHERE S.POST_DATE IS NOT NULL
+		 AND S.AWB_NO = #awbNo# AND S.AWB_DATE = #awbDate#
+		 AND SF.FLT_KEY  = NVL(#fltKey#,'*')
+		 AND SF.FLT_DATE = NVL(#fltDate#,SYSDATE)
+	</select>
+	
+	<!--
+	<update id="sqlUpdateCarShpForDelete" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO" >
+		 UPDATE IMP_CAR_SHP
+		 SET DAM_PCS = NVL(#damPcs#, 0), DAM_WT  = NVL(#damWt#, 0),
+		 	  RECD_PCS = NVL(#locnPcs#, 0) + NVL(#tempPcs#, 0),
+		 	   RECD_WT  = NVL(#locnWt#, 0) + NVL(#tempWt#, 0),
+		 	   TR_TYPE = #trtypeEvt#
+		 WHERE AWB_NO = #awbNo# AND AWB_DATE = #awbDate#
+		 AND NVL(FLT_KEY,'*')  = NVL(#fltKey#,'*')
+		    AND NVL(FLT_DATE,SYSDATE) = NVL(#fltDate#,SYSDATE)
+	</update>
+	
+	-->
+	
+	<update id="sqlUpdateCarShpForDelete" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO" >
+		<![CDATA[ 
+		 UPDATE IMP_CAR_SHP
+		 SET DAM_PCS = Case when nvl(#rowDamInd#,'N') = 'Y' then 
+		 						Case when DAM_PCS - nvl(#rowPcs#,0) < 0 then  0 else DAM_PCS - nvl(#rowPcs#,0) end 
+		 				else DAM_PCS end,
+		 	 DAM_WT = Case when nvl(#rowDamInd#,'N') = 'Y' then 
+		 	 					Case when DAM_WT - nvl(#rowWt#,0) < 0 then  0 else DAM_WT - nvl(#rowWt#,0) end 
+		 	 			else DAM_WT end,
+		 	 RECD_PCS = RECD_PCS - NVL(#rowPcs#, 0),
+			 RECD_WT = RECD_WT - NVL(#rowWt#, 0),
+			 LM_USER_ID = #lmUserId#,
+			 LM_DATE = sysdate, 
+			 TR_TYPE = #trtypeEvt#
+		 WHERE AWB_NO = #awbNo# AND AWB_DATE = #awbDate#
+		 AND NVL(FLT_KEY,'*')  = NVL(#fltKey#,'*')
+		    AND NVL(FLT_DATE,SYSDATE) = NVL(#fltDate#,SYSDATE)
+		    ]]>	
+	</update>
+	
+	<delete id="sqlDeleteCarShpForDelete" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO" >
+		DELETE FROM IMP_CAR_SHP s
+		WHERE FLT_KEY = #fltKey# AND FLT_DATE = #fltDate# and (CAR_CREATED = 'N' OR MANIFEST_PCS = 0 )
+		AND AWB_NO = #awbNo# AND AWB_DATE = #awbDate# and RECD_PCS = 0			 
+		and not exists (select null from edi_ffm_msg m join edi_ffm_shp fs on m.tr_no = fs.tr_no 
+		where m.flt_key = s.flt_key and m.flt_date = s.flt_date and fs.awb_no = s.awb_no and m.FFM_STATUS in ('P', 'F'))
+	</delete>
+	
+	<select id="sqlGetCarShpCountForDelete" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO" resultClass="java.lang.Integer" >
+		 SELECT COUNT(1) 
+		FROM IMP_CAR_SHP
+		WHERE  AWB_NO = #awbNo# AND AWB_DATE = #awbDate#
+			   AND ROWNUM = 1
+	</select>
+	
+	<delete id="sqlDeleteCarAwbForDelete" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO">
+		DELETE FROM IMP_CAR_AWB
+		WHERE  AWB_NO = #awbNo# AND AWB_DATE = #awbDate#
+	</delete>
+	
+	<delete id="sqlDeleteCarChargeItemForDelete" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO">
+		DELETE FROM IMP_CAR_AWB
+		WHERE  AWB_NO = #awbNo# AND AWB_DATE = #awbDate#
+	</delete>
+	
+	<!-- Trigger TRG_AWB_RELOC_ISS on table TRG_AWB_RELOC_ISS ENDS-->
+	
+	<!-- Trigger TRG_AWB_RELOC_RECV on table TRG_AWB_RELOC_RECV >>This Will be called after in some of the use cases to update Awb_inventory indirectly -->
+	
+	<select id="getAWB_INVCount_Restore" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO" resultClass="java.lang.Integer" >
+ 	SELECT count(*)
+	FROM AWB_INVENTORY
+    WHERE AWB_NO = #awbNo#
+    AND AWB_DATE = #awbDate#
+    AND NVL(FLT_KEY,'*')  = NVL(#fltKey#,'*')
+    AND NVL(FLT_TYPE,'*')  = NVL(#fltType#,'*')
+	AND NVL(FLT_DATE,SYSDATE) = NVL(decode(#fltDate#,'',SYSDATE,#fltDate#),SYSDATE)
+    AND NVL(LOC_CODE,'*') = NVL(#locCode#,'*')
+    AND NVL(LSP_NO,0)   = NVL(#lspNo#,0)
+    AND NVL(ULD_KEY,'*')  = NVL(#uldKey#,'*')
+    AND NVL(CDIF_NO,'*') = NVL(#cdifNo#,'*')
+	</select>
+	
+	
+	<select id="sqlGetRecvSequenceNo" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO" resultClass="java.lang.String" >
+ 	SELECT NVl(SEQ_NO,'0') seqNo
+	FROM AWB_INVENTORY
+    WHERE AWB_NO = #awbNo#
+    AND AWB_DATE = #awbDate#
+    AND NVL(FLT_KEY,'*')  = NVL(#fltKey#,'*')
+    AND NVL(FLT_TYPE,'*')  = NVL(#fltType#,'*')
+	AND  NVL(FLT_DATE,SYSDATE) = NVL(decode(#fltDate#,'',SYSDATE,#fltDate#),SYSDATE)
+    AND NVL(LOC_CODE,'*') = NVL(#locCode#,'*')
+    AND NVL(LSP_NO,0)   = NVL(#lspNo#,0)
+    AND NVL(ULD_KEY,'*')  = NVL(#uldKey#,'*')
+    AND NVL(SRF_NO,'*')  = NVL(#srfNo#,'*')
+    AND NVL(TRM_NO,'*')  = NVL(#trmNo#,'*')
+    AND NVL(CDIF_NO,'*') = NVL(#cdifNo#,'*')
+    AND NVL(RTN_NO,'*') = NVL(#rtnNo#,'*')
+	</select>
+	
+	
+	
+	<insert id="sqlInsertIntoAwbInventory" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO">
+	INSERT INTO AWB_INVENTORY
+	 (AWB_NO, AWB_DATE,CARR_CODE, LSP_NO,LOC_CODE,
+	 LOCN_PCS, LOCN_WT, DAM_IND, PPK_IND, STRG_DATE,CR_USER_ID, CR_DATE,
+	 SRF_NO, CDIF_NO, TRM_NO,BUP_WT,BULK_WT,
+	 LM_USER_ID, LM_DATE, FLT_NO, FLT_DATE, FLT_KEY,FLT_TYPE, ULD_KEY, SEQ_NO,
+	 REF_LSP_TR_TYPE,REF_LSP_TR_EVENT,REF_TR_NO,REF_TR_TYPE,REF_TR_DATE,
+	 REF_DOC_LINE_NO,REF_LOC_FROM,REF_TR_EVENT,REF_RMK,REF_MOV_FROM,WH_DAM_IND,DAM_TYPE,DAM_PCS,DAM_WT,RTN_NO,REF_AWB_EVENT)
+	 VALUES
+	 (#awbNo#,#awbDate#,#carrCode#,#lspNo#,#locCode#,
+	 #locnPcs#,#locnWt#,#damInd#, #ppkInd#,sysdate, #lmUserId#, sysdate,
+	 #srfNo#, #cdifNo#, #trmNo#,NVL(#bupWt#,0),NVL(#bulkWt#,0),
+	 #lmUserId#, sysdate, #fltNo#,#fltDate#,#fltKey#,#fltType#,#uldKey#,AWB_INV_SEQ.NEXTVAL,
+	 '','',#trNo#,#trType#,sysdate,#docLineNo#,#locCode#,#relocType#,#rmk#,#locCode#,#whDamInd#,#damType#,#damPcs#,#damWt#,#rtnNo#,#trtypeEvt#)
+	</insert>
+
+
+	<update id="sqlUpdateRecvAwbInventory" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO">
+	UPDATE AWB_INVENTORY
+	  SET LOCN_PCS   = (LOCN_PCS + #locnPcs#),
+	      LOCN_WT    = (LOCN_WT  + #locnWt#),
+	      BUP_WT     = (BUP_WT   + NVL(#bupWt#,0)),
+	      BULK_WT    = (BULK_WT  + NVL(#bulkWt#,0)),
+	      DAM_PCS    = (DAM_PCS + NVL(#damPcs#,0)),
+		  DAM_WT   = (DAM_WT + NVL(#damWt#,0)),
+	      DAM_IND    = DECODE(DAM_IND,'Y','Y',#damInd#),
+	      LM_USER_ID = #lmUserId#,
+	      LM_DATE    = sysdate,
+	      REF_TR_NO  = #trNo#,
+	   	  REF_TR_TYPE    = #trType#,
+	      REF_TR_EVENT   = #relocType#,
+	      REF_TR_DATE    = sysdate,
+	      REF_DOC_LINE_NO  = #docLineNo#,
+	      REF_LOC_FROM     = #locCode#,
+	      REF_RMK          = #rmk#,
+	      REF_MOV_FROM     = #locCode#,
+	      DAM_TYPE         = #damType#,
+	      REF_AWB_EVENT    = #trtypeEvt#
+	   WHERE  SEQ_NO = #seqNo#
+	</update>
+	
+	<select id="sqlGetRecvPpkType" parameterClass="java.lang.String" resultClass="java.lang.String" >
+	 select decode( (select i.awb_no
+		FROM AWB_INVENTORY I
+		JOIN IMP_CAR_AWB A ON A.AWB_NO = I.AWB_NO AND A.AWB_DATE = I.AWB_DATE 
+		WHERE NVL(A.PPK_TYPE, 'B') IN ('M', 'P') AND I.ULD_KEY = #uldKey# AND ROWNUM = 1), null,'N','Y') from dual
+	</select>
+	
+	
+	<select id="sqlGetRecvLocnPcWt" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO" resultClass="cargo.cms.imprt.bo.AWBStorDtlBO" >
+	SELECT SUM(LOCN_PCS) locnPcs, SUM(LOCN_WT) locnWt
+			FROM AWB_INVENTORY
+			WHERE DAM_IND = 'Y' AND AWB_NO = #awbNo# AND AWB_DATE = #awbDate# 
+			   AND NVL(FLT_KEY,'*')  = NVL(#fltKey#,'*')
+			   AND NVL(FLT_TYPE,'*')  = NVL(#fltType#,'*')
+			   AND NVL(FLT_DATE,SYSDATE) = NVL(#fltDate#,SYSDATE)
+	</select>
+	
+	<update id="sqlUpdateImpCarShipments" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO">
+	UPDATE IMP_CAR_SHP
+			SET DAM_PCS = NVL(#locnPcs#, 0),
+			 DAM_WT  = NVL(#locnWt#, 0)
+			WHERE AWB_NO = #awbNo# AND AWB_DATE = #awbDate#
+			   AND NVL(FLT_KEY,'*')  = NVL(#fltKey#,'*')
+			   AND NVL(FLT_DATE,SYSDATE) = NVL(#fltDate#,SYSDATE)
+	 </update>
+	 
+	<update id="sqlUpdateUldInventory" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO">
+	 UPDATE ULD_INVENTORY
+	 SET EMPTY_FLG = 'N',
+	 <!-- PPK_IND	  = DECODE(#awbType#, 'I',#ppkType#, PPK_IND), BugFix:: IN168562-->
+	 ULD_FLOW = NVL(DECODE(#awbType#,'T','I',#awbType#),ULD_FLOW),
+	       LM_USER_ID  = #lmUserId#,
+	       LM_DATE     = SYSDATE,
+	       REF_TR_NO      =#trNo#,
+	       REF_TR_TYPE    = DECODE(#uldCount#, 1, '', #trType#),
+	       REF_TR_DATE    = SYSDATE,
+	       REF_IN_CARR    = NULL,
+	       REF_OUT_CARR   = NULL,
+	       REF_DOC_LINE_NO  = #docLineNo#,
+	       REF_LOC_FROM     = #locCode#,
+	       REF_TR_EVENT     = #relocType#,
+	       REF_RMK          = #rmk#,
+	       REF_MOV_FROM     = #locCode#,
+	       TARGET 			= #target#,
+	       LOC_CODE 		= #locCode#
+	   WHERE ULD_KEY = #uldKey#
+	 </update>
+	 
+	  <update id="sqlUpdateLspInventory" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO">
+	 UPDATE LSP_INVENTORY
+	   SET EMPTY_FLG       = 'N',
+	       REF_TR_TYPE     = DECODE(#lspCount#, 1, '', #trType#),
+	          LOC_CODE        = #locCode#,
+	          REF_TR_NO       = #trNo#,
+	          REF_TR_EVENT    = #relocType#,
+	          REF_TR_DATE     = SYSDATE,
+	          REF_DOC_LINE_NO = #docLineNo#,
+	          REF_MOV_FROM    = #locCode#,
+	          REF_LOC_FROM    = #locCode#,
+	          REF_RMK         = #rmk#,
+	          TARGET 		  = #target#,
+	          STRG_DATE = SYSDATE
+	 WHERE LSP_NO = #lspNo#
+	 </update>
+	 
+	 <insert id="sqlInsertLspInventory" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO">
+	 	 insert into LSP_INVENTORY
+	 	 ( LSP_NO ,EMPTY_FLG,REF_TR_TYPE,LOC_CODE,REF_TR_NO,REF_TR_EVENT,REF_TR_DATE,REF_DOC_LINE_NO,REF_MOV_FROM,REF_LOC_FROM,REF_RMK,TARGET,STRG_DATE,CR_USER_ID,CR_DATE,LM_USER_ID,LM_DATE,LSP_TYPE)
+	 	 values(#lspNo#,'N',DECODE(#lspCount#, 1, '', #trType#),#locCode#,#trNo#,#relocType#,SYSDATE,#docLineNo#,#locCode#,#locCode#,#rmk#,#target#,SYSDATE,#lmUserId#,SYSDATE,#lmUserId#,SYSDATE,substr(#lspNo#,0,1))
+	 </insert>
+
+
+	<select id="sqlCheckLspInventory" parameterClass="java.lang.String" resultClass="java.lang.Integer" >
+	select count(1) from LSP_INVENTORY where LSP_NO = #lspNo#
+	</select>
+	
+	 <update id="sqlUpdateEmptyLsp" parameterClass="map">
+	 UPDATE LSP_INVENTORY
+	   SET EMPTY_FLG       = 'Y',
+		LM_DATE   		   = SYSDATE,
+		LM_USER_ID		   = #LM_USER_ID#
+	 WHERE LSP_NO = #LSP_NO#
+	 </update>
+	
+	<update id="sqlUpdateShpmntOnULD" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO">
+	 UPDATE AWB_INVENTORY 
+	SET 
+	   LOC_CODE = #locCode#, 
+	   LM_USER_ID = #lmUserId#, 
+	   LM_DATE = SYSDATE,
+	   REF_TR_NO = #uldKey#,
+	   REF_DOC_LINE_NO = '1',
+	   REF_TR_TYPE = 'RA',
+	   REF_TR_DATE = SYSDATE,
+	   REF_AWB_EVENT = #trtypeEvt#
+	WHERE uld_key = #uldKey#
+	 </update>
+	
+	 <update id="sqlUpdateShpmntOnLSP" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO">
+	UPDATE AWB_INVENTORY 
+	SET 
+	   LOC_CODE = #locCode#, 
+	   LM_USER_ID = #lmUserId#, 
+	   LM_DATE = SYSDATE,
+	   REF_TR_NO = #lspNo#,
+	   REF_DOC_LINE_NO = '1',
+	   REF_TR_TYPE = 'RA',
+	   REF_TR_DATE = SYSDATE,
+	   REF_AWB_EVENT = #trtypeEvt#
+	WHERE LSP_NO = #lspNo#
+	</update>
+	
+	
+	<select id="sqlSelectLspLocation" parameterClass="java.lang.String" resultClass="java.lang.String" >
+	    SELECT LOC_CODE from LSP_INVENTORY where LSP_NO=#lspNo#
+	</select>
+	
+	<insert id="sqlInsertLspMov" parameterClass="java.util.HashMap">
+	Insert into LSP_MOV (SEQ_NO,
+	TR_TYPE,
+	MOV_DATE,
+	DOC_LINE_NO,
+	LSP_NO,
+	ORG_LOC_CODE,
+	DEST_LOC_CODE,
+	STRG_DATE,
+	RTRV_DATE,
+	STATUS,
+	CR_USER_ID,
+	CR_DATE,
+	LM_USER_ID,
+	LM_DATE,
+	EVENT_ID) values
+	(LSP_MOV_SEQ.NEXTVAL,
+	#TR_TYPE#,
+	SYSDATE,
+	#DOC_LINE_NO#,
+	#LSP_NO#,
+	#ORG_LOC_CODE#,
+	#DEST_LOC_CODE#,
+	(SELECT CR_DATE FROM LSP_INVENTORY WHERE LSP_NO = #LSP_NO#),
+	SYSDATE,
+	'N',
+	#CR_USER_ID#,
+	SYSDATE,
+	#LM_USER_ID#,
+	SYSDATE,
+	#EVENT_ID#)
+	</insert>
+	
+	
+	
+	<!-- Trigger TRG_AWB_RELOC_RECV on table TRG_AWB_RELOC_RECV ENDS-->
+	
+	<!-- To Maintain House PCs When an Awb Record is Deleted  -->
+	
+	<select id="sqlGetLocnDataForHouseDelete" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO" resultClass="cargo.cms.imprt.bo.AWBStorDtlBO" >
+	     SELECT NVL(STRG_PCS,'0') locnPcs, NVL(STRG_WT,'0') locnWt,HAWB_NO hawbNo
+		 FROM HAWB_INVENTORY
+		 Where SEQ_NO = #seqNo#
+	</select>
+	
+	<update id="sqlUpdateHawbStrgPcWt" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO">
+	    Update IMP_HAWB_STRG_DTL
+	    set HAWB_BRKDN_PCS = NVl(HAWB_BRKDN_PCS,0)-NVL(#locnPcs#,0),
+	         HAWB_BRKDN_WT= NVl(HAWB_BRKDN_WT,0)-NVL(#locnWt#,0)
+	     Where 
+	     AWB_NO = #awbNo# AND 
+	     AWB_DATE = #awbDate# AND 
+	     NVL(FLT_KEY,'*')  = NVL(#fltKey#,'*') AND 
+	     NVL(FLT_TYPE,'*')  = NVL(#fltType#,'*') AND 
+	     NVL(FLT_DATE,SYSDATE) = NVL(#fltDate#,SYSDATE) AND
+	     HAWB_NO = #hawbNo#
+	</update>
+	
+	<update id="sqlUpdateHawbDamagePcWt" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO">
+	    Update IMP_HAWB_STRG_DTL
+	    set DAM_PCS = NVl(DAM_PCS,0)-NVL(#locnPcs#,0),
+	         DAM_WT= NVl(DAM_WT,0)-NVL(#locnWt#,0),
+	         HAWB_BRKDN_PCS = NVl(HAWB_BRKDN_PCS,0)-NVL(#locnPcs#,0),
+	         HAWB_BRKDN_WT= NVl(HAWB_BRKDN_WT,0)-NVL(#locnWt#,0)
+	     Where 
+	     AWB_NO = #awbNo# AND 
+	     AWB_DATE = #awbDate# AND 
+	     NVL(FLT_KEY,'*')  = NVL(#fltKey#,'*') AND 
+	     NVL(FLT_TYPE,'*')  = NVL(#fltType#,'*') AND 
+	     NVL(FLT_DATE,SYSDATE) = NVL(#fltDate#,SYSDATE) AND
+	     HAWB_NO = #hawbNo#
+	</update>
+		
+	<delete id="sqlDeleteHouseRecord" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO">
+		delete from hawb_inventory where seq_no = #seqNo#
+	</delete>	
+	
+	<select id="sqlSelectOldHouseDtl" parameterClass="java.lang.String" resultClass="cargo.cms.imprt.bo.AWBStorDtlBO" >
+		select HAWB_NO hawbNo from HAWB_INVENTORY where SEQ_NO=#oldSeq#
+	</select>
+
+	<select id="sqlCheckOldisInNew" parameterClass="map" resultClass="java.lang.Integer" >
+		select count(1) from HAWB_INVENTORY where HAWB_NO = #HAWB_NO# and SEQ_NO = #SEQ_NO# 
+	</select>
+
+	<update id="sqlUpdateOldWithNew" parameterClass="map">
+		update HAWB_INVENTORY
+		set STRG_PCS = STRG_PCS+(select STRG_PCS from hawb_inventory where hawb_no= #HAWB_NO#  and seq_no = #OLD_SEQ_NO#),
+			STRG_WT = STRG_WT+(select STRG_WT from hawb_inventory where hawb_no= #HAWB_NO#  and seq_no = #OLD_SEQ_NO#)
+		WHERE HAWB_NO = #HAWB_NO#
+		AND SEQ_NO = #NEW_SEQ_NO#
+	</update>
+	
+
+	<update id="sqlUpdateOldToNew" parameterClass="map">
+		update HAWB_INVENTORY
+		set SEQ_NO = #NEW_SEQ_NO#,
+			CR_USER_ID = #LM_USER#,
+			CR_DATE = SYSDATE,
+			LM_USER_ID = #LM_USER#,
+			LM_DATE = SYSDATE
+		WHERE HAWB_NO = #HAWB_NO#
+		AND SEQ_NO = #OLD_SEQ_NO#
+	</update>
+
+
+
+	
+		<!-- Maintaining House PCs ends -->
+	
+	
+	<!--  Procedure pkg.imp.prc_srf_inv -->
+	<select id="sqlSelectSrfNumber" parameterClass="java.lang.String" resultClass="java.lang.String">
+	 	 SELECT srf_no FROM awb_inventory   WHERE seq_No = #trNo#    AND srf_no IS NOT NULL and rownum=1
+	</select>
+	
+        <delete id="sqlDeleteSrfData" parameterClass="java.lang.String">
+		<![CDATA[
+	      DELETE FROM imp_srf_awb_inventory WHERE srf_no =#srfNo# and NVL(dlv_ind,'N') <> 'Y' 
+	     ]]>
+	</delete>
+	
+	<insert id="sqlInsertSrfData" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO">
+		<![CDATA[
+		    INSERT INTO imp_srf_awb_inventory
+	        (srf_no, awb_no, awb_date, carr_code, catalog, cc_code,
+	         sch_coll_date, uld_key, lsp_no,loc_code, locn_pcs,
+	         locn_wt, flt_date, flt_key, cr_user_id, cr_date, dam_ind,dlv_ind,seq_no,REF_CDIF_NO)
+	        SELECT srf_no, awb_no, awb_date, carr_code, catalog, cc_code,
+	               sch_coll_date, uld_key, lsp_no, loc_code, locn_pcs,
+	               locn_wt, flt_date, flt_key, cr_user_id, cr_date, dam_ind,dlv_yn,seq_no,CDIF_NO
+	          FROM awb_inventory
+	         WHERE srf_no = #srfNo# and NVL(dlv_yn,'N') <> 'Y'
+         ]]>
+	 </insert>
+	 
+	 <select id="getSRFLocationPC" parameterClass="java.lang.String" resultClass="java.lang.Integer">
+	 	 select sum(LOCN_PCS) from imp_srf_awb_inventory where srf_no = #srfNo#
+	</select>
+	<select id="getSRFLocationWT" parameterClass="java.lang.String" resultClass="java.lang.String">
+	 	 select sum(LOCN_WT) from imp_srf_awb_inventory where srf_no = #srfNo#
+	</select>
+	 
+	<delete id="sqlDeleteSrfHouseData" parameterClass="java.lang.String">
+	 	<![CDATA[
+	      DELETE FROM imp_srf_awb_inventory_dtl WHERE srf_no =#srfNo# and NVL(dlv_pcs, 0 ) = 0 
+	    ]]>
+	      
+	</delete>
+
+	 <insert id="sqlInsertSrfHouseData" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO">
+	 	<![CDATA[
+	 	Insert into IMP_SRF_AWB_INVENTORY_DTL (SEQ_NO,
+											   HAWB_NO,
+											   LOCN_HAWB_PCS,
+											   LOCN_HAWB_WT,
+											   CR_USER_ID,
+											   CR_DATE,
+											   LM_USER_ID,
+											   LM_DATE,
+											   SRF_NO) 
+									           select SEQ_NO,
+									  		   HAWB_NO,
+									  		   STRG_PCS,
+									  		   STRG_WT,
+									  		   CR_USER_ID,
+									  		   CR_DATE,
+									  		   LM_USER_ID,
+									  		   LM_DATE, 
+									  		   #srfNo#
+									  		   from 
+									  		   HAWB_INVENTORY
+									  		   where SEQ_NO in ( SELECT SEQ_NO FROM AWB_INVENTORY WHERE SRF_NO = #srfNo# and NVL(dlv_yn,'N') <> 'Y' )
+		 ]]>
+	 </insert>
+		
+	<!--  Procedure pkg.imp.prc_srf_inv Ends-->
+	
+	<select id="getTrNumCountInExpAWBStkDtl" parameterClass="java.lang.String" resultClass="java.lang.Integer">
+	<![CDATA[
+	 	SELECT COUNT(*) AS FROM EXP_AWB_STK_DTL WHERE TR_NO = #trNum# AND STATUS <> 'OPEN' AND ROWNUM = 1
+	 	]]>
+	</select>
+	
+	<delete id="DeleteDataInExpAwbStkDtl" parameterClass="java.lang.String">
+	      DELETE FROM EXP_AWB_STK_DTL WHERE TR_NO =#trNum#
+	</delete>
+	<insert id="TRG_INSERT_TO_GT_CMS" parameterClass="java.util.HashMap">
+	INSERT INTO GT_CMS(COLUMN_1, COLUMN_2, COLUMN_3) VALUES (#NEW_TR_NO#,#NEW_AWB_NO_FROM#,#NEW_AWB_NO_TO#)
+	</insert>
+	
+	<delete id="TRG_DELETE_EXP_AWB_STK_DTL" parameterClass="java.util.HashMap">
+	      DELETE FROM EXP_AWB_STK_DTL WHERE TR_NO =#NEW_TR_NO#
+	</delete>
+	
+	<select id="TRG_AWB_NO_COUNT_EXP_AWB_DTL" parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+	<![CDATA[
+	 	SELECT COUNT(*) FROM EXP_AWB_STK_DTL WHERE TR_NO = #NEW_TR_NO#
+      AND    (AWB_NO < #NEW_AWB_NO_FROM# OR AWB_NO > #NEW_AWB_NO_TO#)
+      AND    STATUS <> 'OPEN'
+      AND    ROWNUM = 1
+	 	]]>
+	</select>
+	
+	<delete id="TRG_DELETE_AWB_NO_EXP_AWB_STK_DTL" parameterClass="java.util.HashMap">
+	<![CDATA[
+	  DELETE FROM EXP_AWB_STK_DTL WHERE TR_NO = #NEW_TR_NO# AND AWB_NO between #NEW_AWB_NO_FROM# and #NEW_AWB_NO_TO#
+      ]]>
+	</delete>
+	
+	<select id="TRG_COUNT_AWB_NO_EXP_AWB_DTL" parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+	<![CDATA[
+	  SELECT COUNT(*) FROM EXP_AWB_STK_DTL WHERE TR_NO = #NEW_TR_NO# AND AWB_NO between #NEW_AWB_NO_FROM# and #NEW_AWB_NO_TO#
+     	]]>
+	</select>
+	
+	<select id="TRG_GET_GT_CMS" resultClass="java.util.HashMap">
+		SELECT COLUMN_1 TR_NO, COLUMN_2 AWB_NO_FROM, COLUMN_3 AWB_NO_TO FROM GT_CMS WHERE COLUMN_5 IS NULL;	 
+	</select>
+	<insert id="TRG_INSERT_TO_EXP_AWB_STK_DTL" parameterClass="java.util.HashMap">
+	INSERT INTO EXP_AWB_STK_DTL(TR_NO, AWB_NO)VALUES(#NEW_TR_NO#,#NEW_AWB_NO_TO#)
+	</insert>
+	<update id="TRG_UPD_EXP_AWB_STK" parameterClass="java.util.HashMap">
+       UPDATE EXP_AWB_STK
+	   SET AWB_NO_AVAILABLE = #NEW_AWB_NO_AVAILABLE#
+	   WHERE TR_NO = #NEW_TR_NO# 
+	 </update>
+	 
+	<update id="TRG_IST_EXP_AWB_STK" parameterClass="java.util.HashMap">
+       UPDATE EXP_AWB_STK
+	   SET AWB_NO_AVAILABLE = #NEW_AWB_NO_AVAILABLE#
+	   WHERE AWB_NO_FROM = #NEW_AWB_NO_FROM# AND AWB_NO_TO = #NEW_AWB_NO_TO#
+	 </update>
+	<!-- Queries for Trigger TRG_AID_EXP_AWB_STK Start	-->
+    <select id="getAvailabeFromExpAWBStkDtl" parameterClass="java.util.HashMap" resultClass="java.util.HashMap">
+		SELECT SUM(DECODE(STATUS, 'OPEN', 1, 0)) as V_AVAILABLE,
+               SUM(DECODE(STATUS, 'OPEN', 0, 1)) as V_RESERVED
+               FROM   EXP_AWB_STK_DTL
+               WHERE  TR_NO = #TR_NO#	 
+	</select>
+	<select id="getOldRecordsFromExpAWBStk" parameterClass="java.util.HashMap" resultClass="java.util.HashMap">
+		SELECT 
+			AWB_TYPE as OLD_AWB_TYPE,
+			NON_MOD7_IND as OLD_NON_MOD7_IND,
+			AWB_NO_FROM as OLD_AWB_NO_FROM,
+			AWB_NO_TO as OLD_AWB_NO_TO
+			FROM EXP_AWB_STK WHERE	TR_NO = #TR_NO#
+	</select>
+	<update id="updateIntoExpAwbStkDtl" parameterClass="java.util.HashMap">
+		UPDATE EXP_AWB_STK SET
+          AWB_NO_AVAILABLE = #V_AVAILABLE#,
+          AWB_NO_RESERVED = #V_RESERVED#
+          WHERE TR_NO = #TR_NO#
+	</update>
+	
+   <!-- Queries for Trigger TRG_AID_EXP_AWB_STK end	-->
+   
+   <!-- Queries for Trigger TRG_BID_EXP_AWB_BOOKING Start	-->
+   <update id="updateIntoNewExpAwbBooking" parameterClass="java.util.HashMap">
+		UPDATE EXP_AWB_STK_DTL SET
+            STATUS = 'RESERVED'
+            WHERE  TR_NO = #NEW_TR_NO#
+            AND    AWB_NO = #NEW_AWB_NO#
+	</update>
+	<update id="updateIntoOldExpAwbBooking" parameterClass="java.util.HashMap">
+		 UPDATE EXP_AWB_STK_DTL SET
+            STATUS = 'OPEN'
+            WHERE  TR_NO =  #OLD_TR_NO#
+            AND    AWB_NO = #OLD_AWB_NO#
+	</update>
+   <!-- Queries for Trigger TRG_BID_EXP_AWB_BOOKING End	--> 
+   <!-- Queries for Trigger TRG_BIUD_EXP_AWB_STK_DTL Start     -->
+      <update id="updateReserveIntoExpAwbStkDtl" parameterClass="java.util.HashMap">
+            UPDATE EXP_AWB_STK SET
+           AWB_NO_RESERVED = AWB_NO_RESERVED + 1,
+           AWB_NO_AVAILABLE = AWB_NO_AVAILABLE - 1
+           WHERE TR_NO = #NEW_TR_NO#
+      </update>
+      <update id="updateOpenIntoExpAwbStkDtl" parameterClass="java.util.HashMap">
+            UPDATE EXP_AWB_STK SET
+           AWB_NO_RESERVED = AWB_NO_RESERVED - 1,
+           AWB_NO_AVAILABLE = AWB_NO_AVAILABLE + 1
+           WHERE TR_NO = #NEW_TR_NO#
+      </update>
+   <!-- Queries for Trigger TRG_BIUD_EXP_AWB_STK_DTL end    -->
+   <update id="sqlUpdateCarShpForReset" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO" >
+		<![CDATA[ 
+		 UPDATE IMP_CAR_SHP
+		 SET DAM_PCS = 0,
+		 	 DAM_WT = 0,
+		 	 RECD_PCS = 0,
+			 RECD_WT = 0,
+			 TR_TYPE = #trtypeEvt#,
+			 LM_USER_ID = NVL(#lmUserId#,'SYSTEM'),
+			 LM_DATE = SYSDATE
+		 WHERE AWB_NO = #awbNo# AND AWB_DATE = #awbDate#
+		]]>	
+	</update>
+
+	<delete id="sqlDeleteCarShpForReset" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO" >
+		DELETE FROM IMP_CAR_SHP s
+		WHERE CAR_CREATED = 'N' 
+		AND AWB_NO = #awbNo# AND AWB_DATE = #awbDate# and RECD_PCS = 0			 
+		and not exists (select null from edi_ffm_msg m join edi_ffm_shp fs on m.tr_no = fs.tr_no 
+		where m.flt_key = s.flt_key and m.flt_date = s.flt_date and fs.awb_no = s.awb_no and m.FFM_STATUS in ('P', 'F'))
+	</delete>
+	<update id="sqlUpdateHawbStrgPcWtReset" parameterClass="cargo.cms.imprt.bo.AWBStorDtlBO">
+	    Update IMP_HAWB_STRG_DTL
+	    set HAWB_BRKDN_PCS = 0,
+	         HAWB_BRKDN_WT= 0 
+	     Where 
+	     AWB_NO = #awbNo# AND 
+	     AWB_DATE = #awbDate# AND 
+	     HAWB_NO = #hawbNo#
+	</update>
+   
+   <delete id="sqlDeleteHouseTagRecord" parameterClass="java.util.HashMap">
+		delete from hawb_inventory where seq_no = #seqNo# and hawb_no=#hawbNo#
+	</delete>
+	
+</sqlMap>

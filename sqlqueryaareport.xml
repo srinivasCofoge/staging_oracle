@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="AAReportModule">
+
+	<select id="sqlFetchAAReportByPort" parameterClass="java.util.HashMap" resultClass="java.util.HashMap">
+		SELECT RPAD(FLT_KEY, 8, ' ') AS VFLIGHT_NUMBER,
+    		TO_CHAR(TO_DATE(TO_CHAR(SCH_DATE, 'YYYYMMDD') || '' || LPAD(SCH_TIME, 4, 0), 'YYYYMMDDHH24MI'), 'YYYYMMDDHH24MI') AS DSCHEDULE_DATETIME,   			
+				TO_CHAR(FLT_TYPE) AS DARR_DEP,    		    		
+    		DECODE(LENGTH(ACT_DATE), NULL,'            ' , TO_CHAR(TO_DATE(TO_CHAR(ACT_DATE, 'YYYYMMDD') || '' || LPAD(ACT_TIME, 4, 0), 'YYYYMMDDHH24MI'), 'YYYYMMDDHH24MI')) AS VNULLDOCKSDATE,
+    		DECODE(LENGTH(HANDLER_CODE), NULL,'     ', RPAD(HANDLER_CODE, 5, ' ')) AS HANDLER_CODE,
+    		DECODE(LENGTH(ACFT_REG_NO), NULL, '          ', RPAD(ACFT_REG_NO, 10, ' ')) AS ACFT_REG_NO,
+    		DECODE(LENGTH(PORT_CODE), NULL, '   ',RPAD(PORT_CODE, 3, ' ')) AS VPORT_CODE,
+    		DECODE(LENGTH(PORT_NO),NULL,'00',LPAD(PORT_NO, 2, '0')) AS VPORT_SEQUENCE,
+    		LPAD(ROUND(TRS_CARGO,0), 7, '0') AS VTRANSSHIPMENT_CARGO,
+    		LPAD(ROUND(TRM_CARGO,0), 7, '0') AS VTERMINAL_CARGO,
+    		LPAD(ROUND(REV_CARGO,0), 7, '0') AS VREVENUE_CARGO,
+    		LPAD(ROUND(TRS_EXPS,0), 7, '0') AS VTRANSSHIPMENT_EXPRESS,
+    		LPAD(ROUND(TRM_EXPS,0), 7, '0') AS VTERMINAL_EXPRESS,
+    		LPAD(ROUND(REV_EXPS,0), 7, '0') AS REVENUE_EXPRESS,
+    		LPAD(ROUND(TRS_MAIL,0), 7, '0') AS TRANSSHIPMENT_MAIL,
+    		LPAD(ROUND(TRM_MAIL,0), 7, '0') AS TERMINAL_MAIL,
+    		LPAD(ROUND(REV_MAIL,0), 7, '0') AS REVENUE_MAIL,
+			FLT_KEY,
+			FLT_TYPE,
+			PORT_CODE,
+			TO_CHAR(SCH_DATE,'DDMONYY'),
+			PORT_NO || '' AS PORT_NO
+  		FROM 
+  			GT_AA_RPT_CP order by DSCHEDULE_DATETIME asc
+	</select>
+
+	<select id="sqlFetchAAReportByFlight" parameterClass="java.util.HashMap" resultClass="java.util.HashMap">
+		SELECT RPAD(FLT_KEY, 8, ' ') AS VFLIGHT_NUMBER,    
+    		TO_CHAR(FLT_TYPE) AS DARR_DEP,
+    		TO_CHAR(TO_DATE(TO_CHAR(SCH_DATE, 'YYYYMMDD') || '' || LPAD(SCH_TIME, 4, 0), 'YYYYMMDDHH24MI'), 'YYYYMMDDHH24MI') AS DSCHEDULE_DATETIME,
+    		DECODE(LENGTH(ACT_DATE), NULL,'            ' , TO_CHAR(TO_DATE(TO_CHAR(ACT_DATE, 'YYYYMMDD') || '' || LPAD(ACT_TIME, 4, 0), 'YYYYMMDDHH24MI'), 'YYYYMMDDHH24MI')) AS VNULLDOCKSDATE,
+    		DECODE(LENGTH(HANDLER_CODE),NULL,'     ',RPAD(HANDLER_CODE, 5, ' ')) AS VNULLCARGO_TERMINAL_OPERATOR,
+    		DECODE(LENGTH(ACFT_REG_NO), NULL, '          ',RPAD(ACFT_REG_NO, 10, ' ')) AS VNULLREG_MARK,
+    		LPAD(TBULK, 7, '0') AS VTRANSIT_CARGO,    
+    		LPAD(TEXPRESS, 7, '0') AS VTRANSIT_EXPRESS,
+    		LPAD(ROUND(TMAIL, 0), 7, '0') AS VTRANSIT_MAIL,
+    		LPAD(NO_OF_CREW, 7, '0') AS VNUMBER_OF_CREW,
+    		FLT_KEY,
+    		FLT_TYPE,
+    		HANDLER_CODE,
+    		TO_CHAR(SCH_DATE,'DDMONYY')
+  		FROM 
+  			GT_AA_RPT_CF order by DSCHEDULE_DATETIME asc
+	</select>
+
+	<parameterMap id="hmpParameter" class="map">
+		<parameter property="p_fltdatefrom" jdbcType="DATE" javaType="java.lang.String" mode="IN" />
+		<parameter property="p_fltdateto" jdbcType="DATE" javaType="java.lang.String" mode="IN" />
+	</parameterMap>
+	
+	<procedure id="sqlPrcAARptCF" parameterMap="hmpParameter">
+		{call PKG_AA_REPORT.PRC_AA_RPT_CF(?,?)}
+	</procedure>
+
+	<procedure id="sqlPrcAARptCP" parameterMap="hmpParameter">
+		{call PKG_AA_REPORT.PRC_AA_RPT_CP(?,?)}
+	</procedure>
+	
+	<parameterMap id="aaReportParameter" class="map">
+		<parameter property="p_fltdatefrom" jdbcType="DATE" javaType="java.lang.String" mode="IN" />		
+	</parameterMap>
+	
+	<procedure id="sqlPrcDailyAARpt" parameterMap="aaReportParameter">
+		{call PKG_AA_DAILY_REPT.DAILY_REPT(?)}
+	</procedure>
+	
+	<!-- SLA Report ::: SLA V2_0 -->
+	<parameterMap id="hMapParam" class="map">
+		<parameter property="P_MNTH" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+	</parameterMap>
+	
+	<procedure id="sqlPkgAASLAReport" parameterMap="hMapParam">
+		{ call PKG_AA_SLA_REPT.SP_AA_SLA(?) }
+	</procedure>
+	
+	<select id="fetchAASlaReport" parameterClass="java.lang.String" resultClass="cargo.cms.slareports.config.AASLAReportBO">
+		SELECT 
+			CURRDATE currDate, EXP_CAR_WEIGH expCarWeigh, IMP_BREAKDOWN_PSG impBrkdwnPsg, IMP_BREAKDOWN_FRE impBrkdwnFre, 
+			CUBIC cubic, MISHANDLING misHandling, CARGO_2000_COMP cargo2000Comp, EXP_BULK_PSG expBulkPsg, EXP_BULK_FRE expBulkFre, 
+			EXP_PPK_PSG expPPKPsg, EXP_PPK_FRE expPPKFre, EXP_EXPRESS_PSG expExpressPsg, EXP_EXPRESS_FRE expExpressFre, EXP_LIVE_ANIMAL_PSG expLiveAnimalPsg, 
+			EXP_LIVE_ANIMAL_FRE expLiveAnimalFre, EXP_DANGEROUS_PSG expDangerousPsg, EXP_DANGEROUS_FRE expDangerousFre, EXP_URGENT_PSG expUrgentPsg, 
+			EXP_URGENT_FRE expUrgentFre, FSU_MSG fsuGeneral, IMP_GENERAL_PSG impGeneralPsg, IMP_GENERAL_FRE impGeneralFre, IMP_EXPRESS impExpress, 
+			IMP_QT impQT, IMP_IF impIF 
+		FROM AA_SLA_REPT ORDER BY CURRDATE ASC
+	</select>
+	<select id="fetchAADailyReport" parameterClass="java.util.HashMap" resultClass="java.util.HashMap">
+		SELECT 
+			FLT_DATE, IMP_TONNAGE , IMP_TRANS_TONNAGE, EXP_TONNAGE, EXP_TRANS_TONNAGE, 
+			TONNAGE_TOTAL
+		FROM AA_DAILY_REPORT 
+		where flt_date between to_date(#p_fltdatefrom#,'DDMONYY') - 30 and to_date(#p_fltdatefrom#,'DDMONYY')
+		order by to_date(FLT_DATE,'DDMONYY') desc
+	</select>
+	<!-- Added by shiva.subramanyam for CR  -->
+	<parameterMap id="slaEvaParameter" class="map"  >
+		<parameter property="fromDate" jdbcType="DATE" javaType="java.lang.String" mode="IN" />
+		<parameter property="toDate" jdbcType="DATE" javaType="java.lang.String" mode="IN" />
+		<parameter property="carrierCode" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="trckQuieTimeStand" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="trckQuieTimeStandAchievRate" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="trckQuieTimeStandRmksActual" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="trckQuieTimeStandRmksOutof" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarStand" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarStandRHO" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarStandAchievRate" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarStandRmksActual" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarStandRmksOutof" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarGnrlFrei" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarGnrlPax" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarGnrlFreiAchievRate" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarGnrlPaxAchievRate" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarGnrlFreiRmksActual" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarGnrlFreiRmksOutof" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarGnrlPaxRmksActual" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarGnrlPaxRmksOutof" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarPERFrei" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarPERPax" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarPERFreiAchievRate" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarPERPaxAchievRate" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarPERFreiRmksActual" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarPERFreiRmksOutof" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarPERPaxRmksActual" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarPERPaxRmksOutof" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarXPSFrei" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarXPSPax" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarXPSFreiAchievRate" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarXPSPaxAchievRate" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarXPSFreiRmksActual" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarXPSFreiRmksOutof" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarXPSPaxRmksActual" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarXPSPaxRmksOutof" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarDelvFrei" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarDelvPax" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarDelvFreiAchievRate" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarDelvPaxAchievRate" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarDelvCombdAchievRate" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarDelvFreiRmksActual" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarDelvFreiRmksOutof" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarDelvPaxRmksActual" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarDelvPaxRmksOutof" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarDelvCombdRmksActual" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+		<parameter property="impCarDelvCombdRmksOutof" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT" />
+	</parameterMap>
+	
+	<procedure id="fetchSlaEVAReport"  parameterMap="slaEvaParameter" resultClass="cargo.cms.slareports.config.SLAReptEVABO">
+		{ call PRC_SLA_EVA(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) }
+	</procedure>
+</sqlMap>

@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+	<!--
+		The SQL in these maps files has purposely been typed with more
+		verbosity than is actually required. For example, many of the selects
+		could have just used SELECT * FROM... instead of listing all of the
+		columns. This is to demonstrate that even complex SQL can be handled
+		and coded and formatted the way SQL was meant to be (i.e. not a bunch
+		of concatenated strings in a Java class).
+	-->
+	<!-- This XML file will hold only the queries which would be used for Common Reports Framework-->
+	<!-- Modified by Varadaraj Muni 01-Sep-2010 -->
+<sqlMap namespace="CommonReportsModule">
+
+	<select id="rept_printer_name" parameterClass="cargo.cms.report.common.bo.CommonReptBO"
+		resultClass="cargo.cms.report.common.bo.CommonReptBO">
+	<![CDATA[
+		SELECT
+					TO_CHAR(a.RULE_VALUE) printerName												
+					FROM	CMSRULES a
+					WHERE	RULE_CODE = 'DEFAULT_PRINTER'
+		]]>
+	</select>
+
+	<select id="REPT_DEFAULTPRINTER_LASER" parameterClass="cargo.cms.report.common.bo.CommonReptBO"
+		resultClass="cargo.cms.report.common.bo.CommonReptBO">
+
+		SELECT
+		PRT_CODE as printerName,
+		CODE as reptId,
+		CODE_DESC as reportName
+		FROM MAST_REP_PRT_DEFAULTS
+		WHERE
+		CODE = #reptId#
+		<isNotEmpty property="printerName">
+			AND PRT_CODE = #printerName#
+		</isNotEmpty>
+
+	</select>
+
+	<select id="REPT_DEFAULTPRINTER_DMP" parameterClass="cargo.cms.report.common.bo.CommonReptBO"
+		resultClass="cargo.cms.report.common.bo.CommonReptBO">
+
+		SELECT
+		PRT_CODE1 as printerName,
+		CODE as reptId,
+		CODE_DESC as reportName
+		FROM MAST_REP_PRT_DEFAULTS
+		WHERE
+		CODE = #reptId#
+		<isNotEmpty property="printerName">
+			AND PRT_CODE1 = #printerName#
+		</isNotEmpty>
+
+	</select>
+
+	<select id="REPT_DEFAULTPRINTER_BY_ID" parameterClass="cargo.cms.report.common.bo.CommonReptBO"
+		resultClass="cargo.cms.report.common.bo.CommonReptBO">
+
+		SELECT
+		PRT_CODE as printerNameLaser,
+		PRT_CODE1 as printerNameDmp,
+		CODE as reptId,
+		CODE_DESC as reportName
+		FROM MAST_REP_PRT_DEFAULTS
+		WHERE
+		CODE = #reptId#
+
+	</select>
+
+	<select id="rept_defaultprinter_name" parameterClass="cargo.cms.report.common.bo.CommonReptBO"
+		resultClass="cargo.cms.report.common.bo.CommonReptBO">
+	<![CDATA[
+	SELECT
+							TO_CHAR(a.PRT_CODE) defaultPrinterName, TO_CHAR(a.CODE_DESC) reportName		
+					FROM	MAST_REP_PRT_DEFAULTS a
+					WHERE	CODE = #reptId#	
+		]]>
+	</select>
+
+	<select id="rept_defaultprinter_type" parameterClass="cargo.cms.report.common.bo.PrinterAttribListBO"
+		resultClass="cargo.cms.report.common.bo.PrinterAttribListBO">
+	<![CDATA[
+		select * from (	
+		SELECT distinct a.PRT_CATEGORY AS printerCategory, decode(a.prt_category,'L',b.PRT_CODE,b.prt_code1)  AS printerName
+				FROM 
+				  MAST_PRT_DTL a ,
+				  MAST_REP_PRT_DEFAULTS b
+				WHERE 0=0 
+				  and (a.CODE = b.PRT_CODE or a.code = b.prt_code1) 
+				  and (a.PRT_TYPE = b.PRT_TYPE OR a.PRT_TYPE = b.PRT_TYPE1)
+				  and b.CODE = #reptId#	
+		union all				  
+		SELECT distinct a.PRT_CATEGORY AS printerCategory, a.code AS printerName
+				FROM 
+				  MAST_PRT_DTL a 
+				WHERE 0=0 
+				  and a.CODE = #reptId#
+	    ) order by printerCategory desc	
+		]]>
+	</select>
+	
+	<!--  Below sql query commented by Surendra Gollapalli on 28 th Sep 2010 START -->
+	
+	<!--<select id="exp_mrcl_isocode" parameterClass="java.lang.String"
+		resultClass="java.lang.String">
+			SELECT RULE_VALUE FROM CMSRULES WHERE RULE_CODE= #PARAM#  
+		SELECT ISO_FORM_NO FROM MAST_REP_PRT_DEFAULTS WHERE CODE = #PARAM#
+	</select>
+
+
+	-->
+	
+	<!--  Below sql query commented by Surendra Gollapalli on 28 th Sep 2010 END -->
+	
+	<update id="update_rept_ver_rept_007" parameterClass="cargo.cms.report.common.bo.CommonReptBO">
+		UPDATE ULD_ISS_HD SET REPT_VER = NVL(REPT_VER,0) + 1 WHERE EIR_NO=
+		#eirNo# 
+	</update>
+
+	<update id="update_rept_ver_rept_060" parameterClass="cargo.cms.report.common.bo.CommonReptBO">
+		UPDATE ULD_REL_HD SET PRT_VER = NVL(PRT_VER,0) + 1 WHERE EIR_NO=
+		#eirNo# 
+	</update>
+
+	<update id="exp_mrcl_rept_ver" parameterClass="cargo.cms.report.common.bo.CommonReptBO">
+		UPDATE exp_rcl_hd
+		SET rept_ver = (SELECT
+		CASE WHEN rept_ver is null THEN 1
+		WHEN rept_ver is not null THEN rept_ver+1
+		WHEN rept_ver ='' THEN 1
+		END as rept_ver
+		FROM exp_rcl_hd
+		WHERE rcl_no = #mrclNo#)
+		WHERE rcl_no = #mrclNo# 
+	</update>
+
+	<update id="exp_rcl_rept_ver" parameterClass="cargo.cms.report.common.bo.CommonReptBO">
+		UPDATE exp_pre_rcl_hd
+		SET rept_ver = (select
+		CASE WHEN rept_ver is null THEN 1
+		WHEN rept_ver is not null THEN rept_ver+1
+		WHEN rept_ver ='' THEN 1
+		END as rept_ver
+		FROM exp_pre_rcl_hd
+		WHERE pre_rcl_no = #rclNo#)
+		WHERE pre_rcl_no = #rclNo# 
+	</update>
+
+	<!-- Added by Venkat/Jannu Vinod for Reports validations. Starts -->
+
+	<select id="checkvalidregion" parameterClass="map" resultClass="java.lang.String">
+		SELECT CODE FROM MAST_REGION
+		<dynamic prepend="WHERE">
+			<isNotEmpty prepend="AND" property="REG_CODE">
+				CODE=#REG_CODE# 
+		</isNotEmpty>
+			<isNotEmpty prepend="AND" property="REG_CODE_DESC">
+				CODE_DESC=#REG_CODE_DESC#
+		</isNotEmpty>
+		</dynamic>
+	</select>
+
+	<select id="checkvalidagent" parameterClass="map" resultClass="java.lang.String">
+		SELECT CODE FROM CUST_COMPANY
+		<dynamic prepend="WHERE">
+			<isNotEmpty prepend="AND" property="CUST_CODE">
+				CODE=#CUST_CODE#
+		</isNotEmpty>
+			<isNotEmpty prepend="AND" property="CUST_CODE_DESC">
+				CODE_DESC=#CUST_CODE_DESC#
+		</isNotEmpty>
+		</dynamic>
+	</select>
+	
+	<select id="checkvalidcountry" parameterClass="map" resultClass="java.lang.String">
+		SELECT CODE FROM MAST_COUNTRY
+		<dynamic prepend="WHERE">
+			<isNotEmpty prepend="AND" property="CTRY_CODE">
+				CODE=#CTRY_CODE# 
+		</isNotEmpty>
+			<isNotEmpty prepend="AND" property="CTRY_CODE_DESC">
+				CODE_DESC=#CTRY_CODE_DESC#
+		</isNotEmpty>
+		</dynamic>
+	</select>
+
+	<select id="checkvalidcity" parameterClass="map" resultClass="java.lang.String">
+
+		SELECT CODE FROM MAST_CITY
+		<dynamic prepend="WHERE">
+			<isNotEmpty prepend="AND" property="CTY_CODE">
+				CODE=#CTY_CODE# 
+			</isNotEmpty>
+			<isNotEmpty prepend="AND" property="CTY_CODE_DESC">
+				CODE_DESC=#CTY_CODE_DESC#
+			</isNotEmpty>
+		</dynamic>
+	</select>
+
+	<select id="checkvaliditem" parameterClass="map" resultClass="java.lang.String">
+		SELECT DISTINCT ITM_CODE FROM BILL_ITM_MASTER
+		<dynamic prepend="WHERE">
+			<isNotEmpty prepend="AND" property="ITEM_CODE">
+				ITM_CODE=#ITEM_CODE#
+			</isNotEmpty>
+			<isNotEmpty prepend="AND" property="ITEM_CODE_DESC">
+				ITM_DESC=#ITEM_CODE_DESC#
+			</isNotEmpty>
+		</dynamic>
+
+	</select>
+	<select id="checkvaliditemsfx" parameterClass="map" resultClass="java.lang.String">
+		SELECT DISTINCT CODE FROM MAST_CARRIER
+		<dynamic prepend="WHERE">
+			<isNotEmpty prepend="AND" property="ITEM_CODE">
+				CODE=#ITEM_CODE#
+			</isNotEmpty>
+			<isNotEmpty prepend="AND" property="ITEM_CODE_DESC">
+				CODE_DESC=#ITEM_CODE_DESC#
+			</isNotEmpty>
+		</dynamic>
+	</select>
+
+	<select id="misc_Report_Sec_ItemCode" parameterClass="map"
+		resultClass="java.lang.String">
+		SELECT DISTINCT ITM_CODE FROM BILL_ITM_MASTER
+		<dynamic prepend="WHERE">
+			<isNotEmpty prepend="AND" property="ITEM_CODE">
+				ITM_CODE=#ITEM_CODE#
+		</isNotEmpty>
+			<isNotEmpty prepend="AND" property="ITEM_CODE_DESC">
+				ITM_DESC=#ITEM_CODE_DESC#
+		</isNotEmpty>
+		</dynamic>
+	</select>
+
+	<select id="misc_report_spl_handling_code" parameterClass="map"
+		resultClass="java.lang.String">
+		SELECT DISTINCT CODE FROM MAST_SPL_HAND_CODE
+		<dynamic prepend="WHERE">
+			<isNotEmpty prepend="AND" property="SP_CODE">
+				CODE=#SP_CODE#
+		</isNotEmpty>
+			<isNotEmpty prepend="AND" property="SP_CODE_DESC">
+				CODE_DESC=#SP_CODE_DESC#
+		</isNotEmpty>
+		</dynamic>
+	</select>
+
+	<select id="misc_report_flight_validate" parameterClass="map"
+		resultClass="java.lang.Integer">
+		SELECT NVL(count(1),0) FROM FLT_OPR WHERE
+		CARR_CODE=#CARRIER_CODE# AND FLT_NO=#FLIGHT_NO#								
+   	</select>
+
+	<select id="checkvalidcompany" parameterClass="map" resultClass="java.lang.String">
+		SELECT CODE FROM CUST_COMPANY
+		<dynamic prepend="WHERE">
+			<isNotEmpty prepend="AND" property="COMPANY_CODE">
+				CODE=#COMPANY_CODE#
+			</isNotEmpty>
+			<isNotEmpty prepend="AND" property="COMPANY_NAME">
+				CODE_DESC=#COMPANY_NAME#
+			</isNotEmpty>
+		</dynamic>
+	</select>
+	
+</sqlMap> 

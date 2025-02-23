@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="concurrency">
+	<!-- AWB Related Concurrency changes start -->
+	
+	<parameterMap id="getAWBVerNoMap" class="map">
+		<parameter property="lastUpdatedAWBVerNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT"/>
+		<parameter property="awbNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="userId" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+	</parameterMap>
+	<procedure id="sqlGetVerNoForAWB" parameterMap="getAWBVerNoMap">
+		{? = call PKG_AWB_LCK.GET_AWB_TRANS_VER_NO(?,?)  }
+	</procedure>
+		
+	<parameterMap id="getAwbLockWithNoWaitMap" class="map">
+		<parameter property="retVal" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT"/>
+		<parameter property="awbNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />		
+	 	<parameter property="screenLastUpdatedAWBVerNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+	 	<parameter property="userId" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+	</parameterMap>
+	<procedure id="sqlGetLockOnAwbWithNoWait" parameterMap="getAwbLockWithNoWaitMap">
+		{? = call PKG_AWB_LCK.GET_AWB_LCK_WITH_NO_WAIT(?,?,?)  }
+	</procedure>
+	
+	<parameterMap id="getAwbLockWithWaitMap" class="map">
+		<parameter property="lastUpdatedAWBVerNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT"/>
+		<parameter property="awbNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />		
+	</parameterMap>
+	<procedure id="sqlGetLockOnAwbWithWait" parameterMap="getAwbLockWithWaitMap">
+		{? = call PKG_AWB_LCK.GET_AWB_LCK_WITH_WAIT(?)  }
+	</procedure>
+	
+	<parameterMap id="releaseAWBLockMap" class="map">
+		<parameter property="retVal" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT"/>
+		<parameter property="awbNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />			 	
+	 	<parameter property="lastUpdatedAWBVerNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+	 	<parameter property="userId" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+	</parameterMap>
+	<procedure id="sqlUpdateReleaseLockForAWB" parameterMap="releaseAWBLockMap">
+		{? = call PKG_AWB_LCK.REL_LCK(?,?,?)  }
+	</procedure>
+	
+	<!-- AWB Related Concurrency changes end -->
+	
+	<!-- ULD Related Concurrency changes start -->
+	
+	<parameterMap id="getULDVerNoMap" class="map">
+		<parameter property="lastUpdatedULDVerNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT"/>
+		<parameter property="uldKey" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="userId" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+	</parameterMap>
+	<procedure id="sqlGetVerNoForULD" parameterMap="getULDVerNoMap">
+		{? = call PKG_ULD_LCK.GET_ULD_TRANS_VER_NO(?,?)  }
+	</procedure>
+		
+	<parameterMap id="getUldLockWithNoWaitMap" class="map">
+		<parameter property="retVal" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT"/>
+		<parameter property="uldKey" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />		
+	 	<parameter property="screenLastUpdatedULDVerNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+	 	<parameter property="userId" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+	</parameterMap>
+	<procedure id="sqlGetLockOnUldWithNoWait" parameterMap="getUldLockWithNoWaitMap">
+		{? = call PKG_ULD_LCK.GET_ULD_LCK_WITH_NO_WAIT(?,?,?)  }
+	</procedure>
+	
+	<parameterMap id="getUldLockWithWaitMap" class="map">
+		<parameter property="lastUpdatedULDVerNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT"/>
+		<parameter property="uldKey" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />		
+	</parameterMap>
+	<procedure id="sqlGetLockOnUldWithWait" parameterMap="getUldLockWithWaitMap">
+		{? = call PKG_ULD_LCK.GET_ULD_LCK_WITH_WAIT(?)  }
+	</procedure>
+	
+	<parameterMap id="releaseULDLockMap" class="map">
+		<parameter property="retVal" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT"/>
+		<parameter property="uldKey" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />			 	
+	 	<parameter property="lastUpdatedULDVerNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+	 	<parameter property="userId" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+	</parameterMap>
+	<procedure id="sqlUpdateReleaseLockForULD" parameterMap="releaseULDLockMap">
+		{? = call PKG_ULD_LCK.REL_LCK(?,?,?)  }
+	</procedure>
+	
+	<!-- ULD Related Concurrency changes end -->
+		
+	<!-- Flight Related Concurrency changes start -->
+	
+	<parameterMap id="getFlightVerNoMap" class="map">
+		<parameter property="lastUpdatedFlightVerNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT"/>
+		<parameter property="fltKey" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="fltDate" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="userId" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+	</parameterMap>
+	<procedure id="sqlGetVerNoForFlight" parameterMap="getFlightVerNoMap">
+		{? = call PKG_FLT_LCK.GET_FLT_TRANS_VER_NO(?,?,?)  }
+	</procedure>
+		
+	<parameterMap id="getFlightLockWithNoWaitMap" class="map">
+		<parameter property="retVal" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT"/>
+		<parameter property="fltKey" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="fltDate" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+	 	<parameter property="screenLastUpdatedFlightVerNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+	 	<parameter property="userId" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+	</parameterMap>
+	<procedure id="sqlGetLockOnFlightWithNoWait" parameterMap="getFlightLockWithNoWaitMap">
+		{? = call PKG_FLT_LCK.GET_FLT_LCK_WITH_NO_WAIT(?,?,?,?)  }
+	</procedure>
+	
+	<parameterMap id="getFlightLockWithWaitMap" class="map">
+		<parameter property="lastUpdatedFlightVerNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT"/>
+		<parameter property="fltKey" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="fltDate" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+	</parameterMap>
+	<procedure id="sqlGetLockOnFlightWithWait" parameterMap="getFlightLockWithWaitMap">
+		{? = call PKG_FLT_LCK.GET_FLT_LCK_WITH_WAIT(?, ?)  }
+	</procedure>
+	
+	<parameterMap id="releaseFLTLockMap" class="map">
+		<parameter property="retVal" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT"/>
+		<parameter property="fltKey" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="fltDate" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+	 	<parameter property="lastUpdatedFlightVerNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+	 	<parameter property="userId" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+	</parameterMap>
+	<procedure id="sqlUpdateReleaseLockForFLT" parameterMap="releaseFLTLockMap">
+		{? = call PKG_FLT_LCK.REL_LCK(?,?,?,?)  }
+	</procedure>
+	
+	<!-- Flight Related Concurrency changes end -->
+	
+	<!-- SRF Related Concurrency changes start -->
+	
+	<parameterMap id="getSRFVerNoMap" class="map">
+		<parameter property="lastUpdatedSRFVerNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT"/>
+		<parameter property="srfNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />
+		<parameter property="userId" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+	</parameterMap>
+	<procedure id="sqlGetVerNoForSRF" parameterMap="getSRFVerNoMap">
+		{? = call PKG_SRF_LCK.GET_SRF_TRANS_VER_NO(?,?)  }
+	</procedure>
+		
+	<parameterMap id="getSrfLockWithNoWaitMap" class="map">
+		<parameter property="retVal" jdbcType="VARCHAR" javaType="java.lang.String" mode="OUT"/>
+		<parameter property="srfNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN" />		
+	 	<parameter property="screenLastUpdatedSRFVerNo" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+	 	<parameter property="userId" jdbcType="VARCHAR" javaType="java.lang.String" mode="IN"/>
+	</parameterMap>
+	<procedure id="sqlGetLockOnSrfWithNoWait" parameterMap="getSrfLockWithNoWaitMap">
+		{? = call PKG_SRF_LCK.GET_SRF_LCK_WITH_NO_WAIT(?,?,?)  }
+	</procedure>
+	
+	<!-- SRF Related Concurrency changes end -->
+</sqlMap>
